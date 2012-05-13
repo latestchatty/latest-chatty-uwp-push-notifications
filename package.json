@@ -1,0 +1,10 @@
+{
+    "name": "shacknewspushnotification",
+    "description": "Shacknews Push Notification Stuff",
+    "version": "0.1.0",
+    "author": "Willie Zutz",
+    "dependencies": {
+		"libxmljs"	:	"*"
+	 },
+    "devDependencies": {}
+}
