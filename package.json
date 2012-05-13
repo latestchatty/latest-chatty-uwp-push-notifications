@@ -1,6 +1,6 @@
 {
     "name": "shacknewspushnotification",
-    "description": "Shacknews Push Notification Stuff",
+    "description": "Shacknews Push Notification Service",
     "version": "0.1.0",
     "author": "Willie Zutz",
     "dependencies": {

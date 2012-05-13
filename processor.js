@@ -5,11 +5,56 @@ var sys = require("util"),
 	fs = require("fs"),
 	libxmljs = require("libxmljs");
 
+//This must be set to the absolute path in order to run with cron.
+//At least until I figure out how to set the working directory with cron...
 var subscriptionDirectory = '/home/' + path.join('wzutz', 'Dropbox', 'Shack Node', 'subscribedUsers');
 
-function SendWP7ToastNotification(author, preview, pushUri) {
-	//console.log('**Sending WP7 push notification to ' + pushUri + '\n  Author: ' + author + '\n  Preview: ' + preview);
+function SendWP7Notification(requestOptions, payload)
+{
+	var request = http.request(requestOptions, function (res) {
+		var notificationStatus = res.headers['x-notificationstatus'].toLowerCase();
+		var deviceConnectionStatus = res.headers['x-deviceconnectionstatus'].toLowerCase();
+		var subscriptionStatus = res.headers['x-subscriptionstatus'].toLowerCase();
 
+		res.setEncoding('utf8');
+
+		var responseBody = '';
+		var responseSuccessful = (res.statusCode == 200)
+				&& (notificationStatus == 'received')
+				&& (deviceConnectionStatus == 'connected')
+				&& (subscriptionStatus == 'active');
+
+		res.on('data', function (chunk) {
+			responseBody += chunk;
+		});
+		res.on('end', function () {
+			if (!responseSuccessful) {
+				//TODO: Handle failures better.
+				//  There are cases where we should retry immediately, retry later, never try again, etc.
+				//  As it stands, if we fail to send, we'll never retry.
+				console.log('Sending push failed.');
+				console.log('Code: ' + res.statusCode);
+				console.log('Notification Status: ' + notificationStatus);
+				console.log('Device Connection Status: ' + deviceConnectionStatus);
+				console.log('Subscription Status: ' + subscriptionStatus);
+				console.log('Body: ' + responseBody);
+			}
+			else {
+				console.log('WP7 notification sent successfully!');
+			}
+		});
+	});
+
+	request.on('error', function (e) {
+		console.log('Request Failed: ' + e.message);
+	});
+
+	// write data to request body
+	request.write(payload);
+	request.end();
+}
+
+function SendWP7ToastNotification(author, preview, pushUri) {
 	var parsedUri = url.parse(pushUri);
 
 	var toastData = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
@@ -19,8 +64,6 @@ function SendWP7ToastNotification(author, preview, pushUri) {
               "<wp:Text2>" + preview.substr(0, 40) + "</wp:Text2>" +
            "</wp:Toast>" +
         "</wp:Notification>";
-
-	console.log('**Sending toast notification\n' + toastData);
 
 	var requestOptions = {
 		hostname: parsedUri.hostname,
@@ -35,49 +78,11 @@ function SendWP7ToastNotification(author, preview, pushUri) {
 		}
 	};
 
-	var request = http.request(requestOptions, function (res) {
-		var notificationStatus = res.headers['x-notificationstatus'].toLowerCase();
-		var deviceConnectionStatus = res.headers['x-deviceconnectionstatus'].toLowerCase();
-		var subscriptionStatus = res.headers['x-subscriptionstatus'].toLowerCase();
-
-		res.setEncoding('utf8');
-
-		var responseBody = '';
-		var responseSuccessful = (res.statusCode == 200)
-				&& (notificationStatus == 'received')
-				&& (deviceConnectionStatus == 'connected')
-				&& (subscriptionStatus == 'active');
-
-		res.on('data', function (chunk) {
-			responseBody += chunk;
-		});
-		res.on('end', function () {
-			if (!responseSuccessful) {
-				console.log('Sending push failed.');
-				console.log('Code: ' + res.statusCode);
-				console.log('Notification Status: ' + notificationStatus);
-				console.log('Device Connection Status: ' + deviceConnectionStatus);
-				console.log('Subscription Status: ' + subscriptionStatus);
-				console.log('Body: ' + responseBody);
-			}
-			else {
-				console.log('Toast notification sent successfully!');
-			}
-		});
-	});
-
-	request.on('error', function (e) {
-		console.log('Request Failed: ' + e.message);
-	});
-
-	// write data to request body
-	request.write(toastData);
-	request.end();
+	console.log('**Sending toast notification\n' + toastData);
+	SendWP7Notification(requestOptions, toastData);
 }
 
 function SendWP7TileNotification(count, author, preview, pushUri) {
-	//console.log('**Sending WP7 push notification to ' + pushUri + '\n  Author: ' + author + '\n  Preview: ' + preview);
-
 	var parsedUri = url.parse(pushUri);
 
 	var tileMessage = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
@@ -86,10 +91,8 @@ function SendWP7TileNotification(count, author, preview, pushUri) {
 				  "<wp:Count>" + count + "</wp:Count>" +
 				  "<wp:BackTitle>" + author + "</wp:BackTitle>" +
 				  "<wp:BackContent>" + preview + "</wp:BackContent>" +
-			 "</wp:Tile> " +
+			 "</wp:Tile>" +
 		"</wp:Notification>";
-
-	console.log('**Sending tile notification\n' + tileMessage);
 
 	var requestOptions = {
 		hostname: parsedUri.hostname,
@@ -104,44 +107,8 @@ function SendWP7TileNotification(count, author, preview, pushUri) {
 		}
 	};
 
-	var request = http.request(requestOptions, function (res) {
-		var notificationStatus = res.headers['x-notificationstatus'].toLowerCase();
-		var deviceConnectionStatus = res.headers['x-deviceconnectionstatus'].toLowerCase();
-		var subscriptionStatus = res.headers['x-subscriptionstatus'].toLowerCase();
-
-		res.setEncoding('utf8');
-
-		var responseBody = '';
-		var responseSuccessful = (res.statusCode == 200)
-				&& (notificationStatus == 'received')
-				&& (deviceConnectionStatus == 'connected')
-				&& (subscriptionStatus == 'active');
-
-		res.on('data', function (chunk) {
-			responseBody += chunk;
-		});
-		res.on('end', function () {
-			if (!responseSuccessful) {
-				console.log('Sending push failed.');
-				console.log('Code: ' + res.statusCode);
-				console.log('Notification Status: ' + notificationStatus);
-				console.log('Device Connection Status: ' + deviceConnectionStatus);
-				console.log('Subscription Status: ' + subscriptionStatus);
-				console.log('Body: ' + responseBody);
-			}
-			else {
-				console.log('Tile notification sent successfully!');
-			}
-		});
-	});
-
-	request.on('error', function (e) {
-		console.log('Request Failed: ' + e.message);
-	});
-
-	// write data to request body
-	request.write(tileMessage);
-	request.end();
+	console.log('**Sending tile notification\n' + tileMessage);
+	SendWP7Notification(requestOptions, tileMessage);
 }
 
 function ProcessUser(userInfo, requestOptions) {
@@ -159,7 +126,9 @@ function ProcessUser(userInfo, requestOptions) {
 			if (totalResultsAttribute == null) return;
 
 			var totalResults = totalResultsAttribute.value();
-			var newReplyCount = parseInt(totalResults) - parseInt(userInfo.replyCount);
+
+			//The count of new replies is the total number of current replies minus the number of replies since the last time we notified.
+			var newReplyCount = parseInt(totalResults) - parseInt(userInfo.replyCountLastNotified);
 			if (newReplyCount > 0) {
 				console.log('Previous count for %s was %s current count is %s, we got new stuff!', userInfo.userName, userInfo.replyCount, totalResults);
 
@@ -169,10 +138,11 @@ function ProcessUser(userInfo, requestOptions) {
 					var body = latestResult.get('body').text();
 
 					if (userInfo.hasOwnProperty('notificationUri')) {
-						if (userInfo.notificationType = 2) {
+						if (userInfo.notificationType == 2) {
 							SendWP7ToastNotification(author, body, userInfo.notificationUri);
 						}
-						SendWP7TileNotification(newReplyCount, author, body, userInfo.notificationUri);
+						//The count of new replies is the total number of current replies minus the number of replies the app last knew about
+						SendWP7TileNotification(parseInt(totalResults) - parseInt(userInfo.replyCount), author, body, userInfo.notificationUri);
 					}
 					else {
 						console.log('Would send push notification of\n  Author: ' + author + '\n  Preview: ' + body);
@@ -180,7 +150,7 @@ function ProcessUser(userInfo, requestOptions) {
 				}
 
 				//Since we got new stuff, it's time to update the current count.
-				userInfo.replyCount = totalResults;
+				userInfo.replyCountLastNotified = totalResults;
 				var fileNameToSave = path.join(subscriptionDirectory, userInfo.userName, userInfo.deviceId);
 				fs.writeFile(fileNameToSave, JSON.stringify(userInfo), function (err) {
 					if (err) { console.log("Error saving file %s %s", fileNameToSave, err); }
@@ -188,7 +158,7 @@ function ProcessUser(userInfo, requestOptions) {
 				});
 			}
 			else {
-				console.log('No new replies for %s, previous count was %s current count is %s', userInfo.userName, userInfo.replyCount, totalResults);
+				console.log('No new replies for %s, previous count notified at was %s current count is %s', userInfo.userName, userInfo.replyCountLastNotified, totalResults);
 			}
 		});
 	});
@@ -199,6 +169,7 @@ function GetDirectories(dir) {
 	var items = fs.readdirSync(dir);
 	for (var iItem = 0; iItem < items.length; iItem++) {
 		var stats = fs.lstatSync(dir);
+		//Something weird is happening here.  A file got created in the subscribedUsers directory and this picked it up as a directory.
 		if (stats.isDirectory()) {
 			directories.push(items[iItem]);
 		}

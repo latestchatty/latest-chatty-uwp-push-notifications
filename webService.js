@@ -23,13 +23,29 @@ function SubscribeRequest(response, userName, parsedUrl, requestData) {
 
 	try {
 		var saveObject = {
+			//Shacknews user name.
 			userName: userName,
+			//Date this request was updated.
 			dateCreated: new Date(),
+			//Count of replies when the app last talked with us.
 			replyCount: 0,
+			//Count of replies on the last time we notified.
+			//This will always be reset the current number of replies when the app refreshes.
+			replyCountLastNotified: 0,
+			//URI to send notification data to.
 			notificationUri: requestData,
+			//Unique identifier for the device.
 			deviceId: '',
-			notificationType: 1 //1 = Tile only, 2 = Tile and Toast
+			//1 = Tile only, 2 = Tile and Toast
+			notificationType: 1
 		};
+
+		if(userName.length == 0)
+		{
+			response.writeHead(404, { "Content-Type": "text/plain" });
+			console.log("Attempt to create a subscription for a blank user. That's no good.");
+			response.end("Not found.");
+		}
 
 		if (parsedUrl.hasOwnProperty('query')) {
 			var parsedQuery = querystring.parse(parsedUrl.query);
@@ -37,6 +53,7 @@ function SubscribeRequest(response, userName, parsedUrl, requestData) {
 			console.dir(parsedQuery);
 			if (parsedQuery.hasOwnProperty('currentCount')) {
 				saveObject.replyCount = parsedQuery['currentCount'];
+				saveObject.replyCountLastNotified = saveObject.replyCount;
 			} else {
 				response.writeHead(400, { "Content-Type": "text/plain" });
 				console.log("Missing count.");
@@ -132,7 +149,6 @@ http.createServer(function (request, response) {
 		requestData += chunk;
 	});
 	request.on('end', function () {
-		//Should probably sanatize this.
 		var parsedUrl = url.parse(request.url);
 		var splitPath = parsedUrl.pathname.split('/');
 
