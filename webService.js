@@ -62,71 +62,87 @@ function SubscribeRequest(subResponse, userName, parsedUrl, requestData) {
 
 		http.get(requestOptions, function (res) {
 			var dataReceived = '';
+			var errorOccurred = false;
 			res.on('data', function (chunk) {
 				dataReceived += chunk;
 			});
-			res.on('end', function () {
-				var xmlDoc = libxmljs.parseXmlString(dataReceived);
-
-				if (xmlDoc == null) return;
-
-				var totalResultsAttribute = xmlDoc.root().attr('total_results');
-				if (totalResultsAttribute == null) return;
-
-				//This is the number of results we know about right this very moment.
-				//Not relying on the app to tell us any more, it's up to us.
-				var totalResults = parseInt(totalResultsAttribute.value());
-
-				saveObject.replyCount = totalResults;
-				saveObject.replyCountLastNotified = totalResults;
-
-				if (parsedUrl.hasOwnProperty('query')) {
-					var parsedQuery = querystring.parse(parsedUrl.query);
-					console.log("Parsed query: ");
-					console.dir(parsedQuery);
-
-					if (parsedQuery.hasOwnProperty('notificationType')) {
-						saveObject.notificationType = parsedQuery['notificationType'];
-					} else {
-						subResponse.writeHead(400, { "Content-Type": "text/plain" });
-						console.log("Missing notification type.");
-						subResponse.end("Missing notification type.");
-						return;
-					}
-					if (parsedQuery.hasOwnProperty('deviceId')) {
-						saveObject.deviceId = parsedQuery['deviceId'];
-					} else {
-						subResponse.writeHead(400, { "Content-Type": "text/plain" });
-						console.log("Missing device id.");
-						subResponse.end("Missing device id.");
-						return;
-					}
-				}
-
-				console.log("Subscribing with info:");
-				console.dir(saveObject);
-
-				var userDirectory = path.join(subscriptionDirectory, userName);
-
-				if (!DirectoryExists(userDirectory)) {
-					console.log("Directory " + userDirectory + " doesn't exist, creating.");
-					fs.mkdirSync(userDirectory, 0777);
-				}
-				else {
-					//Make sure the user has less than 5 devices, otherwise we'll replace the oldest one.
-					//TODO: Replace the oldest one.
-					//			subResponse.writeHead(400, { "Content-Type": "text/plain" });
-					//			subResponse.end("Too many devices.");
-					//			return;
-				}
-
-				console.log("Saving data to " + path.join(userDirectory, saveObject.deviceId));
-
-				fs.writeFileSync(path.join(userDirectory, saveObject.deviceId), JSON.stringify(saveObject));
-				console.log("Saved file!");
-				subResponse.writeHead(200, { "Content-Type": "text/plain" });
-				subResponse.end("Subscribed " + userName);
+			res.on('error', function(err) {
+				errorOccurred = true;
+				console.log('Error occurred trying to retrieve reply count for %s.\n!!ERROR!!: %s', userName, err);
 			});
+			res.on('end', function () {
+				try {
+
+					var xmlDoc = libxmljs.parseXmlString(dataReceived);
+
+					if (xmlDoc == null) return;
+
+					var totalResultsAttribute = xmlDoc.root().attr('total_results');
+					if (totalResultsAttribute == null) return;
+
+					//This is the number of results we know about right this very moment.
+					//Not relying on the app to tell us any more, it's up to us.
+					var totalResults = parseInt(totalResultsAttribute.value());
+
+					saveObject.replyCount = totalResults;
+					saveObject.replyCountLastNotified = totalResults;
+
+					if (parsedUrl.hasOwnProperty('query')) {
+						var parsedQuery = querystring.parse(parsedUrl.query);
+						console.log("Parsed query: ");
+						console.dir(parsedQuery);
+
+						if (parsedQuery.hasOwnProperty('notificationType')) {
+							saveObject.notificationType = parsedQuery['notificationType'];
+						} else {
+							subResponse.writeHead(400, { "Content-Type": "text/plain" });
+							console.log("Missing notification type.");
+							subResponse.end("Missing notification type.");
+							return;
+						}
+						if (parsedQuery.hasOwnProperty('deviceId')) {
+							saveObject.deviceId = parsedQuery['deviceId'];
+						} else {
+							subResponse.writeHead(400, { "Content-Type": "text/plain" });
+							console.log("Missing device id.");
+							subResponse.end("Missing device id.");
+							return;
+						}
+					}
+
+					console.log("Subscribing with info:");
+					console.dir(saveObject);
+
+					var userDirectory = path.join(subscriptionDirectory, userName);
+
+					if (!DirectoryExists(userDirectory)) {
+						console.log("Directory " + userDirectory + " doesn't exist, creating.");
+						fs.mkdirSync(userDirectory, 0777);
+					}
+					else {
+						//Make sure the user has less than 5 devices, otherwise we'll replace the oldest one.
+						//TODO: Replace the oldest one.
+						//			subResponse.writeHead(400, { "Content-Type": "text/plain" });
+						//			subResponse.end("Too many devices.");
+						//			return;
+					}
+
+					console.log("Saving data to " + path.join(userDirectory, saveObject.deviceId));
+
+					fs.writeFileSync(path.join(userDirectory, saveObject.deviceId), JSON.stringify(saveObject));
+					console.log("Saved file!");
+					subResponse.writeHead(200, { "Content-Type": "text/plain" });
+					subResponse.end("Subscribed " + userName);
+				} catch (ex) {
+					console.log('Error occurred in response end for user %s. %s', userName, err);
+					subResponse.writeHead(400, { "Content-Type": "text/plain" });
+					subResponse.end("Unknown error.");
+				}
+			});
+		}).on('error', function(err) {
+			console.log('Error occurred trying to retrieve reply count for %s.\n  !!ERROR!!: %s', userName, err);
+			subResponse.writeHead(400, { "Content-Type": "text/plain" });
+			subResponse.end("Unknown error.");
 		});
 	}
 	catch (ex) {
@@ -170,6 +186,7 @@ function RemoveRequest(response, parsedUrl, userName) {
 	response.end("Removed " + userName);
 }
 
+//Create the server - this is where the magic happens.
 http.createServer(function (request, response) {
 	var requestData = '';
 	request.on('data', function (chunk) {

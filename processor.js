@@ -11,8 +11,7 @@ var subscriptionDirectory = '/home/' + path.join('wzutz', 'Dropbox', 'Shack Node
 var apiBaseUrl = 'http://shackapi.stonedonkey.com/';
 var apiParentAuthorQuery = 'Search/?ParentAuthor=';
 
-function SendWP7Notification(requestOptions, payload)
-{
+function SendWP7Notification(requestOptions, payload) {
 	var request = http.request(requestOptions, function (res) {
 		var notificationStatus = res.headers['x-notificationstatus'].toLowerCase();
 		var deviceConnectionStatus = res.headers['x-deviceconnectionstatus'].toLowerCase();
@@ -63,7 +62,7 @@ function SendWP7ToastNotification(author, preview, pushUri) {
         "<wp:Notification xmlns:wp=\"WPNotification\">" +
            "<wp:Toast>" +
               "<wp:Text1>" + author + "</wp:Text1>" +
-              "<wp:Text2>" + preview.substr(0, 40) + "</wp:Text2>" +
+              "<wp:Text2>" + preview + "</wp:Text2>" +
            "</wp:Toast>" +
         "</wp:Notification>";
 
@@ -145,7 +144,7 @@ function ProcessUser(userInfo) {
 				var latestResult = xmlDoc.get('//result');
 				if (latestResult != null) {
 					var author = latestResult.attr('author').value();
-					var body = latestResult.get('body').text();
+					var body = latestResult.get('body').text().substr(0, 25);
 
 					if (userInfo.hasOwnProperty('notificationUri')) {
 						if (userInfo.notificationType == 2) {
