@@ -1,6 +1,6 @@
 var sys = require("util"),
-	 http = require("http"),
-	 url = require("url"),
+	http = require("http"),
+	url = require("url"),
 	path = require("path"),
 	fs = require("fs"),
 	libxmljs = require("libxmljs");
@@ -8,6 +8,8 @@ var sys = require("util"),
 //This must be set to the absolute path in order to run with cron.
 //At least until I figure out how to set the working directory with cron...
 var subscriptionDirectory = '/home/' + path.join('wzutz', 'Dropbox', 'Shack Node', 'subscribedUsers');
+var apiBaseUrl = 'http://shackapi.stonedonkey.com/';
+var apiParentAuthorQuery = 'Search/?ParentAuthor=';
 
 function SendWP7Notification(requestOptions, payload)
 {
@@ -111,7 +113,15 @@ function SendWP7TileNotification(count, author, preview, pushUri) {
 	SendWP7Notification(requestOptions, tileMessage);
 }
 
-function ProcessUser(userInfo, requestOptions) {
+function ProcessUser(userInfo) {
+	var siteUrl = url.parse(apiBaseUrl + apiParentAuthorQuery + userInfo.userName);
+
+	var requestOptions = {
+		host: siteUrl.host,
+		port: 80,
+		path: siteUrl.path
+	};
+
 	http.get(requestOptions, function (response) {
 		var dataReceived = '';
 		response.on('data', function (chunk) {
@@ -189,15 +199,7 @@ function ProcessDirectory(dir) {
 
 			var userData = JSON.parse(fileData);
 
-			var siteUrl = url.parse('http://shackapi.stonedonkey.com/Search/?ParentAuthor=' + userData.userName);
-
-			var requestOptions = {
-				host: siteUrl.host,
-				port: 80,
-				path: siteUrl.path
-			};
-
-			ProcessUser(userData, requestOptions);
+			ProcessUser(userData);
 		}
 	});
 }

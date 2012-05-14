@@ -1,11 +1,14 @@
 var sys = require("util"),
-	 http = require("http"),
+	http = require("http"),
 	url = require("url"),
 	path = require("path"),
 	querystring = require("querystring"),
-	fs = require("fs");
+	fs = require("fs"),
+	libxmljs = require("libxmljs");
 
 var subscriptionDirectory = path.join(process.cwd(), 'subscribedUsers');
+var apiBaseUrl = 'http://shackapi.stonedonkey.com/';
+var apiParentAuthorQuery = 'Search/?ParentAuthor=';
 
 function DirectoryExists(dir) {
 	try {
@@ -18,10 +21,19 @@ function DirectoryExists(dir) {
 }
 
 //Subscribe a user, or update an existing user
-function SubscribeRequest(response, userName, parsedUrl, requestData) {
+function SubscribeRequest(subResponse, userName, parsedUrl, requestData) {
 	console.log("Subscribe Called.");
 
 	try {
+
+		//If we haven't got a username, just give up now.
+		if(userName.length == 0)
+		{
+			subResponse.writeHead(404, { "Content-Type": "text/plain" });
+			console.log("Attempt to create a subscription for a blank user. That's no good.");
+			subResponse.end("Not found.");
+		}
+
 		var saveObject = {
 			//Shacknews user name.
 			userName: userName,
@@ -40,72 +52,87 @@ function SubscribeRequest(response, userName, parsedUrl, requestData) {
 			notificationType: 1
 		};
 
-		if(userName.length == 0)
-		{
-			response.writeHead(404, { "Content-Type": "text/plain" });
-			console.log("Attempt to create a subscription for a blank user. That's no good.");
-			response.end("Not found.");
-		}
+		var siteUrl = url.parse(apiBaseUrl + apiParentAuthorQuery + userName);
 
-		if (parsedUrl.hasOwnProperty('query')) {
-			var parsedQuery = querystring.parse(parsedUrl.query);
-			console.log("Parsed query: ");
-			console.dir(parsedQuery);
-			if (parsedQuery.hasOwnProperty('currentCount')) {
-				saveObject.replyCount = parsedQuery['currentCount'];
-				saveObject.replyCountLastNotified = saveObject.replyCount;
-			} else {
-				response.writeHead(400, { "Content-Type": "text/plain" });
-				console.log("Missing count.");
-				response.end("Missing count.");
-				return;
-			}
-			if (parsedQuery.hasOwnProperty('notificationType')) {
-				saveObject.notificationType = parsedQuery['notificationType'];
-			} else {
-				response.writeHead(400, { "Content-Type": "text/plain" });
-				console.log("Missing notification type.");
-				response.end("Missing notification type.");
-				return;
-			}
-			if (parsedQuery.hasOwnProperty('deviceId')) {
-				saveObject.deviceId = parsedQuery['deviceId'];
-			} else {
-				response.writeHead(400, { "Content-Type": "text/plain" });
-				console.log("Missing device id.");
-				response.end("Missing device id.");
-				return;
-			}
-		}
+		var requestOptions = {
+			host: siteUrl.host,
+			port: 80,
+			path: siteUrl.path
+		};
 
-		console.log("Subscribing with info:");
-		console.dir(saveObject);
+		http.get(requestOptions, function (res) {
+			var dataReceived = '';
+			res.on('data', function (chunk) {
+				dataReceived += chunk;
+			});
+			res.on('end', function () {
+				var xmlDoc = libxmljs.parseXmlString(dataReceived);
 
-		var userDirectory = path.join(subscriptionDirectory, userName);
+				if (xmlDoc == null) return;
 
-		if (!DirectoryExists(userDirectory)) {
-			console.log("Directory " + userDirectory + " doesn't exist, creating.");
-			fs.mkdirSync(userDirectory, 0777);
-		}
-		else {
-			//Make sure the user has less than 5 devices, otherwise we'll replace the oldest one.
-			//TODO: Replace the oldest one.
-			//			response.writeHead(400, { "Content-Type": "text/plain" });
-			//			response.end("Too many devices.");
-			//			return;
-		}
+				var totalResultsAttribute = xmlDoc.root().attr('total_results');
+				if (totalResultsAttribute == null) return;
 
-		console.log("Saving data to " + path.join(userDirectory, saveObject.deviceId));
+				//This is the number of results we know about right this very moment.
+				//Not relying on the app to tell us any more, it's up to us.
+				var totalResults = parseInt(totalResultsAttribute.value());
 
-		fs.writeFileSync(path.join(userDirectory, saveObject.deviceId), JSON.stringify(saveObject));
-		console.log("Saved file!");
-		response.writeHead(200, { "Content-Type": "text/plain" });
-		response.end("Subscribed " + userName);
+				saveObject.replyCount = totalResults;
+				saveObject.replyCountLastNotified = totalResults;
+
+				if (parsedUrl.hasOwnProperty('query')) {
+					var parsedQuery = querystring.parse(parsedUrl.query);
+					console.log("Parsed query: ");
+					console.dir(parsedQuery);
+
+					if (parsedQuery.hasOwnProperty('notificationType')) {
+						saveObject.notificationType = parsedQuery['notificationType'];
+					} else {
+						subResponse.writeHead(400, { "Content-Type": "text/plain" });
+						console.log("Missing notification type.");
+						subResponse.end("Missing notification type.");
+						return;
+					}
+					if (parsedQuery.hasOwnProperty('deviceId')) {
+						saveObject.deviceId = parsedQuery['deviceId'];
+					} else {
+						subResponse.writeHead(400, { "Content-Type": "text/plain" });
+						console.log("Missing device id.");
+						subResponse.end("Missing device id.");
+						return;
+					}
+				}
+
+				console.log("Subscribing with info:");
+				console.dir(saveObject);
+
+				var userDirectory = path.join(subscriptionDirectory, userName);
+
+				if (!DirectoryExists(userDirectory)) {
+					console.log("Directory " + userDirectory + " doesn't exist, creating.");
+					fs.mkdirSync(userDirectory, 0777);
+				}
+				else {
+					//Make sure the user has less than 5 devices, otherwise we'll replace the oldest one.
+					//TODO: Replace the oldest one.
+					//			subResponse.writeHead(400, { "Content-Type": "text/plain" });
+					//			subResponse.end("Too many devices.");
+					//			return;
+				}
+
+				console.log("Saving data to " + path.join(userDirectory, saveObject.deviceId));
+
+				fs.writeFileSync(path.join(userDirectory, saveObject.deviceId), JSON.stringify(saveObject));
+				console.log("Saved file!");
+				subResponse.writeHead(200, { "Content-Type": "text/plain" });
+				subResponse.end("Subscribed " + userName);
+			});
+		});
 	}
 	catch (ex) {
 		console.log("Exception caught in subscription %s", ex);
-		response.writeHead(400, { "Content-Type": "text/plain" });
-		response.end("Unknown error.");
+		subResponse.writeHead(400, { "Content-Type": "text/plain" });
+		subResponse.end("Unknown error.");
 	}
 }
 
