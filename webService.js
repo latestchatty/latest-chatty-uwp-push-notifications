@@ -10,6 +10,11 @@ var subscriptionDirectory = path.join(process.cwd(), 'subscribedUsers');
 var apiBaseUrl = 'http://shackapi.stonedonkey.com/';
 var apiParentAuthorQuery = 'Search/?ParentAuthor=';
 
+//Prod
+var localServicePort = 12243;
+//Dev
+//var localServicePort = 12244;
+
 function DirectoryExists(dir) {
 	try {
 		var stats = fs.statSync(dir);
@@ -204,19 +209,19 @@ http.createServer(function (request, response) {
 			return;
 		}
 
-		switch (splitPath[1]) {
-			case 'subscribe':
+		if(splitPath[1] == 'users') {
+			if(request.method == 'POST') {
 				SubscribeRequest(response, splitPath[2], parsedUrl, requestData);
-				break;
-			case 'remove':
+			} else if (request.method == 'DELETE') {
 				RemoveRequest(response, parsedUrl, splitPath[2]);
-				break;
-			default:
-				response.writeHead(404, { "Content-Type": "text/plain" });
-				response.end("404 Not Found\n");
-				return;
+			}
+		}
+		else {
+			response.writeHead(404, { "Content-Type": "text/plain" });
+			response.end("404 Not Found\n");
+			return;
 		}
 	});
-}).listen(12243);
+}).listen(localServicePort);
 
-console.log("Server running at http://localhost:12243/");
+console.log("Server running at http://localhost:" + localServicePort);

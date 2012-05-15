@@ -8,6 +8,7 @@ var sys = require("util"),
 //This must be set to the absolute path in order to run with cron.
 //At least until I figure out how to set the working directory with cron...
 var subscriptionDirectory = '/home/' + path.join('wzutz', 'Dropbox', 'Shack Node', 'subscribedUsers');
+//var subscriptionDirectory = '/Users/wzutz/Documents/Shacknews-Push-Notifications/subscribedUsers';
 var apiBaseUrl = 'http://shackapi.stonedonkey.com/';
 var apiParentAuthorQuery = 'Search/?ParentAuthor=';
 
