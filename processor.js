@@ -34,6 +34,8 @@ function SendWP7Notification(requestOptions, payload) {
 				//TODO: Handle failures better.
 				//  There are cases where we should retry immediately, retry later, never try again, etc.
 				//  As it stands, if we fail to send, we'll never retry.
+				//  Especially need to pay attention to when a device channel is no longer valid.
+				//  Otherwise we're just wasting time trying to notify something that will never, ever get it.
 				console.log('Sending push failed.');
 				console.log('Code: ' + res.statusCode);
 				console.log('Notification Status: ' + notificationStatus);
@@ -177,10 +179,11 @@ function ProcessUser(userInfo) {
 function GetDirectories(dir) {
 	var directories = new Array();
 	var items = fs.readdirSync(dir);
+	console.log("Finding directories in " + dir);
 	for (var iItem = 0; iItem < items.length; iItem++) {
-		var stats = fs.lstatSync(dir);
-		//Something weird is happening here.  A file got created in the subscribedUsers directory and this picked it up as a directory.
+		var stats = fs.lstatSync(path.join(dir, items[iItem]));
 		if (stats.isDirectory()) {
+			console.log("  Found directory " + items[iItem]);
 			directories.push(items[iItem]);
 		}
 	}
