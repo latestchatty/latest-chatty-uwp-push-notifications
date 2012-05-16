@@ -3,14 +3,25 @@ var sys = require("util"),
 	url = require("url"),
 	path = require("path"),
 	fs = require("fs"),
-	libxmljs = require("libxmljs");
+	libxmljs = require("libxmljs"),
+	winston = require("winston");
 
 //This must be set to the absolute path in order to run with cron.
 //At least until I figure out how to set the working directory with cron...
-var subscriptionDirectory = '/home/' + path.join('wzutz', 'Dropbox', 'Shack Node', 'subscribedUsers');
-//var subscriptionDirectory = '/Users/wzutz/Documents/Shacknews-Push-Notifications/subscribedUsers';
+var rootPath = '/home/' + path.join('wzutz', 'Dropbox', 'Shack Node');
+//var rootPath = '/Users/wzutz/Documents/Shacknews-Push-Notifications/';
+//var rootPath = '/Users/wzutz/github/local/Shacknews Push Notifications/';
+var logPath = path.join(rootPath, 'logs/');
+var subscriptionDirectory = path.join(rootPath, 'subscribedUsers/');
 var apiBaseUrl = 'http://shackapi.stonedonkey.com/';
 var apiParentAuthorQuery = 'Search/?ParentAuthor=';
+
+var logger = new (winston.Logger)({
+    transports: [
+      new (winston.transports.Console)( { colorize: true } ),
+      new (winston.transports.File)({ filename: logPath + 'processor.log', json : false })
+    ]
+  });
 
 function SendWP7Notification(requestOptions, payload) {
 	var request = http.request(requestOptions, function (res) {
@@ -36,21 +47,21 @@ function SendWP7Notification(requestOptions, payload) {
 				//  As it stands, if we fail to send, we'll never retry.
 				//  Especially need to pay attention to when a device channel is no longer valid.
 				//  Otherwise we're just wasting time trying to notify something that will never, ever get it.
-				console.log('Sending push failed.');
-				console.log('Code: ' + res.statusCode);
-				console.log('Notification Status: ' + notificationStatus);
-				console.log('Device Connection Status: ' + deviceConnectionStatus);
-				console.log('Subscription Status: ' + subscriptionStatus);
-				console.log('Body: ' + responseBody);
+				logger.info('Sending push failed.');
+				logger.info('Code: ' + res.statusCode);
+				logger.info('Notification Status: ' + notificationStatus);
+				logger.info('Device Connection Status: ' + deviceConnectionStatus);
+				logger.info('Subscription Status: ' + subscriptionStatus);
+				logger.info('Body: ' + responseBody);
 			}
 			else {
-				console.log('WP7 notification sent successfully!');
+				logger.info('WP7 notification sent successfully!');
 			}
 		});
 	});
 
 	request.on('error', function (e) {
-		console.log('Request Failed: ' + e.message);
+		logger.info('Request Failed: ' + e.message);
 	});
 
 	// write data to request body
@@ -82,7 +93,7 @@ function SendWP7ToastNotification(author, preview, pushUri) {
 		}
 	};
 
-	console.log('**Sending toast notification\n' + toastData);
+	logger.info('**Sending toast notification\n' + toastData);
 	SendWP7Notification(requestOptions, toastData);
 }
 
@@ -111,7 +122,7 @@ function SendWP7TileNotification(count, author, preview, pushUri) {
 		}
 	};
 
-	console.log('**Sending tile notification\n' + tileMessage);
+	logger.info('**Sending tile notification\n' + tileMessage);
 	SendWP7Notification(requestOptions, tileMessage);
 }
 
@@ -142,7 +153,7 @@ function ProcessUser(userInfo) {
 			//The count of new replies is the total number of current replies minus the number of replies since the last time we notified.
 			var newReplyCount = parseInt(totalResults) - parseInt(userInfo.replyCountLastNotified);
 			if (newReplyCount > 0) {
-				console.log('Previous count for %s was %s current count is %s, we got new stuff!', userInfo.userName, userInfo.replyCount, totalResults);
+				logger.info('Previous count for' + userInfo.userName + ' was ' + userInfo.replyCount + ' current count is ' + totalResults + ', we got new stuff!');
 
 				var latestResult = xmlDoc.get('//result');
 				if (latestResult != null) {
@@ -157,7 +168,7 @@ function ProcessUser(userInfo) {
 						SendWP7TileNotification(parseInt(totalResults) - parseInt(userInfo.replyCount), author, body, userInfo.notificationUri);
 					}
 					else {
-						console.log('Would send push notification of\n  Author: ' + author + '\n  Preview: ' + body);
+						logger.info('Would send push notification of\n  Author: ' + author + '\n  Preview: ' + body);
 					}
 				}
 
@@ -165,12 +176,12 @@ function ProcessUser(userInfo) {
 				userInfo.replyCountLastNotified = totalResults;
 				var fileNameToSave = path.join(subscriptionDirectory, userInfo.userName, userInfo.deviceId);
 				fs.writeFile(fileNameToSave, JSON.stringify(userInfo), function (err) {
-					if (err) { console.log("Error saving file %s %s", fileNameToSave, err); }
-					else { console.log("Saved updated file %s for username %s!", fileNameToSave, userInfo.userName); }
+					if (err) { logger.info("Error saving file " + fileNameToSave + " " + err); }
+					else { logger.info("Saved updated file " + fileNameToSave + " for username " + userInfo.userName + "!"); }
 				});
 			}
 			else {
-				console.log('No new replies for %s, previous count notified at was %s current count is %s', userInfo.userName, userInfo.replyCountLastNotified, totalResults);
+				logger.info('No new replies for ' + userInfo.userName + ', previous count notified at was ' + userInfo.replyCountLastNotified + ' current count is ' + totalResults);
 			}
 		});
 	});
@@ -179,25 +190,24 @@ function ProcessUser(userInfo) {
 function GetDirectories(dir) {
 	var directories = new Array();
 	var items = fs.readdirSync(dir);
-	console.log("Finding directories in " + dir);
+	logger.info("Finding directories in " + dir);
 	for (var iItem = 0; iItem < items.length; iItem++) {
 		var stats = fs.lstatSync(path.join(dir, items[iItem]));
 		if (stats.isDirectory()) {
-			console.log("  Found directory " + items[iItem]);
+			logger.info("  Found directory " + items[iItem]);
 			directories.push(items[iItem]);
 		}
 	}
 
-	console.log("Directories to process: ");
-	console.dir(directories);
+	logger.info("Directories to process: " + JSON.stringify(directories));
 	return directories;
 }
 
 function ProcessDirectory(dir) {
-	console.log("Processing directory " + dir);
+	logger.info("Processing directory " + dir);
 	fs.readdir(dir, function (err, files) {
 		for (var iFile = 0; iFile < files.length; iFile++) {
-			console.log('Processing file ' + files[iFile] + ' in ' + dir);
+			logger.info('Processing file ' + files[iFile] + ' in ' + dir);
 			var fileData = fs.readFileSync(path.join(dir, files[iFile]), 'utf8');
 
 			var userData = JSON.parse(fileData);

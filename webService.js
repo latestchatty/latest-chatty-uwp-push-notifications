@@ -4,11 +4,22 @@ var sys = require("util"),
 	path = require("path"),
 	querystring = require("querystring"),
 	fs = require("fs"),
-	libxmljs = require("libxmljs");
+	libxmljs = require("libxmljs"),
+	winston = require("winston");
 
-var subscriptionDirectory = path.join(process.cwd(), 'subscribedUsers');
+var rootPath = process.cwd();
+var logPath = path.join(rootPath, 'logs/');
+var subscriptionDirectory = path.join(rootPath, 'subscribedUsers/');
+
 var apiBaseUrl = 'http://shackapi.stonedonkey.com/';
 var apiParentAuthorQuery = 'Search/?ParentAuthor=';
+
+var logger = new (winston.Logger)({
+    transports: [
+      new (winston.transports.Console)( { colorize: true } ),
+      new (winston.transports.File)({ filename: logPath + 'webservice.log', json : false })
+    ]
+  });
 
 //Prod
 var localServicePort = 12243;
@@ -27,7 +38,7 @@ function DirectoryExists(dir) {
 
 //Subscribe a user, or update an existing user
 function SubscribeRequest(subResponse, userName, parsedUrl, requestData) {
-	console.log("Subscribe Called.");
+	logger.info("Subscribe Called.");
 
 	try {
 
@@ -35,7 +46,7 @@ function SubscribeRequest(subResponse, userName, parsedUrl, requestData) {
 		if(userName.length == 0)
 		{
 			subResponse.writeHead(404, { "Content-Type": "text/plain" });
-			console.log("Attempt to create a subscription for a blank user. That's no good.");
+			logger.info("Attempt to create a subscription for a blank user. That's no good.");
 			subResponse.end("Not found.");
 		}
 
@@ -73,7 +84,7 @@ function SubscribeRequest(subResponse, userName, parsedUrl, requestData) {
 			});
 			res.on('error', function(err) {
 				errorOccurred = true;
-				console.log('Error occurred trying to retrieve reply count for %s.\n!!ERROR!!: %s', userName, err);
+				logger.error('Error occurred trying to retrieve reply count for ' + userName + '.\n!!ERROR!!: ' + err);
 			});
 			res.on('end', function () {
 				try {
@@ -94,14 +105,13 @@ function SubscribeRequest(subResponse, userName, parsedUrl, requestData) {
 
 					if (parsedUrl.hasOwnProperty('query')) {
 						var parsedQuery = querystring.parse(parsedUrl.query);
-						console.log("Parsed query: ");
-						console.dir(parsedQuery);
+						logger.info("Parsed query: " + JSON.stringify(parsedQuery));
 
 						if (parsedQuery.hasOwnProperty('notificationType')) {
 							saveObject.notificationType = parsedQuery['notificationType'];
 						} else {
 							subResponse.writeHead(400, { "Content-Type": "text/plain" });
-							console.log("Missing notification type.");
+							logger.info("Missing notification type.");
 							subResponse.end("Missing notification type.");
 							return;
 						}
@@ -109,19 +119,18 @@ function SubscribeRequest(subResponse, userName, parsedUrl, requestData) {
 							saveObject.deviceId = parsedQuery['deviceId'];
 						} else {
 							subResponse.writeHead(400, { "Content-Type": "text/plain" });
-							console.log("Missing device id.");
+							logger.info("Missing device id.");
 							subResponse.end("Missing device id.");
 							return;
 						}
 					}
 
-					console.log("Subscribing with info:");
-					console.dir(saveObject);
+					logger.info("Subscribing with info: " + JSON.stringify(saveObject));
 
 					var userDirectory = path.join(subscriptionDirectory, userName);
 
 					if (!DirectoryExists(userDirectory)) {
-						console.log("Directory " + userDirectory + " doesn't exist, creating.");
+						logger.info("Directory " + userDirectory + " doesn't exist, creating.");
 						fs.mkdirSync(userDirectory, 0777);
 					}
 					else {
@@ -132,26 +141,26 @@ function SubscribeRequest(subResponse, userName, parsedUrl, requestData) {
 						//			return;
 					}
 
-					console.log("Saving data to " + path.join(userDirectory, saveObject.deviceId));
+					logger.info("Saving data to " + path.join(userDirectory, saveObject.deviceId));
 
 					fs.writeFileSync(path.join(userDirectory, saveObject.deviceId), JSON.stringify(saveObject));
-					console.log("Saved file!");
+					logger.info("Saved file!");
 					subResponse.writeHead(200, { "Content-Type": "text/plain" });
 					subResponse.end("Subscribed " + userName);
 				} catch (ex) {
-					console.log('Error occurred in response end for user %s. %s', userName, err);
+					logger.error('Error occurred in response end for user ' + userName + '.\n!!ERROR!!: ' + err);
 					subResponse.writeHead(400, { "Content-Type": "text/plain" });
 					subResponse.end("Unknown error.");
 				}
 			});
 		}).on('error', function(err) {
-			console.log('Error occurred trying to retrieve reply count for %s.\n  !!ERROR!!: %s', userName, err);
+			logger.error('Error occurred trying to retrieve reply count for ' + userName + '.\n!!ERROR!!: ' + err);
 			subResponse.writeHead(400, { "Content-Type": "text/plain" });
 			subResponse.end("Unknown error.");
 		});
 	}
 	catch (ex) {
-		console.log("Exception caught in subscription %s", ex);
+		logger.info("Exception caught in subscription " + ex);
 		subResponse.writeHead(400, { "Content-Type": "text/plain" });
 		subResponse.end("Unknown error.");
 	}
@@ -171,7 +180,7 @@ function RemoveRequest(response, parsedUrl, userName) {
 				path.exists(file, function (exists) {
 					if (exists) {
 						fs.unlinkSync(file);
-						console.log('Request for removal of ' + userName + ' successful.');
+						logger.info('Request for removal of ' + userName + ' successful.');
 					}
 				});
 			}
@@ -201,11 +210,10 @@ http.createServer(function (request, response) {
 		var parsedUrl = url.parse(request.url);
 		var splitPath = parsedUrl.pathname.split('/');
 
-		console.log('Parsed URL: ');
-		console.dir(parsedUrl);
+		logger.info('Parsed URL: ' + JSON.stringify(parsedUrl));
 
 		if (splitPath.length > 3) {
-			console.log('more than two path variables were passed, bailing.');
+			logger.info('more than two path variables were passed, bailing.');
 			return;
 		}
 
@@ -224,4 +232,4 @@ http.createServer(function (request, response) {
 	});
 }).listen(localServicePort);
 
-console.log("Server running at http://localhost:" + localServicePort);
+logger.info("Server running at http://localhost:" + localServicePort);
