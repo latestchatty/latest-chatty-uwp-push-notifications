@@ -194,7 +194,7 @@ function DirectoryExists(dir) {
 		return stats.isDirectory();
 	}
 	catch (ex) {
-		logger.error("problem getting directory info " + ex);
+		//logger.error("problem getting directory info " + ex);
 		return false;
 	}
 }
