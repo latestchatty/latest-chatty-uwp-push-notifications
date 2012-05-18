@@ -6,11 +6,12 @@ var sys = require("util"),
 	libxmljs = require("libxmljs"),
 	winston = require("winston");
 
-//This must be set to the absolute path in order to run with cron.
-//At least until I figure out how to set the working directory with cron...
-var rootPath = '/home/' + path.join('wzutz', 'Dropbox', 'Shack Node');
-//var rootPath = '/Users/wzutz/Documents/Shacknews-Push-Notifications/';
-//var rootPath = '/Users/wzutz/github/local/Shacknews Push Notifications/';
+var rootPath = '/home/ubuntu/Shacknews-Push-Notifications/';
+//Dev environment.
+if(DirectoryExists('/Users/wzutz/github/local/Shacknews Push Notifications/')) {
+	rootPath = '/Users/wzutz/github/local/Shacknews Push Notifications/';
+}
+
 var logPath = path.join(rootPath, 'logs/');
 var subscriptionDirectory = path.join(rootPath, 'subscribedUsers/');
 var apiBaseUrl = 'http://shackapi.stonedonkey.com/';
@@ -187,13 +188,22 @@ function ProcessUser(userInfo) {
 	});
 }
 
+function DirectoryExists(dir) {
+	try {
+		var stats = fs.statSync(dir);
+		return stats.isDirectory();
+	}
+	catch (ex) {
+		return false;
+	}
+}
+
 function GetDirectories(dir) {
 	var directories = new Array();
 	var items = fs.readdirSync(dir);
 	logger.info("Finding directories in " + dir);
 	for (var iItem = 0; iItem < items.length; iItem++) {
-		var stats = fs.lstatSync(path.join(dir, items[iItem]));
-		if (stats.isDirectory()) {
+		if(DirectoryExists(items[iItem])) {
 			logger.info("  Found directory " + items[iItem]);
 			directories.push(items[iItem]);
 		}

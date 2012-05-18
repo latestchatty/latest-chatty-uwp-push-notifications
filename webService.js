@@ -7,7 +7,12 @@ var sys = require("util"),
 	libxmljs = require("libxmljs"),
 	winston = require("winston");
 
-var rootPath = process.cwd();
+var rootPath = '/home/ubuntu/Shacknews-Push-Notifications/';
+//Dev environment.
+if(DirectoryExists('/Users/wzutz/github/local/Shacknews Push Notifications/')) {
+	rootPath = '/Users/wzutz/github/local/Shacknews Push Notifications/';
+}
+
 var logPath = path.join(rootPath, 'logs/');
 var subscriptionDirectory = path.join(rootPath, 'subscribedUsers/');
 
@@ -21,10 +26,7 @@ var logger = new (winston.Logger)({
     ]
   });
 
-//Prod
 var localServicePort = 12243;
-//Dev
-//var localServicePort = 12244;
 
 function DirectoryExists(dir) {
 	try {
