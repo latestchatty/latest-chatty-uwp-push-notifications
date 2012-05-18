@@ -194,6 +194,7 @@ function DirectoryExists(dir) {
 		return stats.isDirectory();
 	}
 	catch (ex) {
+		logger.error("problem getting directory info " + ex);
 		return false;
 	}
 }
@@ -203,9 +204,10 @@ function GetDirectories(dir) {
 	var items = fs.readdirSync(dir);
 	logger.info("Finding directories in " + dir);
 	for (var iItem = 0; iItem < items.length; iItem++) {
-		if(DirectoryExists(items[iItem])) {
-			logger.info("  Found directory " + items[iItem]);
-			directories.push(items[iItem]);
+		var fullPath = path.join(dir + items[iItem]);
+		if(DirectoryExists(fullPath)) {
+			logger.info("  Found directory " + fullPath);
+			directories.push(fullPath);
 		}
 	}
 
@@ -229,6 +231,5 @@ function ProcessDirectory(dir) {
 
 var directories = GetDirectories(subscriptionDirectory);
 for (var iDir = 0; iDir < directories.length; iDir++) {
-	var dir = path.join(subscriptionDirectory, directories[iDir]);
-	ProcessDirectory(dir);
+	ProcessDirectory(directories[iDir]);
 }
