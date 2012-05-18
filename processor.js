@@ -84,7 +84,7 @@ function SendWP7Notification(requestOptions, payload, userInfo) {
 	request.end();
 }
 
-function SendWP7ToastNotification(author, preview, pushUri, userInfo) {
+function SendWP7ToastNotification(author, preview, userInfo) {
 	var parsedUri = url.parse(userInfo.notificationUri);
 
 	var toastData = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
