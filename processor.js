@@ -19,8 +19,8 @@ var apiParentAuthorQuery = 'Search/?ParentAuthor=';
 
 var logger = new (winston.Logger)({
     transports: [
-      new (winston.transports.Console)( { colorize: true } ),
-      new (winston.transports.File)({ filename: logPath + 'processor.log', json : false })
+      new (winston.transports.Console)( { colorize: true, timestamp : true } ),
+      new (winston.transports.File)({ filename: logPath + 'processor.log', json : false, timestamp : true })
     ]
   });
 
