@@ -24,7 +24,7 @@ var logger = new (winston.Logger)({
     ]
   });
 
-function SendWP7Notification(requestOptions, payload) {
+function SendWP7Notification(requestOptions, payload, userInfo) {
 	var request = http.request(requestOptions, function (res) {
 		var notificationStatus = res.headers['x-notificationstatus'].toLowerCase();
 		var deviceConnectionStatus = res.headers['x-deviceconnectionstatus'].toLowerCase();
@@ -48,12 +48,26 @@ function SendWP7Notification(requestOptions, payload) {
 				//  As it stands, if we fail to send, we'll never retry.
 				//  Especially need to pay attention to when a device channel is no longer valid.
 				//  Otherwise we're just wasting time trying to notify something that will never, ever get it.
-				logger.info('Sending push failed.');
-				logger.info('Code: ' + res.statusCode);
-				logger.info('Notification Status: ' + notificationStatus);
-				logger.info('Device Connection Status: ' + deviceConnectionStatus);
-				logger.info('Subscription Status: ' + subscriptionStatus);
-				logger.info('Body: ' + responseBody);
+				if(subscriptionStatus == 'expired') {
+					var userDirectory = path.join(subscriptionDirectory, userInfo.userName);
+
+					if (DirectoryExists(userDirectory)) {
+						var file = path.join(userDirectory, userInfo.deviceId);
+						path.exists(file, function (exists) {
+							if (exists) {
+								fs.unlinkSync(file);
+								logger.info('Device ID ' + userInfo.deviceId + ' for user ' + userInfo.userName + ' has expired.  Removing subscription.');
+							}
+						});
+					}
+				} else {
+					logger.info('Sending push failed.');
+					logger.info('Code: ' + res.statusCode);
+					logger.info('Notification Status: ' + notificationStatus);
+					logger.info('Device Connection Status: ' + deviceConnectionStatus);
+					logger.info('Subscription Status: ' + subscriptionStatus);
+					logger.info('Body: ' + responseBody);
+				}
 			}
 			else {
 				logger.info('WP7 notification sent successfully!');
@@ -70,8 +84,8 @@ function SendWP7Notification(requestOptions, payload) {
 	request.end();
 }
 
-function SendWP7ToastNotification(author, preview, pushUri) {
-	var parsedUri = url.parse(pushUri);
+function SendWP7ToastNotification(author, preview, pushUri, userInfo) {
+	var parsedUri = url.parse(userInfo.notificationUri);
 
 	var toastData = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
         "<wp:Notification xmlns:wp=\"WPNotification\">" +
@@ -95,11 +109,11 @@ function SendWP7ToastNotification(author, preview, pushUri) {
 	};
 
 	logger.info('**Sending toast notification\n' + toastData);
-	SendWP7Notification(requestOptions, toastData);
+	SendWP7Notification(requestOptions, toastData, userInfo);
 }
 
-function SendWP7TileNotification(count, author, preview, pushUri) {
-	var parsedUri = url.parse(pushUri);
+function SendWP7TileNotification(count, author, preview, userInfo) {
+	var parsedUri = url.parse(userInfo.notificationUri);
 
 	var tileMessage = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
 		"<wp:Notification xmlns:wp=\"WPNotification\">" +
@@ -124,7 +138,7 @@ function SendWP7TileNotification(count, author, preview, pushUri) {
 	};
 
 	logger.info('**Sending tile notification\n' + tileMessage);
-	SendWP7Notification(requestOptions, tileMessage);
+	SendWP7Notification(requestOptions, tileMessage, userInfo);
 }
 
 function ProcessUser(userInfo) {
@@ -163,10 +177,10 @@ function ProcessUser(userInfo) {
 
 					if (userInfo.hasOwnProperty('notificationUri')) {
 						if (userInfo.notificationType == 2) {
-							SendWP7ToastNotification(author, body, userInfo.notificationUri);
+							SendWP7ToastNotification(author, body, userInfo);
 						}
 						//The count of new replies is the total number of current replies minus the number of replies the app last knew about
-						SendWP7TileNotification(parseInt(totalResults) - parseInt(userInfo.replyCount), author, body, userInfo.notificationUri);
+						SendWP7TileNotification(parseInt(totalResults) - parseInt(userInfo.replyCount), author, body, userInfo);
 					}
 					else {
 						logger.info('Would send push notification of\n  Author: ' + author + '\n  Preview: ' + body);
