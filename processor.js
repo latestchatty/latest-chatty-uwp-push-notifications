@@ -173,7 +173,7 @@ function ProcessUser(userInfo) {
 				var latestResult = xmlDoc.get('//result');
 				if (latestResult != null) {
 					var author = latestResult.attr('author').value();
-					var body = latestResult.get('body').text().substr(0, 25);
+					var body = latestResult.get('body').text().substr(0, 40);
 
 					if (userInfo.hasOwnProperty('notificationUri')) {
 						if (userInfo.notificationType == 2) {
