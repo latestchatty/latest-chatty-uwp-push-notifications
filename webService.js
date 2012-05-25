@@ -23,16 +23,6 @@ var logger = new (winston.Logger)({
 
 var localServicePort = 12243;
 
-function DirectoryExists(dir) {
-	try {
-		var stats = fs.statSync(dir);
-		return stats.isDirectory();
-	}
-	catch (ex) {
-		return false;
-	}
-}
-
 //Subscribe a user, or update an existing user
 function SubscribeRequest(subResponse, userName, parsedUrl, requestData) {
 	logger.info("Subscribe Called.");
@@ -138,13 +128,13 @@ function SubscribeRequest(subResponse, userName, parsedUrl, requestData) {
 					subResponse.writeHead(200, { "Content-Type": "text/plain" });
 					subResponse.end("Subscribed " + userName);
 				} catch (ex) {
-					logger.error('Error occurred in response end for user ' + userName + '.\n!!ERROR!!: ' + err);
+					logger.error('Error occurred in response end for user ' + userName + '.\n!!ERROR!!: ' + ex);
 					subResponse.writeHead(400, { "Content-Type": "text/plain" });
 					subResponse.end("Unknown error.");
 				}
 			});
-		}).on('error', function(err) {
-			logger.error('Error occurred trying to retrieve reply count for ' + userName + '.\n!!ERROR!!: ' + err);
+		}).on('error', function(ex) {
+			logger.error('Error occurred trying to retrieve reply count for ' + userName + '.\n!!ERROR!!: ' + ex);
 			subResponse.writeHead(400, { "Content-Type": "text/plain" });
 			subResponse.end("Unknown error.");
 		});
@@ -218,3 +208,9 @@ http.createServer(function (request, response) {
 }).listen(localServicePort);
 
 logger.info("Server running at http://localhost:" + localServicePort);
+Logger.info("rootPath = " + rootPath);
+Logger.info("logPath = " + logPath);
+Logger.info("subscriptionDirectory = " + subscriptionDirectory);
+
+Logger.info("apiBaseUrl = " + apiBaseUrl);
+Logger.info("apiParentAuthorQuery = " + apiParentAuthorQuery);
