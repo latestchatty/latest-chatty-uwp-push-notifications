@@ -44,17 +44,13 @@ function SendWP7Notification(requestOptions, payload, userInfo) {
 				//  Especially need to pay attention to when a device channel is no longer valid.
 				//  Otherwise we're just wasting time trying to notify something that will never, ever get it.
 				if(subscriptionStatus == 'expired') {
-					var userDirectory = path.join(subscriptionDirectory, userInfo.userName);
-
-					if (DirectoryExists(userDirectory)) {
-						var file = path.join(userDirectory, userInfo.deviceId);
-						path.exists(file, function (exists) {
-							if (exists) {
-								fs.unlinkSync(file);
-								logger.info('Device ID ' + userInfo.deviceId + ' for user ' + userInfo.userName + ' has expired.  Removing subscription.');
-							}
-						});
-					}
+					var file = path.join(subscriptionDirectory, userInfo.deviceId);
+					path.exists(file, function (exists) {
+						if (exists) {
+							fs.unlinkSync(file);
+							logger.info('Device ID ' + userInfo.deviceId + ' for user ' + userInfo.userName + ' has expired.  Removing subscription.');
+						}
+					});
 				} else {
 					logger.info('Sending push failed.');
 					logger.info('Code: ' + res.statusCode);
@@ -113,7 +109,7 @@ function SendWP7TileNotification(count, author, preview, userInfo) {
 	var tileMessage = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
 		"<wp:Notification xmlns:wp=\"WPNotification\">" +
 			 "<wp:Tile>" +
-				  "<wp:Count>0</wp:Count>" +
+				  "<wp:Count>" + count + "</wp:Count>" +
 				  "<wp:BackTitle>" + author + "</wp:BackTitle>" +
 				  "<wp:BackContent>" + preview + "</wp:BackContent>" +
 			 "</wp:Tile>" +
@@ -184,7 +180,7 @@ function ProcessUser(userInfo) {
 
 				//Since we got new stuff, it's time to update the current count.
 				userInfo.replyCountLastNotified = totalResults;
-				var fileNameToSave = path.join(subscriptionDirectory, userInfo.userName, userInfo.deviceId);
+				var fileNameToSave = path.join(subscriptionDirectory, userInfo.deviceId);
 				fs.writeFile(fileNameToSave, JSON.stringify(userInfo), function (err) {
 					if (err) { logger.info("Error saving file " + fileNameToSave + " " + err); }
 					else { logger.info("Saved updated file " + fileNameToSave + " for username " + userInfo.userName + "!"); }
