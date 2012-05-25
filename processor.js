@@ -6,12 +6,7 @@ var sys = require("util"),
 	libxmljs = require("libxmljs"),
 	winston = require("winston");
 
-var rootPath = '/home/ubuntu/Shacknews-Push-Notifications/';
-//Dev environment.
-if(DirectoryExists('/Users/wzutz/github/local/Shacknews Push Notifications/')) {
-	rootPath = '/Users/wzutz/github/local/Shacknews Push Notifications/';
-}
-
+var rootPath = __dirname;
 var logPath = path.join(rootPath, 'logs/');
 var subscriptionDirectory = path.join(rootPath, 'subscribedUsers/');
 var apiBaseUrl = 'http://shackapi.stonedonkey.com/';
