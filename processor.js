@@ -118,7 +118,7 @@ function SendWP7TileNotification(count, author, preview, userInfo) {
 	var tileMessage = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
 		"<wp:Notification xmlns:wp=\"WPNotification\">" +
 			 "<wp:Tile>" +
-				  "<wp:Count>" + count + "</wp:Count>" +
+				  "<wp:Count>0</wp:Count>" +
 				  "<wp:BackTitle>" + author + "</wp:BackTitle>" +
 				  "<wp:BackContent>" + preview + "</wp:BackContent>" +
 			 "</wp:Tile>" +
@@ -213,22 +213,6 @@ function DirectoryExists(dir) {
 	}
 }
 
-function GetDirectories(dir) {
-	var directories = new Array();
-	var items = fs.readdirSync(dir);
-	logger.info("Finding directories in " + dir);
-	for (var iItem = 0; iItem < items.length; iItem++) {
-		var fullPath = path.join(dir + items[iItem]);
-		if(DirectoryExists(fullPath)) {
-			logger.info("  Found directory " + fullPath);
-			directories.push(fullPath);
-		}
-	}
-
-	logger.info("Directories to process: " + JSON.stringify(directories));
-	return directories;
-}
-
 function ProcessDirectory(dir) {
 	logger.info("Processing directory " + dir);
 	fs.readdir(dir, function (err, files) {
@@ -243,7 +227,4 @@ function ProcessDirectory(dir) {
 	});
 }
 
-var directories = GetDirectories(subscriptionDirectory);
-for (var iDir = 0; iDir < directories.length; iDir++) {
-	ProcessDirectory(directories[iDir]);
-}
+ProcessDirectory(subscriptionDirectory);

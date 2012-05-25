@@ -129,23 +129,16 @@ function SubscribeRequest(subResponse, userName, parsedUrl, requestData) {
 
 					logger.info("Subscribing with info: " + JSON.stringify(saveObject));
 
-					var userDirectory = path.join(subscriptionDirectory, userName);
+					//Make sure the user has less than 5 devices, otherwise we'll replace the oldest one.
+					//TODO: Replace the oldest one.
+					//			subResponse.writeHead(400, { "Content-Type": "text/plain" });
+					//			subResponse.end("Too many devices.");
+					//			return;
 
-					if (!DirectoryExists(userDirectory)) {
-						logger.info("Directory " + userDirectory + " doesn't exist, creating.");
-						fs.mkdirSync(userDirectory, 0777);
-					}
-					else {
-						//Make sure the user has less than 5 devices, otherwise we'll replace the oldest one.
-						//TODO: Replace the oldest one.
-						//			subResponse.writeHead(400, { "Content-Type": "text/plain" });
-						//			subResponse.end("Too many devices.");
-						//			return;
-					}
+					var savePath = pahth.join(subscriptionDirectory, saveObject.deviceId);
+					logger.info("Saving data to " + savePath);
 
-					logger.info("Saving data to " + path.join(userDirectory, saveObject.deviceId));
-
-					fs.writeFileSync(path.join(userDirectory, saveObject.deviceId), JSON.stringify(saveObject));
+					fs.writeFileSync(savePath, JSON.stringify(saveObject));
 					logger.info("Saved file!");
 					subResponse.writeHead(200, { "Content-Type": "text/plain" });
 					subResponse.end("Subscribed " + userName);
@@ -174,18 +167,13 @@ function RemoveRequest(response, parsedUrl, userName) {
 	if (parsedUrl.hasOwnProperty('query')) {
 		var parsedQuery = querystring.parse(parsedUrl.query);
 		if (parsedQuery.hasOwnProperty('deviceId')) {
-
-			var userDirectory = path.join(subscriptionDirectory, userName);
-
-			if (DirectoryExists(userDirectory)) {
-				var file = path.join(userDirectory, parsedQuery['deviceId']);
-				path.exists(file, function (exists) {
-					if (exists) {
-						fs.unlinkSync(file);
-						logger.info('Request for removal of ' + userName + ' successful.');
-					}
-				});
-			}
+			var file = path.join(subscriptionDirectory, parsedQuery['deviceId']);
+			path.exists(file, function (exists) {
+				if (exists) {
+					fs.unlinkSync(file);
+					logger.info('Request for removal of ' + userName + ' successful.');
+				}
+			});
 		}
 		else {
 			response.writeHead(400, { "Content-Type": "text/plain" });
