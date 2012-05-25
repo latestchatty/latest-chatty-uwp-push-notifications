@@ -120,7 +120,7 @@ function SubscribeRequest(subResponse, userName, parsedUrl, requestData) {
 					//			subResponse.end("Too many devices.");
 					//			return;
 
-					var savePath = pahth.join(subscriptionDirectory, saveObject.deviceId);
+					var savePath = path.join(subscriptionDirectory, saveObject.deviceId);
 					logger.info("Saving data to " + savePath);
 
 					fs.writeFileSync(savePath, JSON.stringify(saveObject));
