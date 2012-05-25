@@ -208,9 +208,8 @@ http.createServer(function (request, response) {
 }).listen(localServicePort);
 
 logger.info("Server running at http://localhost:" + localServicePort);
-Logger.info("rootPath = " + rootPath);
-Logger.info("logPath = " + logPath);
-Logger.info("subscriptionDirectory = " + subscriptionDirectory);
-
-Logger.info("apiBaseUrl = " + apiBaseUrl);
-Logger.info("apiParentAuthorQuery = " + apiParentAuthorQuery);
+logger.info("rootPath = " + rootPath);
+logger.info("logPath = " + logPath);
+logger.info("subscriptionDirectory = " + subscriptionDirectory);
+logger.info("apiBaseUrl = " + apiBaseUrl);
+logger.info("apiParentAuthorQuery = " + apiParentAuthorQuery);
