@@ -6,12 +6,16 @@ var sys = require("util"),
 	libxmljs = require("libxmljs"),
 	winston = require("winston");
 
+<<<<<<< HEAD
 var rootPath = '/home/ubuntu/Shacknews-Push-Notifications/';
 //Dev environment.
 if(DirectoryExists('/Users/wzutz/github/local/Shacknews Push Notifications/')) {
 	rootPath = '/Users/wzutz/github/local/Shacknews Push Notifications/';
 }
 
+=======
+var rootPath = __dirname;
+>>>>>>> origin/No-Count-Tiles
 var logPath = path.join(rootPath, 'logs/');
 var subscriptionDirectory = path.join(rootPath, 'subscribedUsers/');
 var apiBaseUrl = 'http://shackapi.stonedonkey.com/';
@@ -49,6 +53,7 @@ function SendWP7Notification(requestOptions, payload, userInfo) {
 				//  Especially need to pay attention to when a device channel is no longer valid.
 				//  Otherwise we're just wasting time trying to notify something that will never, ever get it.
 				if(subscriptionStatus == 'expired') {
+<<<<<<< HEAD
 					var userDirectory = path.join(subscriptionDirectory, userInfo.userName);
 
 					if (DirectoryExists(userDirectory)) {
@@ -60,6 +65,15 @@ function SendWP7Notification(requestOptions, payload, userInfo) {
 							}
 						});
 					}
+=======
+					var file = path.join(subscriptionDirectory, userInfo.deviceId);
+					path.exists(file, function (exists) {
+						if (exists) {
+							fs.unlinkSync(file);
+							logger.info('Device ID ' + userInfo.deviceId + ' for user ' + userInfo.userName + ' has expired.  Removing subscription.');
+						}
+					});
+>>>>>>> origin/No-Count-Tiles
 				} else {
 					logger.info('Sending push failed.');
 					logger.info('Code: ' + res.statusCode);
@@ -189,7 +203,11 @@ function ProcessUser(userInfo) {
 
 				//Since we got new stuff, it's time to update the current count.
 				userInfo.replyCountLastNotified = totalResults;
+<<<<<<< HEAD
 				var fileNameToSave = path.join(subscriptionDirectory, userInfo.userName, userInfo.deviceId);
+=======
+				var fileNameToSave = path.join(subscriptionDirectory, userInfo.deviceId);
+>>>>>>> origin/No-Count-Tiles
 				fs.writeFile(fileNameToSave, JSON.stringify(userInfo), function (err) {
 					if (err) { logger.info("Error saving file " + fileNameToSave + " " + err); }
 					else { logger.info("Saved updated file " + fileNameToSave + " for username " + userInfo.userName + "!"); }
@@ -213,6 +231,7 @@ function DirectoryExists(dir) {
 	}
 }
 
+<<<<<<< HEAD
 function GetDirectories(dir) {
 	var directories = new Array();
 	var items = fs.readdirSync(dir);
@@ -229,6 +248,8 @@ function GetDirectories(dir) {
 	return directories;
 }
 
+=======
+>>>>>>> origin/No-Count-Tiles
 function ProcessDirectory(dir) {
 	logger.info("Processing directory " + dir);
 	fs.readdir(dir, function (err, files) {
@@ -243,7 +264,11 @@ function ProcessDirectory(dir) {
 	});
 }
 
+<<<<<<< HEAD
 var directories = GetDirectories(subscriptionDirectory);
 for (var iDir = 0; iDir < directories.length; iDir++) {
 	ProcessDirectory(directories[iDir]);
 }
+=======
+ProcessDirectory(subscriptionDirectory);
+>>>>>>> origin/No-Count-Tiles

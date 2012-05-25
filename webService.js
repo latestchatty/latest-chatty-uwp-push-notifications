@@ -7,12 +7,16 @@ var sys = require("util"),
 	libxmljs = require("libxmljs"),
 	winston = require("winston");
 
+<<<<<<< HEAD
 var rootPath = '/home/ubuntu/Shacknews-Push-Notifications/';
 //Dev environment.
 if(DirectoryExists('/Users/wzutz/github/local/Shacknews Push Notifications/')) {
 	rootPath = '/Users/wzutz/github/local/Shacknews Push Notifications/';
 }
 
+=======
+var rootPath = __dirname;
+>>>>>>> origin/No-Count-Tiles
 var logPath = path.join(rootPath, 'logs/');
 var subscriptionDirectory = path.join(rootPath, 'subscribedUsers/');
 
@@ -28,6 +32,7 @@ var logger = new (winston.Logger)({
 
 var localServicePort = 12243;
 
+<<<<<<< HEAD
 function DirectoryExists(dir) {
 	try {
 		var stats = fs.statSync(dir);
@@ -38,6 +43,8 @@ function DirectoryExists(dir) {
 	}
 }
 
+=======
+>>>>>>> origin/No-Count-Tiles
 //Subscribe a user, or update an existing user
 function SubscribeRequest(subResponse, userName, parsedUrl, requestData) {
 	logger.info("Subscribe Called.");
@@ -129,6 +136,7 @@ function SubscribeRequest(subResponse, userName, parsedUrl, requestData) {
 
 					logger.info("Subscribing with info: " + JSON.stringify(saveObject));
 
+<<<<<<< HEAD
 					var userDirectory = path.join(subscriptionDirectory, userName);
 
 					if (!DirectoryExists(userDirectory)) {
@@ -146,17 +154,38 @@ function SubscribeRequest(subResponse, userName, parsedUrl, requestData) {
 					logger.info("Saving data to " + path.join(userDirectory, saveObject.deviceId));
 
 					fs.writeFileSync(path.join(userDirectory, saveObject.deviceId), JSON.stringify(saveObject));
+=======
+					//Make sure the user has less than 5 devices, otherwise we'll replace the oldest one.
+					//TODO: Replace the oldest one.
+					//			subResponse.writeHead(400, { "Content-Type": "text/plain" });
+					//			subResponse.end("Too many devices.");
+					//			return;
+
+					var savePath = path.join(subscriptionDirectory, saveObject.deviceId);
+					logger.info("Saving data to " + savePath);
+
+					fs.writeFileSync(savePath, JSON.stringify(saveObject));
+>>>>>>> origin/No-Count-Tiles
 					logger.info("Saved file!");
 					subResponse.writeHead(200, { "Content-Type": "text/plain" });
 					subResponse.end("Subscribed " + userName);
 				} catch (ex) {
+<<<<<<< HEAD
 					logger.error('Error occurred in response end for user ' + userName + '.\n!!ERROR!!: ' + err);
+=======
+					logger.error('Error occurred in response end for user ' + userName + '.\n!!ERROR!!: ' + ex);
+>>>>>>> origin/No-Count-Tiles
 					subResponse.writeHead(400, { "Content-Type": "text/plain" });
 					subResponse.end("Unknown error.");
 				}
 			});
+<<<<<<< HEAD
 		}).on('error', function(err) {
 			logger.error('Error occurred trying to retrieve reply count for ' + userName + '.\n!!ERROR!!: ' + err);
+=======
+		}).on('error', function(ex) {
+			logger.error('Error occurred trying to retrieve reply count for ' + userName + '.\n!!ERROR!!: ' + ex);
+>>>>>>> origin/No-Count-Tiles
 			subResponse.writeHead(400, { "Content-Type": "text/plain" });
 			subResponse.end("Unknown error.");
 		});
@@ -174,6 +203,7 @@ function RemoveRequest(response, parsedUrl, userName) {
 	if (parsedUrl.hasOwnProperty('query')) {
 		var parsedQuery = querystring.parse(parsedUrl.query);
 		if (parsedQuery.hasOwnProperty('deviceId')) {
+<<<<<<< HEAD
 
 			var userDirectory = path.join(subscriptionDirectory, userName);
 
@@ -186,6 +216,15 @@ function RemoveRequest(response, parsedUrl, userName) {
 					}
 				});
 			}
+=======
+			var file = path.join(subscriptionDirectory, parsedQuery['deviceId']);
+			path.exists(file, function (exists) {
+				if (exists) {
+					fs.unlinkSync(file);
+					logger.info('Request for removal of ' + userName + ' successful.');
+				}
+			});
+>>>>>>> origin/No-Count-Tiles
 		}
 		else {
 			response.writeHead(400, { "Content-Type": "text/plain" });
@@ -234,4 +273,13 @@ http.createServer(function (request, response) {
 	});
 }).listen(localServicePort);
 
+<<<<<<< HEAD
 logger.info("Server running at http://localhost:" + localServicePort);
+=======
+logger.info("Server running at http://localhost:" + localServicePort);
+logger.info("rootPath = " + rootPath);
+logger.info("logPath = " + logPath);
+logger.info("subscriptionDirectory = " + subscriptionDirectory);
+logger.info("apiBaseUrl = " + apiBaseUrl);
+logger.info("apiParentAuthorQuery = " + apiParentAuthorQuery);
+>>>>>>> origin/No-Count-Tiles
