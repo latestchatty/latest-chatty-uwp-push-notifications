@@ -204,7 +204,7 @@ http.createServer(function (request, response) {
 		if(splitPath.length == 3)
 		{
 			//Make sure we're going to /users and that the username is something valid.
-			if((splitPath[1] == 'users') && (splitPath[2].replace(" ", "") > 0)) {
+			if((splitPath[1] == 'users') && (splitPath[2].replace(" ", "").length > 0)) {
 				if(request.method == 'POST') {
 					requestHandled = true;
 					SubscribeRequest(response, splitPath[2], parsedUrl, requestData);
