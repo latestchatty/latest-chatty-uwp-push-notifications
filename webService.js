@@ -153,11 +153,11 @@ function RemoveRequest(response, parsedUrl, userName) {
 	if (parsedUrl.hasOwnProperty('query')) {
 		var parsedQuery = querystring.parse(parsedUrl.query);
 		if (parsedQuery.hasOwnProperty('deviceId')) {
+			var deviceId = parsedQuery['deviceId'];
 			var file = path.join(subscriptionDirectory, parsedQuery['deviceId']);
 			if(path.existsSync(file)) {			
 				var fileData = fs.readFileSync(file, 'utf8');
 				var userData = JSON.parse(fileData);
-
 				if(userName.toLowerCase() == userData.userName.toLowerCase())
 				{
 					fs.unlinkSync(file);
