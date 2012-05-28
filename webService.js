@@ -30,10 +30,11 @@ function SubscribeRequest(subResponse, userName, parsedUrl, requestData) {
 	try {
 
 		//If we haven't got a username, just give up now.
+		//Already doing this outside this call, but I guess I'll just leave this here.
 		if(userName.length == 0)
 		{
 			subResponse.writeHead(404, { "Content-Type": "text/plain" });
-			logger.info("Attempt to create a subscription for a blank user. That's no good.");
+			logger.warn("Attempt to create a subscription for a blank user. That's no good.");
 			subResponse.end("Not found.");
 		}
 
@@ -92,13 +93,13 @@ function SubscribeRequest(subResponse, userName, parsedUrl, requestData) {
 
 					if (parsedUrl.hasOwnProperty('query')) {
 						var parsedQuery = querystring.parse(parsedUrl.query);
-						logger.info("Parsed query: " + JSON.stringify(parsedQuery));
+						logger.data("Parsed query: " + JSON.stringify(parsedQuery));
 
 						if (parsedQuery.hasOwnProperty('notificationType')) {
 							saveObject.notificationType = parsedQuery['notificationType'];
 						} else {
 							subResponse.writeHead(400, { "Content-Type": "text/plain" });
-							logger.info("Missing notification type.");
+							logger.error("Missing notification type.");
 							subResponse.end("Missing notification type.");
 							return;
 						}
@@ -106,13 +107,13 @@ function SubscribeRequest(subResponse, userName, parsedUrl, requestData) {
 							saveObject.deviceId = parsedQuery['deviceId'];
 						} else {
 							subResponse.writeHead(400, { "Content-Type": "text/plain" });
-							logger.info("Missing device id.");
+							logger.error("Missing device id.");
 							subResponse.end("Missing device id.");
 							return;
 						}
 					}
 
-					logger.info("Subscribing with info: " + JSON.stringify(saveObject));
+					logger.verbose("Subscribing with info: " + JSON.stringify(saveObject));
 
 					//Make sure the user has less than 5 devices, otherwise we'll replace the oldest one.
 					//TODO: Replace the oldest one.
@@ -140,7 +141,7 @@ function SubscribeRequest(subResponse, userName, parsedUrl, requestData) {
 		});
 	}
 	catch (ex) {
-		logger.info("Exception caught in subscription " + ex);
+		logger.error("Exception caught in subscription " + ex);
 		subResponse.writeHead(400, { "Content-Type": "text/plain" });
 		subResponse.end("Unknown error.");
 	}
@@ -162,11 +163,13 @@ function RemoveRequest(response, parsedUrl, userName) {
 		}
 		else {
 			response.writeHead(400, { "Content-Type": "text/plain" });
+			logger.error("Missing device id on removal request");
 			response.end("Missing device id.");
 			return;
 		}
 	} else {
 		response.writeHead(400, { "Content-Type": "text/plain" });
+		logger.error("Missing query parameter on removal request");
 		response.end("Bad request.");
 		return;
 	}
@@ -184,22 +187,30 @@ http.createServer(function (request, response) {
 	request.on('end', function () {
 		var parsedUrl = url.parse(request.url);
 		var splitPath = parsedUrl.pathname.split('/');
+		var requestHandled = false;
 
-		logger.info('Parsed URL: ' + JSON.stringify(parsedUrl));
+		logger.data('Parsed URL: ' + JSON.stringify(parsedUrl));
 
 		if (splitPath.length > 3) {
-			logger.info('more than two path variables were passed, bailing.');
+			logger.error('more than two path variables were passed, bailing.');
 			return;
 		}
 
-		if(splitPath[1] == 'users') {
-			if(request.method == 'POST') {
-				SubscribeRequest(response, splitPath[2], parsedUrl, requestData);
-			} else if (request.method == 'DELETE') {
-				RemoveRequest(response, parsedUrl, splitPath[2]);
+		if(splitPath.length == 3)
+		{
+			//Make sure we're going to /users and that the username is something valid.
+			if((splitPath[1] == 'users') && (splitPath[2].replace(" ", "") > 0)) {
+				if(request.method == 'POST') {
+					requestHandled = true;
+					SubscribeRequest(response, splitPath[2], parsedUrl, requestData);
+				} else if (request.method == 'DELETE') {
+					requestHandled = true;
+					RemoveRequest(response, parsedUrl, splitPath[2]);
+				}
 			}
 		}
-		else {
+		
+		if(!requestHandled) {
 			response.writeHead(404, { "Content-Type": "text/plain" });
 			response.end("404 Not Found\n");
 			return;
@@ -208,8 +219,8 @@ http.createServer(function (request, response) {
 }).listen(localServicePort);
 
 logger.info("Server running at http://localhost:" + localServicePort);
-logger.info("rootPath = " + rootPath);
-logger.info("logPath = " + logPath);
-logger.info("subscriptionDirectory = " + subscriptionDirectory);
-logger.info("apiBaseUrl = " + apiBaseUrl);
-logger.info("apiParentAuthorQuery = " + apiParentAuthorQuery);
+logger.data("rootPath = " + rootPath);
+logger.data("logPath = " + logPath);
+logger.data("subscriptionDirectory = " + subscriptionDirectory);
+logger.data("apiBaseUrl = " + apiBaseUrl);
+logger.data("apiParentAuthorQuery = " + apiParentAuthorQuery);
