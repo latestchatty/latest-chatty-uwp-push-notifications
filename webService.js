@@ -193,6 +193,8 @@ http.createServer(function (request, response) {
 		var requestHandled = false;
 
 		logger.verbose('Parsed URL: ' + JSON.stringify(parsedUrl));
+		logger.verbose('Split Path: + ' JSON.stringify(splitPath));
+		logger.verbose('Split Path Length: ' + splitPath.length);
 
 		if (splitPath.length > 3) {
 			logger.error('more than two path variables were passed, bailing.');
@@ -214,6 +216,7 @@ http.createServer(function (request, response) {
 		}
 		
 		if(!requestHandled) {
+			logger.error("Request not handled.")
 			response.writeHead(404, { "Content-Type": "text/plain" });
 			response.end("404 Not Found\n");
 			return;
