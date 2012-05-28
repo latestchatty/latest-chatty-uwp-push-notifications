@@ -25,7 +25,7 @@ var localServicePort = 12243;
 
 //Subscribe a user, or update an existing user
 function SubscribeRequest(subResponse, userName, parsedUrl, requestData) {
-	logger.info("Subscribe Called.");
+	logger.verbose("Subscribe Called.");
 
 	try {
 
@@ -93,7 +93,7 @@ function SubscribeRequest(subResponse, userName, parsedUrl, requestData) {
 
 					if (parsedUrl.hasOwnProperty('query')) {
 						var parsedQuery = querystring.parse(parsedUrl.query);
-						logger.verbose("Parsed query: " + JSON.stringify(parsedQuery));
+						logger.silly("Parsed query: " + JSON.stringify(parsedQuery));
 
 						if (parsedQuery.hasOwnProperty('notificationType')) {
 							saveObject.notificationType = parsedQuery['notificationType'];
@@ -122,10 +122,10 @@ function SubscribeRequest(subResponse, userName, parsedUrl, requestData) {
 					//			return;
 
 					var savePath = path.join(subscriptionDirectory, saveObject.deviceId);
-					logger.info("Saving data to " + savePath);
+					logger.verbose("Saving data to " + savePath);
 
 					fs.writeFileSync(savePath, JSON.stringify(saveObject));
-					logger.info("Saved file!");
+					logger.info("Updated subscription for " + userName + " with device id " + saveObject.deviceId);
 					subResponse.writeHead(200, { "Content-Type": "text/plain" });
 					subResponse.end("Subscribed " + userName);
 				} catch (ex) {
