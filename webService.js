@@ -169,6 +169,11 @@ function RemoveRequest(response, parsedUrl, userName) {
 				} else {
 					logger.error("DeviceId data " + deviceId + " does not match userName " + userName + " cannot remove device registration");
 				}
+			} else {
+				//If the file doesn't exist, we've succeeded in what we were trying to do anyway.
+				response.writeHead(200, { "Content-Type": "text/plain" });
+				response.end("Removed " + userName);
+				return;
 			}
 		} else {
 			logger.error("Missing device id on removal request");
