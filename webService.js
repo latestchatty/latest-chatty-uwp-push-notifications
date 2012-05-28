@@ -17,7 +17,7 @@ var apiParentAuthorQuery = 'Search/?ParentAuthor=';
 var logger = new (winston.Logger)({
     transports: [
       new (winston.transports.Console)( { colorize: true, timestamp : true } ),
-      new (winston.transports.File)({ filename: logPath + 'webservice.log', json : false, timestamp : true })
+      new (winston.transports.File)({ filename: logPath + 'webservice.log', json : false, timestamp : true, level : 'silly'})
     ]
   });
 
@@ -113,7 +113,7 @@ function SubscribeRequest(subResponse, userName, parsedUrl, requestData) {
 						}
 					}
 
-					logger.silly("Subscribing with info: " + JSON.stringify(saveObject));
+					logger.verbose("Subscribing with info: " + JSON.stringify(saveObject));
 
 					//Make sure the user has less than 5 devices, otherwise we'll replace the oldest one.
 					//TODO: Replace the oldest one.
