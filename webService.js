@@ -93,7 +93,7 @@ function SubscribeRequest(subResponse, userName, parsedUrl, requestData) {
 
 					if (parsedUrl.hasOwnProperty('query')) {
 						var parsedQuery = querystring.parse(parsedUrl.query);
-						logger.data("Parsed query: " + JSON.stringify(parsedQuery));
+						logger.verbose("Parsed query: " + JSON.stringify(parsedQuery));
 
 						if (parsedQuery.hasOwnProperty('notificationType')) {
 							saveObject.notificationType = parsedQuery['notificationType'];
@@ -113,7 +113,7 @@ function SubscribeRequest(subResponse, userName, parsedUrl, requestData) {
 						}
 					}
 
-					logger.verbose("Subscribing with info: " + JSON.stringify(saveObject));
+					logger.silly("Subscribing with info: " + JSON.stringify(saveObject));
 
 					//Make sure the user has less than 5 devices, otherwise we'll replace the oldest one.
 					//TODO: Replace the oldest one.
@@ -189,7 +189,7 @@ http.createServer(function (request, response) {
 		var splitPath = parsedUrl.pathname.split('/');
 		var requestHandled = false;
 
-		logger.data('Parsed URL: ' + JSON.stringify(parsedUrl));
+		logger.verbose('Parsed URL: ' + JSON.stringify(parsedUrl));
 
 		if (splitPath.length > 3) {
 			logger.error('more than two path variables were passed, bailing.');
@@ -219,8 +219,8 @@ http.createServer(function (request, response) {
 }).listen(localServicePort);
 
 logger.info("Server running at http://localhost:" + localServicePort);
-logger.data("rootPath = " + rootPath);
-logger.data("logPath = " + logPath);
-logger.data("subscriptionDirectory = " + subscriptionDirectory);
-logger.data("apiBaseUrl = " + apiBaseUrl);
-logger.data("apiParentAuthorQuery = " + apiParentAuthorQuery);
+logger.verbose("rootPath = " + rootPath);
+logger.verbose("logPath = " + logPath);
+logger.verbose("subscriptionDirectory = " + subscriptionDirectory);
+logger.verbose("apiBaseUrl = " + apiBaseUrl);
+logger.verbose("apiParentAuthorQuery = " + apiParentAuthorQuery);
