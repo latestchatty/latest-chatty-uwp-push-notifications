@@ -155,7 +155,7 @@ function RemoveRequest(response, parsedUrl, userName) {
 		if (parsedQuery.hasOwnProperty('deviceId')) {
 			var file = path.join(subscriptionDirectory, parsedQuery['deviceId']);
 			if(path.existsSync(file)) {			
-				var fileData = fs.readFileSync(path.join(dir, files[iFile]), 'utf8');
+				var fileData = fs.readFileSync(file, 'utf8');
 				var userData = JSON.parse(fileData);
 
 				if(userName.toLowerCase() == userData.userName.toLowerCase())
