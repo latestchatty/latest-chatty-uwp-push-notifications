@@ -193,7 +193,7 @@ http.createServer(function (request, response) {
 		var requestHandled = false;
 
 		logger.verbose('Parsed URL: ' + JSON.stringify(parsedUrl));
-		logger.verbose('Split Path: + ' JSON.stringify(splitPath));
+		logger.verbose('Split Path: ' + JSON.stringify(splitPath));
 		logger.verbose('Split Path Length: ' + splitPath.length);
 
 		if (splitPath.length > 3) {
