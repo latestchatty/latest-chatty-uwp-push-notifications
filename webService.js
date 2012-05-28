@@ -113,7 +113,7 @@ function SubscribeRequest(subResponse, userName, parsedUrl, requestData) {
 						}
 					}
 
-					logger.verbose("Subscribing with info: " + JSON.stringify(saveObject));
+					logger.silly("Subscribing with info: " + JSON.stringify(saveObject));
 
 					//Make sure the user has less than 5 devices, otherwise we'll replace the oldest one.
 					//TODO: Replace the oldest one.
