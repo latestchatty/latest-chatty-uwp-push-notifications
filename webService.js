@@ -154,28 +154,31 @@ function RemoveRequest(response, parsedUrl, userName) {
 		var parsedQuery = querystring.parse(parsedUrl.query);
 		if (parsedQuery.hasOwnProperty('deviceId')) {
 			var file = path.join(subscriptionDirectory, parsedQuery['deviceId']);
-			path.exists(file, function (exists) {
-				if (exists) {
+			if(path.existsSync(file) {			
+				var fileData = fs.readFileSync(path.join(dir, files[iFile]), 'utf8');
+				var userData = JSON.parse(fileData);
+
+				if(userName.toLowerCase() == userData.userName.toLowerCase())
+				{
 					fs.unlinkSync(file);
-					logger.info('Request for removal of ' + userName + ' successful.');
+
+					logger.info("Removed deviceId " + deviceId + " for " + userName);
+					response.writeHead(200, { "Content-Type": "text/plain" });
+					response.end("Removed " + userName);
+					return;
+				} else {
+					logger.error("DeviceId data " + deviceId + " does not match userName " + userName + " cannot remove device registration");
 				}
-			});
-		}
-		else {
-			response.writeHead(400, { "Content-Type": "text/plain" });
+			}
+		} else {
 			logger.error("Missing device id on removal request");
-			response.end("Missing device id.");
-			return;
 		}
 	} else {
-		response.writeHead(400, { "Content-Type": "text/plain" });
 		logger.error("Missing query parameter on removal request");
-		response.end("Bad request.");
-		return;
 	}
 
-	response.writeHead(200, { "Content-Type": "text/plain" });
-	response.end("Removed " + userName);
+	response.writeHead(400, { "Content-Type": "text/plain" });
+	response.end("Bad request.");
 }
 
 //Create the server - this is where the magic happens.
