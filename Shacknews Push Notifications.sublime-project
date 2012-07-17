@@ -1,0 +1,33 @@
+{
+	"build_systems":
+	[
+		{
+			"cmd":
+			[
+				"coffee",
+				"-wc",
+				"-o",
+				"../js",
+				"$file_path"
+			],
+			"name": "Coffee Build",
+			"path": "/usr/local/bin",
+			"selector": "source.coffee"
+		}
+	],
+	"folders":
+	[
+		{
+			"file_exclude_patterns":
+			[
+				".gitignore",
+				"*.sublime-workspace"
+			],
+			"folder_exclude_patterns":
+			[
+				"node_modules"
+			],
+			"path": "/Users/wzutz/Documents/Code - Git/shacknews-push-notifications"
+		}
+	]
+}

@@ -1,5 +1,5 @@
 .DS_Store
-copyToDropbox.sh
 subscribedUsers
 logs
 node_modules
+*.sublime-workspace
