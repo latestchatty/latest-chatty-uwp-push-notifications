@@ -16,15 +16,16 @@ apiParentAuthorQuery = 'Search/?ParentAuthor='
 
 logger = new (winston.Logger)(
 	transports: [
-		new (winston.transports.Console)( { colorize: true, timestamp : true } ),
+		new (winston.transports.Console)( { colorize: true, timestamp : true, level : 'silly' } ),
 		new (winston.transports.File)({ filename: logPath + 'webservice.log', json : false, timestamp : true, level : 'silly'})
 	]
 )
 
-localServicePort = 12243
+#localServicePort = 12243 #production
+localServicePort = 12253 #development
 
 #Subscribe a user, or update an existing user
-SubscribeRequest: (subResponse, userName, parsedUrl, requestData) ->
+SubscribeRequest = (subResponse, userName, parsedUrl, requestData) =>
 	logger.verbose("Subscribe Called.")
 
 	try
@@ -73,6 +74,7 @@ SubscribeRequest: (subResponse, userName, parsedUrl, requestData) ->
 
 			res.on('end', () =>
 				try 
+					#I would prefer to switch to the json api, but it appears to not show the total_results.  It's null.
 					xmlDoc = libxmljs.parseXmlString(dataReceived)
 
 					if (xmlDoc is null) 
@@ -142,7 +144,7 @@ SubscribeRequest: (subResponse, userName, parsedUrl, requestData) ->
 
 
 #Remove a user
-RemoveRequest: (response, parsedUrl, userName) ->
+RemoveRequest = (response, parsedUrl, userName) =>
 	if (parsedUrl.hasOwnProperty('query')) 
 		parsedQuery = querystring.parse(parsedUrl.query)
 		if (parsedQuery.hasOwnProperty('deviceId')) 
@@ -180,6 +182,7 @@ http.createServer((request, response) =>
 		requestData += chunk;
 	)
 	request.on('end', () =>
+		logger.verbose("Request recieved: #{requestData}")
 		parsedUrl = url.parse(request.url)
 		splitPath = parsedUrl.pathname.split('/')
 		requestHandled = false
