@@ -13,6 +13,7 @@ subscriptionDirectory = path.join(rootPath, 'subscribedUsers/')
 
 apiBaseUrl = 'http://shackapi.stonedonkey.com/'
 apiParentAuthorQuery = 'Search/?ParentAuthor='
+debugMode = true
 
 logger = new (winston.Logger)(
 	transports: [
@@ -75,18 +76,22 @@ SubscribeRequest = (subResponse, userName, parsedUrl, requestData) =>
 			res.on('end', () =>
 				try 
 					#I would prefer to switch to the json api, but it appears to not show the total_results.  It's null.
-					xmlDoc = libxmljs.parseXmlString(dataReceived)
+					xmlDoc = new jsxml.XML(dataReceived)
 
 					if (xmlDoc is null) 
 						return
 
-					totalResultsAttribute = xmlDoc.root().attr('total_results')
+					totalResultsAttribute = xmlDoc.attribute('total_results')
 					if (totalResultsAttribute is null) 
 						return
 
 					#This is the number of results we know about right this very moment.
 					#Not relying on the app to tell us any more, it's up to us.
-					totalResults = parseInt(totalResultsAttribute.value())
+					totalResults = parseInt(totalResultsAttribute.getValue())
+
+					#if we're in debug mode, we want to send a notification even if we don't have real new replies, so we'll just pretend we got less than we already have.
+					if(debugMode)
+						totalResults = totalResults -= 5
 
 					saveObject.replyCount = totalResults
 					saveObject.replyCountLastNotified = totalResults

@@ -15,10 +15,13 @@ apiParentAuthorQuery = 'Search/?ParentAuthor='
 
 logger = new (winston.Logger)({
 	transports: [
-		new (winston.transports.Console)( { colorize: true, timestamp : true } ),
+		new (winston.transports.Console)( { colorize: true, timestamp : true, level : 'silly'} ),
 		new (winston.transports.File)({ filename: logPath + 'processor.log', json : false, timestamp : true, level : 'silly'})
 		]
 	})
+
+SendWindows8Notification = (count, author, preview, userInfo) ->
+	logger.verbose("Sending Windows 8 Notification...")
 
 SendWP7Notification = (requestOptions, payload, userInfo) ->
 	request = http.request(requestOptions, (res) =>
@@ -141,6 +144,7 @@ ProcessUser = (userInfo) ->
 		)
 
 		response.on('end', () =>
+			#logger.verbose("Got data from service #{dataReceived}")
 			xmlDoc = new XML(dataReceived)
 
 			if (xmlDoc == null) 
@@ -150,29 +154,36 @@ ProcessUser = (userInfo) ->
 			if (totalResultsAttribute == null) 
 				return
 
-			totalResults = totalResultsAttribute.getValue()
+			totalResults = totalResultsAttribute.toString()
 
 			#The count of new replies is the total number of current replies minus the number of replies since the last time we notified.
 			newReplyCount = parseInt(totalResults) - parseInt(userInfo.replyCountLastNotified)
 			if (newReplyCount > 0) 
-				logger.info('Previous count for' + userInfo.userName + ' was ' + userInfo.replyCount + ' current count is ' + totalResults + ', we got new stuff!')
+				logger.info("Previous count for #{userInfo.userName} was #{userInfo.replyCount} current count is #{totalResults}, we got new stuff!")
 
-				latestResult = xmlDoc.descendents('result')
+#TODO: Figure out how the hell to get the first result...
+				replies = xmlDoc.child('result')
+				logger.verbose("replies: #{replies}")
+				replies.each((item, index) =>
+					logger.verbose("item: #{item}")
+				)
+				#logger.verbose("Latest Result: #{latestResult}")
 				if (latestResult != null) 
-					author = latestResult.attr('author').value()
-					body = latestResult.get('body').text().substr(0, 40)
+					author = latestResult.attribute('author').toString()
+					body = latestResult.child('body').toString().substr(0, 40)
 
-					if (userInfo.hasOwnProperty('notificationUri')) 
-						if (userInfo.notificationType == 2) 
-							SendWP7ToastNotification(author, body, userInfo)
-						
-						#The count of new replies is the total number of current replies minus the number of replies the app last knew about
-						SendWP7TileNotification(parseInt(totalResults) - parseInt(userInfo.replyCount), author, body, userInfo)
-					
+					logger.verbose("Latest Author: #{author} Body: #{body}")
+					logger.verbose("UserInfo #{JSON.stringify(userInfo)}")
+					if (userInfo.hasOwnProperty('notificationUri')) 	
+						if ((userInfo.notificationType is 2) or (userInfo.notificationType is 1))
+							#The count of new replies is the total number of current replies minus the number of replies the app last knew about
+							SendWP7TileNotification(parseInt(totalResults) - parseInt(userInfo.replyCount), author, body, userInfo)
+							if (userInfo.notificationType == 2) 
+								SendWP7ToastNotification(author, body, userInfo)
+						else if (userInfo.notificationType is 3)
+							SendWindows8Notification(parseInt(totalResults) - parseInt(userInfo.replyCount), author, body, userInfo)
 					else 
 						logger.info('Would send push notification of\n  Author: ' + author + '\n  Preview: ' + body)
-					
-				
 
 				#Since we got new stuff, it's time to update the current count.
 				userInfo.replyCountLastNotified = totalResults
