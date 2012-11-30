@@ -1,20 +1,4 @@
 {
-	"build_systems":
-	[
-		{
-			"cmd":
-			[
-				"coffee",
-				"-wc",
-				"-o",
-				"../js",
-				"$file_path"
-			],
-			"name": "Coffee Build",
-			"path": "/usr/local/bin",
-			"selector": "source.coffee"
-		}
-	],
 	"folders":
 	[
 		{

@@ -1,5 +1,6 @@
 sys = require 'util'
 http = require 'http'
+https = require 'https'
 url = require 'url'
 path = require 'path'
 fs = require 'fs'
@@ -20,8 +21,77 @@ logger = new (winston.Logger)({
 		]
 	})
 
+SendWindows8Data = (requestOptions, payload, userInfo) ->
+	request = https.request(requestOptions, (res) =>
+		res.setEncoding('utf8')
+		errorDescription = res.headers['X-WNS-Error-Description']
+
+		responseBody = ''
+		responseSuccessful = (res.statusCode is 200)	#and (notificationStatus is 'received')	and (deviceConnectionStatus is 'connected') and (subscriptionStatus is 'active')
+
+		res.on('data', (chunk) => 
+			responseBody += chunk
+		)
+
+		res.on('end', =>
+			if (!responseSuccessful) 
+				#TODO: Handle failures better.
+				#  There are cases where we should retry immediately, retry later, never try again, etc.
+				#  As it stands, if we fail to send, we'll never retry.
+				#  Especially need to pay attention to when a device channel is no longer valid.
+				#  Otherwise we're just wasting time trying to notify something that will never, ever get it.
+				# if(subscriptionStatus == 'expired') 
+				# 	file = path.join(subscriptionDirectory, userInfo.deviceId)
+				# 	path.exists(file, (exists) =>
+				# 		if (exists) 
+				# 			fs.unlinkSync(file)
+				# 			logger.info('Device ID ' + userInfo.deviceId + ' for user ' + userInfo.userName + ' has expired.  Removing subscription.')
+				# 	)
+				# else 
+					logger.info('Sending push failed.')
+					logger.info('Code: ' + res.statusCode)
+					logger.info('Error: ' + errorDescription)
+				
+			else 
+				logger.info('Windows 8 notification sent successfully!')
+		)
+	)
+
+	request.on('error', (e) =>
+		logger.info('Request Failed: ' + e.message)
+	)
+
+	# write data to request body
+	request.write(payload)
+	request.end()
+
 SendWindows8Notification = (count, author, preview, userInfo) ->
-	logger.verbose("Sending Windows 8 Notification...")
+	parsedUri = url.parse(userInfo.notificationUri)
+
+	tileData = """<tile launch="">
+	  <visual lang="en-US">
+	    <binding template="TileWideText09">
+	      <text id="1">#{author}</text>
+	      <text id="2">#{preview}</text> 
+	    </binding>
+	  </visual>
+	</tile>"""
+
+	requestOptions = {
+		hostname: parsedUri.hostname,
+		port: parsedUri.port,
+		path: parsedUri.path,
+		method: 'POST',
+		headers: {
+			#TODO: Get the real authorization token from the service.
+			'Authorization': 'Bearer EgAaAQMAAAAEgAAACoAAT3bsTCUf6xoL505xkBf1IgDvYaTjRExQMNo0TMqCCMdLbYuC589DHRc153sbZObanqtNPQvm8auSeKhIqzyTdi1Ioi3bVQ+XTOoC47mpO7kFtsH7jt37z1qHJyDSzle6aqAt174Nd/X1B5lbf/HJ/L7mUHyqDBYViT7cDdRroLqJAFoAiQAAAAAApPMNQI5EuFCORLhQ60gEAA0ANzYuMjUuMTMyLjU1AAAAAABcAG1zLWFwcDovL3MtMS0xNS0yLTI1MjI2Njc4MjUtMTM1NTIxNjgxLTM1Njk4NTQ4NDctMzMyMzYxNjUwNS01NDQ2Mjc2MjEtMzQ1OTQwMTA5NC0xNzExMzIwNTgA'
+			'Content-Type': 'text/xml',
+			'Content-Length': tileData.length,
+			'X-WNS-Type': 'wns/tile'
+		}
+	}
+
+	SendWindows8Data(requestOptions, tileData, userInfo)
 
 SendWP7Notification = (requestOptions, payload, userInfo) ->
 	request = http.request(requestOptions, (res) =>
@@ -65,7 +135,7 @@ SendWP7Notification = (requestOptions, payload, userInfo) ->
 		)
 	)
 
-	request.on('error', (e) 
+	request.on('error', (e) =>
 		logger.info('Request Failed: ' + e.message)
 	)
 
@@ -161,29 +231,25 @@ ProcessUser = (userInfo) ->
 			if (newReplyCount > 0) 
 				logger.info("Previous count for #{userInfo.userName} was #{userInfo.replyCount} current count is #{totalResults}, we got new stuff!")
 
-#TODO: Figure out how the hell to get the first result...
 				replies = xmlDoc.child('result')
-				logger.verbose("replies: #{replies}")
-				replies.each((item, index) =>
-					logger.verbose("item: #{item}")
-				)
-				#logger.verbose("Latest Result: #{latestResult}")
-				if (latestResult != null) 
-					author = latestResult.attribute('author').toString()
-					body = latestResult.child('body').toString().substr(0, 40)
+				if(replies._list.length > 0)
+					latestResult = replies._list[0]
+					if (latestResult != null) 
+						author = latestResult.attribute('author').toString()
+						body = latestResult.child('body').toString().substr(0, 40)
 
-					logger.verbose("Latest Author: #{author} Body: #{body}")
-					logger.verbose("UserInfo #{JSON.stringify(userInfo)}")
-					if (userInfo.hasOwnProperty('notificationUri')) 	
-						if ((userInfo.notificationType is 2) or (userInfo.notificationType is 1))
-							#The count of new replies is the total number of current replies minus the number of replies the app last knew about
-							SendWP7TileNotification(parseInt(totalResults) - parseInt(userInfo.replyCount), author, body, userInfo)
-							if (userInfo.notificationType == 2) 
-								SendWP7ToastNotification(author, body, userInfo)
-						else if (userInfo.notificationType is 3)
-							SendWindows8Notification(parseInt(totalResults) - parseInt(userInfo.replyCount), author, body, userInfo)
-					else 
-						logger.info('Would send push notification of\n  Author: ' + author + '\n  Preview: ' + body)
+						logger.verbose("Latest Author: #{author} Body: #{body}")
+						logger.verbose("UserInfo #{JSON.stringify(userInfo)}")
+						if (userInfo.hasOwnProperty('notificationUri')) 	
+							if ((userInfo.notificationType is '2') or (userInfo.notificationType is '1'))
+								#The count of new replies is the total number of current replies minus the number of replies the app last knew about
+								SendWP7TileNotification(parseInt(totalResults) - parseInt(userInfo.replyCount), author, body, userInfo)
+								if (userInfo.notificationType is '2') 
+									SendWP7ToastNotification(author, body, userInfo)
+							else if (userInfo.notificationType is '3')
+								SendWindows8Notification(parseInt(totalResults) - parseInt(userInfo.replyCount), author, body, userInfo)
+						else 
+							logger.info('Would send push notification of\n  Author: ' + author + '\n  Preview: ' + body)
 
 				#Since we got new stuff, it's time to update the current count.
 				userInfo.replyCountLastNotified = totalResults
