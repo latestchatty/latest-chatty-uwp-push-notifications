@@ -8,11 +8,13 @@ jsxml = require 'node-jsxml'
 winston = require 'winston'
 XML = jsxml.XML
 
+#Convert these to use the config file.
 rootPath = __dirname
 logPath = path.join(rootPath, 'logs/')
 subscriptionDirectory = path.join(rootPath, 'subscribedUsers/')
 apiBaseUrl = 'http://shackapi.stonedonkey.com/'
 apiParentAuthorQuery = 'Search/?ParentAuthor='
+configFile = ".notificationCoanfig"
 
 logger = new (winston.Logger)({
 	transports: [
@@ -20,6 +22,22 @@ logger = new (winston.Logger)({
 		new (winston.transports.File)({ filename: logPath + 'processor.log', json : false, timestamp : true, level : 'silly'})
 		]
 	})
+
+class Config
+	constructor () =>
+		try
+			parsedConfig = JSON.parse(fs.readFileSync(configFile))
+			@psid = parsedConfig['PSID']
+			@secret = parsedConfig["Secret"]
+		catch error
+			logger.error("""Error parsing config file at #{configFile}.  Format is:
+			{
+				"PSID": "ProductSecurityIdentifier",
+				"Secret": "ClientSecret"
+			}
+
+			Error was: #{error}
+			""")
 
 SendWindows8Data = (requestOptions, payload, userInfo) ->
 	request = https.request(requestOptions, (res) =>
@@ -92,6 +110,22 @@ SendWindows8Notification = (count, author, preview, userInfo) ->
 	}
 
 	SendWindows8Data(requestOptions, tileData, userInfo)
+
+	tileData = "<badge value=#{count} />"
+
+	requestOptions = {
+		hostname: parsedUri.hostname,
+		port: parsedUri.port,
+		path: parsedUri.path,
+		method: 'POST',
+		headers: {
+			#TODO: Get the real authorization token from the service.
+			'Authorization': 'Bearer EgAaAQMAAAAEgAAACoAAT3bsTCUf6xoL505xkBf1IgDvYaTjRExQMNo0TMqCCMdLbYuC589DHRc153sbZObanqtNPQvm8auSeKhIqzyTdi1Ioi3bVQ+XTOoC47mpO7kFtsH7jt37z1qHJyDSzle6aqAt174Nd/X1B5lbf/HJ/L7mUHyqDBYViT7cDdRroLqJAFoAiQAAAAAApPMNQI5EuFCORLhQ60gEAA0ANzYuMjUuMTMyLjU1AAAAAABcAG1zLWFwcDovL3MtMS0xNS0yLTI1MjI2Njc4MjUtMTM1NTIxNjgxLTM1Njk4NTQ4NDctMzMyMzYxNjUwNS01NDQ2Mjc2MjEtMzQ1OTQwMTA5NC0xNzExMzIwNTgA'
+			'Content-Type': 'text/xml',
+			'Content-Length': tileData.length,
+			'X-WNS-Type': 'wns/tile'
+		}
+	}	
 
 SendWP7Notification = (requestOptions, payload, userInfo) ->
 	request = http.request(requestOptions, (res) =>
@@ -275,7 +309,7 @@ DirectoryExists = (dir) ->
 		#logger.error("problem getting directory info " + ex);
 		return false
 	
-ProcessDirectory = (dir) ->
+ProcessDirectory = (dir, config) ->
 	logger.info("Processing directory " + dir)
 	fs.readdir(dir, (err, files) =>
 		for file in files
@@ -287,4 +321,5 @@ ProcessDirectory = (dir) ->
 			ProcessUser(userData)
 	)
 
-ProcessDirectory(subscriptionDirectory)
+config = new Config()
+ProcessDirectory(subscriptionDirectory, config)

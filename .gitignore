@@ -3,3 +3,4 @@ subscribedUsers
 logs
 node_modules
 *.sublime-workspace
+.notificationConfig
