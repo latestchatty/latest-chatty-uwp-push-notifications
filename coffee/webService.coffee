@@ -1,5 +1,6 @@
 sys = require 'util'
 http = require 'http'
+https = require 'https'
 url = require 'url'
 path = require 'path'
 querystring = require 'querystring'
@@ -13,7 +14,16 @@ subscriptionDirectory = path.join(rootPath, 'subscribedUsers/')
 
 apiBaseUrl = 'http://shackapi.stonedonkey.com/'
 apiParentAuthorQuery = 'Search/?ParentAuthor='
-debugMode = true
+debugMode = false
+
+#If set to true, the SSL Key and Certificate will be used and a https server will be started.
+USESSL = true
+#SSL Key and Certificate file locations.
+sslKey = 'key.key'
+sslCert = 'ssl.crt'
+caPem = 'sub.class1.server.ca.pem'
+# End Configuration section
+#############################################################################################
 
 logger = new (winston.Logger)(
 	transports: [
@@ -22,8 +32,8 @@ logger = new (winston.Logger)(
 	]
 )
 
-#localServicePort = 12243 #production
-localServicePort = 12253 #development
+#serverPort = 12243 #production
+serverPort = 12253 #development
 
 #Subscribe a user, or update an existing user
 SubscribeRequest = (subResponse, userName, parsedUrl, requestData) =>
@@ -181,7 +191,7 @@ RemoveRequest = (response, parsedUrl, userName) =>
 	response.end("Bad request.")
 
 #Create the server - this is where the magic happens.
-http.createServer((request, response) =>
+handleServer = (request, @response) =>
 	requestData = ''
 	request.on('data', (chunk) =>
 		requestData += chunk;
@@ -216,9 +226,19 @@ http.createServer((request, response) =>
 			response.end("404 Not Found\n")
 			return
 	)
-).listen(localServicePort)
 
-logger.info("Server running at http://localhost:" + localServicePort)
+if(USESSL)
+	options = {
+		key:fs.readFileSync(sslKey),
+		cert:fs.readFileSync(sslCert)
+		ca:fs.readFileSync(caPem)
+	}
+	https.createServer(options, handleServer).listen(serverPort)
+	logger.info("Server running at https://localhost:" + serverPort)
+else
+	http.createServer(handleServer).listen(serverPort)
+	logger.info("Server running at http://localhost:" + serverPort)
+
 logger.verbose("rootPath = " + rootPath)
 logger.verbose("logPath = " + logPath)
 logger.verbose("subscriptionDirectory = " + subscriptionDirectory)

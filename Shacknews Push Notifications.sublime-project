@@ -5,13 +5,13 @@
 			"file_exclude_patterns":
 			[
 				".gitignore",
-				"*.sublime-workspace"
+				"*.sublime*"
 			],
 			"folder_exclude_patterns":
 			[
 				"node_modules"
 			],
-			"path": "/Users/wzutz/Documents/Code - Git/shacknews-push-notifications"
+			"path": "."
 		}
 	]
 }
