@@ -14,7 +14,7 @@ logPath = path.join(rootPath, 'logs/')
 subscriptionDirectory = path.join(rootPath, 'subscribedUsers/')
 apiBaseUrl = 'http://shackapi.stonedonkey.com/'
 apiParentAuthorQuery = 'Search/?ParentAuthor='
-configFile = ".notificationConfig"
+configFile = path.join(rootPath, '.notificationConfig')
 
 logger = new (winston.Logger)({
 	transports: [
@@ -40,9 +40,15 @@ class Config
 			""")
 
 class WNSAuthentication
+	@error = undefined
+	@success = undefined
+
 	constructor: () ->
 		@config = new Config()
-	Authenticate: (@success, @error) =>
+	Authenticate: (success, error) =>
+		@error = error
+		@success = success
+
 		unless(@success)
 			throw 'Success method not defined for WNS Authentication.'
 		unless(@error)
@@ -86,9 +92,11 @@ class WNSAuthentication
 		request.end()
 
 class UserProcessor
-	constructor: (@userData, @wnsConfig) ->
+	constructor: (userData, wnsConfig) ->
+		@userInfo = userData
+		@wnsConfig = wnsConfig
 
-	SendWindows8Data: (requestOptions, payload, userInfo) =>
+	SendWindows8Data: (requestOptions, payload) =>
 		request = https.request(requestOptions, (res) =>
 			res.setEncoding('utf8')
 			errorDescription = res.headers['X-WNS-Error-Description']
@@ -106,7 +114,14 @@ class UserProcessor
 						Code: #{res.statusCode}
 						Error: #{errorDescription}
 						Response: #{responseBody}""")
-					
+				if (res.statusCode is 410)
+					#When the status code is 410 that means the uri has expired and we need to cease trying to send notifications to it.
+					file = path.join(subscriptionDirectory, @userInfo.deviceId)
+					path.exists(file, (exists) =>
+						if (exists)
+							fs.unlinkSync(file)
+							logger.info('Device ID ' + @userInfo.deviceId + ' for user ' + @userInfo.userName + ' has expired.  Removing subscription.')
+					)
 				else 
 					logger.info('Windows 8 notification sent successfully!')
 			)
@@ -120,8 +135,8 @@ class UserProcessor
 		request.write(payload)
 		request.end()
 
-	SendWindows8Notification: (count, author, preview, userInfo) =>
-		parsedUri = url.parse(userInfo.notificationUri)
+	SendWindows8Notification: (count, author, preview) =>
+		parsedUri = url.parse(@userInfo.notificationUri)
 
 		tileData = """<tile launch="">
 		  <visual lang="en-US">
@@ -146,7 +161,7 @@ class UserProcessor
 			}
 		}
 
-		@SendWindows8Data(requestOptions, tileData, userInfo)
+		@SendWindows8Data(requestOptions, tileData)
 
 		tileData = """<tile launch="">
 		  <visual lang="en-US">
@@ -171,7 +186,7 @@ class UserProcessor
 			}
 		}
 
-		@SendWindows8Data(requestOptions, tileData, userInfo)
+		@SendWindows8Data(requestOptions, tileData)
 
 		tileData = """<badge value="#{count}" />"""
 
@@ -189,9 +204,9 @@ class UserProcessor
 			}
 		}	
 
-		@SendWindows8Data(requestOptions, tileData, userInfo)
+		@SendWindows8Data(requestOptions, tileData)
 
-	SendWP7Notification: (requestOptions, payload, userInfo) =>
+	SendWP7Notification: (requestOptions, payload) =>
 		request = http.request(requestOptions, (res) =>
 			notificationStatus = res.headers['x-notificationstatus'].toLowerCase()
 			deviceConnectionStatus = res.headers['x-deviceconnectionstatus'].toLowerCase()
@@ -214,11 +229,11 @@ class UserProcessor
 					#  Especially need to pay attention to when a device channel is no longer valid.
 					#  Otherwise we're just wasting time trying to notify something that will never, ever get it.
 					if(subscriptionStatus == 'expired') 
-						file = path.join(subscriptionDirectory, userInfo.deviceId)
+						file = path.join(subscriptionDirectory, @userInfo.deviceId)
 						path.exists(file, (exists) =>
 							if (exists) 
 								fs.unlinkSync(file)
-								logger.info('Device ID ' + userInfo.deviceId + ' for user ' + userInfo.userName + ' has expired.  Removing subscription.')
+								logger.info('Device ID ' + @userInfo.deviceId + ' for user ' + @userInfo.userName + ' has expired.  Removing subscription.')
 						)
 					else 
 						logger.info("""Sending push failed.
@@ -241,8 +256,8 @@ class UserProcessor
 		request.write(payload)
 		request.end()
 
-	SendWP7ToastNotification: (author, preview, userInfo) =>
-		parsedUri = url.parse(userInfo.notificationUri)
+	SendWP7ToastNotification: (author, preview) =>
+		parsedUri = url.parse(@userInfo.notificationUri)
 
 		toastData = """<?xml version="1.0" encoding="utf-8"?>
 	        <wp:Notification xmlns:wp="WPNotification">
@@ -266,10 +281,10 @@ class UserProcessor
 		}
 
 		logger.info('**Sending toast notification\n' + toastData)
-		SendWP7Notification(requestOptions, toastData, userInfo)
+		SendWP7Notification(requestOptions, toastData)
 
-	SendWP7TileNotification: (count, author, preview, userInfo) =>
-		parsedUri = url.parse(userInfo.notificationUri)
+	SendWP7TileNotification: (count, author, preview) =>
+		parsedUri = url.parse(@userInfo.notificationUri)
 
 		tileMessage = """<?xml version="1.0" encoding="utf-8"?>
 			<wp:Notification xmlns:wp="WPNotification">
@@ -294,10 +309,10 @@ class UserProcessor
 		}
 
 		logger.info('**Sending tile notification\n' + tileMessage)
-		SendWP7Notification(requestOptions, tileMessage, userInfo)
+		SendWP7Notification(requestOptions, tileMessage)
 
 	ProcessUser: () =>
-		siteUrl = url.parse(apiBaseUrl + apiParentAuthorQuery + @userData.userName)
+		siteUrl = url.parse(apiBaseUrl + apiParentAuthorQuery + @userInfo.userName)
 
 		requestOptions = {
 			host: siteUrl.host,
@@ -325,9 +340,9 @@ class UserProcessor
 				totalResults = totalResultsAttribute.toString()
 
 				#The count of new replies is the total number of current replies minus the number of replies since the last time we notified.
-				newReplyCount = parseInt(totalResults) - parseInt(@userData.replyCountLastNotified)
+				newReplyCount = parseInt(totalResults) - parseInt(@userInfo.replyCountLastNotified)
 				if (newReplyCount > 0) 
-					logger.info("Previous count for #{@userData.userName} was #{@userData.replyCount} current count is #{totalResults}, we got new stuff!")
+					logger.info("Previous count for #{@userInfo.userName} was #{@userInfo.replyCount} current count is #{totalResults}, we got new stuff!")
 
 					replies = xmlDoc.child('result')
 					if(replies._list.length > 0)
@@ -337,36 +352,37 @@ class UserProcessor
 							body = latestResult.child('body').toString().substr(0, 40)
 
 							logger.verbose("Latest Author: #{author} Body: #{body}")
-							logger.verbose("@userData #{JSON.stringify(@userData)}")
-							if (@userData.hasOwnProperty('notificationUri')) 	
-								if ((@userData.notificationType is '2') or (@userData.notificationType is '1'))
+							logger.verbose("@userInfo #{JSON.stringify(@userInfo)}")
+							if (@userInfo.hasOwnProperty('notificationUri'))
+								if ((@userInfo.notificationType is '2') or (@userInfo.notificationType is '1'))
 									#The count of new replies is the total number of current replies minus the number of replies the app last knew about
-									@SendWP7TileNotification(parseInt(totalResults) - parseInt(@userData.replyCount), author, body, @userData)
-									if (@userData.notificationType is '2') 
-										@SendWP7ToastNotification(author, body, @userData)
-								else if (@userData.notificationType is '3')
-									@SendWindows8Notification(parseInt(totalResults) - parseInt(@userData.replyCount), author, body, @userData)
+									@SendWP7TileNotification(parseInt(totalResults) - parseInt(@userInfo.replyCount), author, body)
+									if (@userInfo.notificationType is '2')
+										@SendWP7ToastNotification(author, body)
+								else if (@userInfo.notificationType is '3')
+									@SendWindows8Notification(parseInt(totalResults) - parseInt(@userInfo.replyCount), author, body)
 							else 
 								logger.info('Would send push notification of\n  Author: ' + author + '\n  Preview: ' + body)
 
 					#Since we got new stuff, it's time to update the current count.
-					@userData.replyCountLastNotified = totalResults
-					fileNameToSave = path.join(subscriptionDirectory, @userData.deviceId)
-					fs.writeFile(fileNameToSave, JSON.stringify(@userData), (err) =>
+					@userInfo.replyCountLastNotified = totalResults
+					fileNameToSave = path.join(subscriptionDirectory, @userInfo.deviceId)
+					fs.writeFile(fileNameToSave, JSON.stringify(@userInfo), (err) =>
 						if (err)
 							logger.info("Error saving file " + fileNameToSave + " " + err)
 						else 
-							logger.info("Saved updated file " + fileNameToSave + " for username " + @userData.userName + "!")
+							logger.info("Saved updated file " + fileNameToSave + " for username " + @userInfo.userName + "!")
 					)
 				
 				else 
-					logger.info('No new replies for ' + @userData.userName + ', previous count notified at was ' + @userData.replyCountLastNotified + ' current count is ' + totalResults);
+					logger.info('No new replies for ' + @userInfo.userName + ', previous count notified at was ' + @userInfo.replyCountLastNotified + ' current count is ' + totalResults);
 				
 			)
 		)
 
 class Processor
-	constructor: (@directoryToProcess) ->
+	constructor: (directoryToProcess) ->
+		@directoryToProcess = directoryToProcess
 
 	Process: () =>
 		@wnsConfig = new WNSAuthentication()
