@@ -102,18 +102,12 @@ class UserProcessor
 			errorDescription = res.headers['X-WNS-Error-Description']
 
 			responseBody = ''
-			responseSuccessful = (res.statusCode is 200)	#and (notificationStatus is 'received')	and (deviceConnectionStatus is 'connected') and (subscriptionStatus is 'active')
 
 			res.on('data', (chunk) => 
 				responseBody += chunk
 			)
 
 			res.on('end', =>
-				if (!responseSuccessful) 
-					logger.info("""Sending push failed.
-						Code: #{res.statusCode}
-						Error: #{errorDescription}
-						Response: #{responseBody}""")
 				if (res.statusCode is 410)
 					#When the status code is 410 that means the uri has expired and we need to cease trying to send notifications to it.
 					file = path.join(subscriptionDirectory, @userInfo.deviceId)
@@ -122,6 +116,11 @@ class UserProcessor
 							fs.unlinkSync(file)
 							logger.info('Device ID ' + @userInfo.deviceId + ' for user ' + @userInfo.userName + ' has expired.  Removing subscription.')
 					)
+				else if (res.statusCode isnt 200)
+					logger.info("""Sending push failed.
+						Code: #{res.statusCode}
+						Error: #{errorDescription}
+						Response: #{responseBody}""")
 				else 
 					logger.info('Windows 8 notification sent successfully!')
 			)
