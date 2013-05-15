@@ -1,16 +1,7 @@
-sys = require 'util'
-http = require 'http'
-https = require 'https'
-url = require 'url'
-path = require 'path'
-querystring = require 'querystring'
-fs = require 'fs'
-jsxml = require 'node-jsxml'
-winston = require 'winston'
-
-rootPath = __dirname
-logPath = path.join(rootPath, 'logs/')
-subscriptionDirectory = path.join(rootPath, 'subscribedUsers/')
+##############################################################################################
+# Configuration section
+logPath = 'logs/'
+subscriptionDirectory = 'subscribedUsers/'
 
 apiBaseUrl = 'http://shackapi.stonedonkey.com/'
 apiParentAuthorQuery = 'Search/?ParentAuthor='
@@ -25,6 +16,24 @@ caPem = 'sub.class1.server.ca.pem'
 # End Configuration section
 #############################################################################################
 
+
+sys = require 'util'
+http = require 'http'
+https = require 'https'
+url = require 'url'
+path = require 'path'
+querystring = require 'querystring'
+fs = require 'fs'
+jsxml = require 'node-jsxml'
+winston = require 'winston'
+
+rootPath = __dirname
+logPath = path.join(rootPath, logPath)
+subscriptionDirectory = path.join(rootPath, subscriptionDirectory)
+sslKey = path.join(rootPath, sslKey)
+sslCert = path.join(rootPath, sslCert)
+caPem = path.join(rootPath, caPem)
+
 logger = new (winston.Logger)(
 	transports: [
 		new (winston.transports.Console)( { colorize: true, timestamp : true, level : 'silly' } ),
@@ -32,8 +41,8 @@ logger = new (winston.Logger)(
 	]
 )
 
-#serverPort = 12243 #production
-serverPort = 12253 #development
+serverPort2 = 12243 #Windows Phone apps use this port.
+serverPort = 12253 #Windows Store app uses this port... oops.
 
 #Subscribe a user, or update an existing user
 SubscribeRequest = (subResponse, userName, parsedUrl, requestData) =>
@@ -66,7 +75,7 @@ SubscribeRequest = (subResponse, userName, parsedUrl, requestData) =>
 
 		siteUrl = url.parse(apiBaseUrl + apiParentAuthorQuery + userName)
 
-		requestOptions = 
+		requestOptions =
 			host: siteUrl.host,
 			port: 80,
 			path: siteUrl.path
@@ -84,15 +93,15 @@ SubscribeRequest = (subResponse, userName, parsedUrl, requestData) =>
 			)
 
 			res.on('end', () =>
-				try 
+				try
 					#I would prefer to switch to the json api, but it appears to not show the total_results.  It's null.
 					xmlDoc = new jsxml.XML(dataReceived)
 
-					if (xmlDoc is null) 
+					if (xmlDoc is null)
 						return
 
 					totalResultsAttribute = xmlDoc.attribute('total_results')
-					if (totalResultsAttribute is null) 
+					if (totalResultsAttribute is null)
 						return
 
 					#This is the number of results we know about right this very moment.
@@ -117,7 +126,7 @@ SubscribeRequest = (subResponse, userName, parsedUrl, requestData) =>
 							logger.error("Missing notification type.")
 							subResponse.end("Missing notification type.")
 							return
-						
+
 						if (parsedQuery.hasOwnProperty('deviceId'))
 							saveObject.deviceId = parsedQuery['deviceId']
 						else
@@ -125,7 +134,7 @@ SubscribeRequest = (subResponse, userName, parsedUrl, requestData) =>
 							logger.error("Missing device id.")
 							subResponse.end("Missing device id.")
 							return
-					
+
 
 					logger.silly("Subscribing with info: " + JSON.stringify(saveObject))
 
@@ -160,9 +169,9 @@ SubscribeRequest = (subResponse, userName, parsedUrl, requestData) =>
 
 #Remove a user
 RemoveRequest = (response, parsedUrl, userName) =>
-	if (parsedUrl.hasOwnProperty('query')) 
+	if (parsedUrl.hasOwnProperty('query'))
 		parsedQuery = querystring.parse(parsedUrl.query)
-		if (parsedQuery.hasOwnProperty('deviceId')) 
+		if (parsedQuery.hasOwnProperty('deviceId'))
 			deviceId = parsedQuery['deviceId']
 			file = path.join(subscriptionDirectory, parsedQuery['deviceId'])
 			if(path.existsSync(file))
@@ -219,7 +228,7 @@ handleServer = (request, @response) =>
 				else if (request.method == 'DELETE')
 					requestHandled = true
 					RemoveRequest(response, parsedUrl, splitPath[2])
-		
+
 		if(!requestHandled)
 			logger.error("Request not handled.")
 			response.writeHead(404, { "Content-Type": "text/plain" })
@@ -235,9 +244,13 @@ if(USESSL)
 	}
 	https.createServer(options, handleServer).listen(serverPort)
 	logger.info("Server running at https://localhost:" + serverPort)
+	https.createServer(options, handleServer).listen(serverPort2)
+	logger.info("Server running at https://localhost:" + serverPort2)
 else
 	http.createServer(handleServer).listen(serverPort)
 	logger.info("Server running at http://localhost:" + serverPort)
+	http.createServer(handleServer).listen(serverPort2)
+	logger.info("Server running at http://localhost:" + serverPort2)
 
 logger.verbose("rootPath = " + rootPath)
 logger.verbose("logPath = " + logPath)
