@@ -280,7 +280,7 @@ class UserProcessor
 		}
 
 		logger.info('**Sending toast notification\n' + toastData)
-		SendWP7Notification(requestOptions, toastData)
+		@SendWP7Notification(requestOptions, toastData)
 
 	SendWP7TileNotification: (count, author, preview) =>
 		parsedUri = url.parse(@userInfo.notificationUri)
@@ -308,7 +308,7 @@ class UserProcessor
 		}
 
 		logger.info('**Sending tile notification\n' + tileMessage)
-		SendWP7Notification(requestOptions, tileMessage)
+		@SendWP7Notification(requestOptions, tileMessage)
 
 	ProcessUser: () =>
 		siteUrl = url.parse(apiBaseUrl + apiParentAuthorQuery + @userInfo.userName)
