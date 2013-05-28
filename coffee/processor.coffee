@@ -205,7 +205,7 @@ class UserProcessor
 
 		@SendWindows8Data(requestOptions, tileData)
 
-	SendWP7Notification: (requestOptions, payload) =>
+	SendWindowsPhoneNotification: (requestOptions, payload) =>
 		request = http.request(requestOptions, (res) =>
 			notificationStatus = res.headers['x-notificationstatus'].toLowerCase()
 			deviceConnectionStatus = res.headers['x-deviceconnectionstatus'].toLowerCase()
@@ -280,7 +280,41 @@ class UserProcessor
 		}
 
 		logger.info('**Sending toast notification\n' + toastData)
-		@SendWP7Notification(requestOptions, toastData)
+		@SendWindowsPhoneNotification(requestOptions, toastData)
+
+	SendWP8TileNotification: (count, author, preview) =>
+		parsedUri = url.parse(@userInfo.notificationUri)
+
+		tileMessage = """<?xml version="1.0" encoding="utf-8"?>
+		  <wp:Notification xmlns:wp="WPNotification" Version="2.0">
+			  <wp:Tile Id="" Template="IconicTile">
+				  <wp:SmallIconImage>Images/TileIconSmall.png</wp:SmallIconImage>
+				  <wp:IconImage>Images/TileIconMedium.png</wp:IconImage>
+				  <wp:WideContent1>#{author}</wp:WideContent1>
+				  <wp:WideContent2>#{preview}</wp:WideContent2>
+				  <wp:WideContent3 Action="Clear"></wp:WideContent3>
+				  <wp:Count>#{count}</wp:Count>
+				  <wp:Title>Latest Chatty 8</wp:Title>
+				  <wp:BackgroundColor Action="Clear">#00FFFFFF</wp:BackgroundColor>
+			  </wp:Tile>
+		  </wp:Notification>"""
+
+		requestOptions = {
+			hostname: parsedUri.hostname,
+			port: parsedUri.port,
+			path: parsedUri.path,
+			method: 'POST',
+			headers: {
+				'Content-Type': 'text/xml',
+				'Content-Length': tileMessage.length,
+				'X-WindowsPhone-Target': 'token',
+				'X-NotificationClass': '1'
+			}
+		}
+
+		logger.info('**Sending Windows Phone 8 tile notification\n' + tileMessage)
+		@SendWindowsPhoneNotification(requestOptions, tileMessage)
+
 
 	SendWP7TileNotification: (count, author, preview) =>
 		parsedUri = url.parse(@userInfo.notificationUri)
@@ -307,8 +341,8 @@ class UserProcessor
 			}
 		}
 
-		logger.info('**Sending tile notification\n' + tileMessage)
-		@SendWP7Notification(requestOptions, tileMessage)
+		logger.info('**Sending Windows Phone 7 tile notification\n' + tileMessage)
+		@SendWindowsPhoneNotification(requestOptions, tileMessage)
 
 	ProcessUser: () =>
 		siteUrl = url.parse(apiBaseUrl + apiParentAuthorQuery + @userInfo.userName)
@@ -353,11 +387,27 @@ class UserProcessor
 							logger.verbose("Latest Author: #{author} Body: #{body}")
 							logger.verbose("@userInfo #{JSON.stringify(@userInfo)}")
 							if (@userInfo.hasOwnProperty('notificationUri'))
-								if ((@userInfo.notificationType is '2') or (@userInfo.notificationType is '1'))
-									#The count of new replies is the total number of current replies minus the number of replies the app last knew about
-									@SendWP7TileNotification(parseInt(totalResults) - parseInt(@userInfo.replyCount), author, body)
-									if (@userInfo.notificationType is '2')
+
+								newPostCount = parseInt(totalResults) - parseInt(@userInfo.replyCount)
+
+								#1 - Windows Phone 7 Tile Only
+								#2 - Windows Phone 7 Tile and Toast
+								#3 - Windows 8 Store Live Tile
+								#4 - Windows Phone 8 Tile Only
+								#5 - Windows Phone 8 Tile and Toast
+								if ((@userInfo.notificationType is '2') or (@userInfo.notificationType is '1') or (@userInfo.notificationType is '4') or (@userInfo.notificationType is '5'))
+									#If it's 1 or 2, we need to send a WP7 tile notification
+									if((@userInfo.notificationType is '2') or (@userInfo.notificationType is '1'))
+										#The count of new replies is the total number of current replies minus the number of replies the app last knew about
+										@SendWP7TileNotification(newPostCount, author, body)
+									else
+										#Otherwise we're sending WP8 notification
+										@SendWP8TileNotification(newPostCount, author, body)
+
+									#We've taken care of tiles - Now do toasts if we need to.  WP8 and WP7 use the same toast notification xml, so we don't have to do anything different.
+									if (@userInfo.notificationType is '2' or @userInfo.notificationType is '5')
 										@SendWP7ToastNotification(author, body)
+
 								else if (@userInfo.notificationType is '3')
 									@SendWindows8Notification(parseInt(totalResults) - parseInt(@userInfo.replyCount), author, body)
 							else 
