@@ -5,3 +5,15 @@ logs
 node_modules
 *.sublime-workspace
 .notificationConfig
+
+# git ignore file
+*bin/
+*obj/
+packages/
+AppPackages/
+*ReSharper*/
+
+ApplicationInsights.config
+*.ncrunch*
+*.suo
+*.csproj.user
