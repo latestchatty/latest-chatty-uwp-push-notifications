@@ -10,6 +10,5 @@ namespace Shacknews_Push_Notifications
 	{
 		public string NotificationUri { get; set; }
 		public string DeviceId { get; set; }
-		public int NotificationType { get; set; }
 	}
 }
