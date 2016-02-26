@@ -17,6 +17,7 @@ namespace Shacknews_Push_Notifications
 
 			webService.Start();
 			monitor.Start();
+
 			// check if we're running on mono
 			if (Type.GetType("Mono.Runtime") != null)
 			{

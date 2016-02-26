@@ -17,3 +17,4 @@ ApplicationInsights.config
 *.ncrunch*
 *.suo
 *.csproj.user
+Local.config

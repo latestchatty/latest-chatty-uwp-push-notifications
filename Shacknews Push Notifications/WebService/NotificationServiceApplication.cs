@@ -1,6 +1,7 @@
 ﻿using Nancy.Hosting.Self;
 using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -15,7 +16,7 @@ namespace Shacknews_Push_Notifications
 		{
 			if (host == null)
 			{
-				var uri = "http://localhost:8080"; //TODO: Read from configuration.
+				var uri = ConfigurationManager.AppSettings["hostUri"];
 				this.host = new NancyHost(new Uri(uri));
 				this.host.Start();
 				Console.WriteLine("Web service started.");

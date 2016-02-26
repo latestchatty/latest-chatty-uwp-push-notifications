@@ -3,6 +3,7 @@ using Nancy;
 using Nancy.ModelBinding;
 using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -163,7 +164,7 @@ namespace Shacknews_Push_Notifications
 
 		private IMongoCollection<NotificationUser> GetDbCollection()
 		{
-			var dbClient = new MongoClient("mongodb://192.168.1.216:27017/"); //TODO: Read from configuration
+			var dbClient = new MongoClient(ConfigurationManager.AppSettings["dbConnectionString"]);
 			var db = dbClient.GetDatabase("notifications");
 
 			return db.GetCollection<NotificationUser>("notificationUsers");
