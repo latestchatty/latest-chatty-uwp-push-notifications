@@ -1,19 +1,26 @@
 ﻿using MongoDB.Driver;
 using Nancy;
 using Nancy.ModelBinding;
+using Shacknews_Push_Notifications.Common;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 
 namespace Shacknews_Push_Notifications
 {
-	public class NotificationEndpoint : NancyModule
+	public class Endpoint : NancyModule
 	{
-		public NotificationEndpoint()
+		private readonly NotificationService notificationService;
+		private readonly DatabaseService dbService;
+
+		public Endpoint(NotificationService notificationService, DatabaseService dbService)
 		{
+			this.notificationService = notificationService;
+			this.dbService = dbService;
 			Post["/register"] = this.RegisterDevice;
 			Post["/deregister"] = this.DeregisterDevice;
 			Post["/resetcount"] = this.ResetCount;
@@ -46,7 +53,7 @@ namespace Shacknews_Push_Notifications
 				Console.WriteLine("Deregister device.");
 				var e = this.Bind<DeregisterArgs>();
 
-				var collection = this.GetDbCollection();
+				var collection =this. dbService.GetCollection();
 
 				var userName = arg.userName.ToString().ToLower() as string;
 				var user = await collection.Find(u => u.NotificationInfos.Any(ni => ni.DeviceId.Equals(e.DeviceId))).FirstOrDefaultAsync();
@@ -80,7 +87,7 @@ namespace Shacknews_Push_Notifications
 			{
 				Console.WriteLine("Register device.");
 				var e = this.Bind<RegisterArgs>();
-				var collection = this.GetDbCollection();
+				var collection = this.dbService.GetCollection();
 
 				var user = await collection.Find(u => u.UserName.Equals(e.UserName)).FirstOrDefaultAsync();
 				if (user != null)
@@ -139,13 +146,15 @@ namespace Shacknews_Push_Notifications
 			{
 				Console.WriteLine("Reset count.");
 				var e = this.Bind<ResetCountArgs>();
-				var collection = this.GetDbCollection();
+				var collection = this.dbService.GetCollection();
 
 				var user = await collection.Find(u => u.UserName.Equals(e.UserName)).FirstOrDefaultAsync();
 				if (user != null)
 				{
 					//Update user
-
+					var badgeDoc = new XDocument(new XElement("badge", new XAttribute("value", 0)));
+					await this.notificationService.SendNotificationToUser(NotificationType.Badge, badgeDoc, user.UserName);
+					await this.notificationService.RemoveAllToastsForUser(user.UserName);
 					var filter = Builders<NotificationUser>.Filter.Eq("_id", user._id);
 					var update = Builders<NotificationUser>.Update
 						.CurrentDate(x => x.DateUpdated)
@@ -163,15 +172,6 @@ namespace Shacknews_Push_Notifications
 				//TODO: Log exception
 				return new { status = "error" };
 			}
-		}
-
-
-		private IMongoCollection<NotificationUser> GetDbCollection()
-		{
-			var dbClient = new MongoClient(ConfigurationManager.AppSettings["dbConnectionString"]);
-			var db = dbClient.GetDatabase("notifications");
-
-			return db.GetCollection<NotificationUser>("notificationUsers");
 		}
 	}
 }

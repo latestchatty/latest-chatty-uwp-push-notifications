@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Shacknews_Push_Notifications
 {
-	class NotificationInfo
+	public class NotificationInfo
 	{
 		public string NotificationUri { get; set; }
 		public string DeviceId { get; set; }

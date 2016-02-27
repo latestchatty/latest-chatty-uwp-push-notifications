@@ -1,5 +1,7 @@
-﻿using Mono.Unix;
+﻿using Autofac;
+using Mono.Unix;
 using Mono.Unix.Native;
+using Shacknews_Push_Notifications.WebService;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,8 +14,11 @@ namespace Shacknews_Push_Notifications
 	{
 		static void Main(string[] args)
 		{
-			var webService = new NotificationServiceApplication();
-			var monitor = new NotificationMonitor();
+			var builder = new AppModuleBuilder();
+			var container = builder.BuilderContainer();
+
+			var webService = new WebServiceProcessManager(container);
+			var monitor = container.Resolve<Monitor>();
 
 			webService.Start();
 			monitor.Start();

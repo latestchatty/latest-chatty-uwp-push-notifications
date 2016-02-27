@@ -1,5 +1,6 @@
 ﻿using MongoDB.Driver;
 using Newtonsoft.Json.Linq;
+using Shacknews_Push_Notifications.Common;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
@@ -11,7 +12,7 @@ using System.Xml.Linq;
 
 namespace Shacknews_Push_Notifications
 {
-	class NotificationMonitor
+	class Monitor
 	{
 		const int BASE_TIME_DELAY = 2;
 		const double TIME_DELAY_FAIL_EXPONENT = 1.5;
@@ -19,7 +20,14 @@ namespace Shacknews_Push_Notifications
 		double timeDelay = 0;
 		bool timerEnabled = false;
 		int lastEventId = 0;
-		string accessToken = string.Empty;
+		private readonly NotificationService notificationService;
+		private readonly DatabaseService dbService;
+
+		public Monitor(NotificationService notificationService, DatabaseService dbService)
+		{
+			this.notificationService = notificationService;
+			this.dbService = dbService;
+		}
 
 		public void Start()
 		{
@@ -39,42 +47,12 @@ namespace Shacknews_Push_Notifications
 			Console.WriteLine("Notification monitor stopped.");
 		}
 
-		async private Task GetAccessToken()
-		{
-			Console.WriteLine("Getting access token.");
-			var client = new HttpClient();
-			var data = new FormUrlEncodedContent(new Dictionary<string, string> {
-					{ "grant_type", "client_credentials" },
-					{ "client_id", ConfigurationManager.AppSettings["notificationSID"] },
-					{ "client_secret", ConfigurationManager.AppSettings["clientSecret"] },
-					{ "scope", "notify.windows.com" },
-				});
-			var response = await client.PostAsync("https://login.live.com/accesstoken.srf", data);
-			if (response.StatusCode == System.Net.HttpStatusCode.OK)
-			{
-				var responseJson = JToken.Parse(await response.Content.ReadAsStringAsync());
-				if (responseJson["access_token"] != null)
-				{
-					this.accessToken = responseJson["access_token"].Value<string>();
-					Console.WriteLine($"Got access token {this.accessToken}");
-				}
-			}
-		}
-
 		async private void TimerCallback(object state)
 		{
 			Console.WriteLine("Notification timer.");
 			try
 			{
-				if (string.IsNullOrWhiteSpace(this.accessToken))
-				{
-					await this.GetAccessToken();
-				}
-
-				var dbClient = new MongoClient(ConfigurationManager.AppSettings["dbConnectionString"]);
-				var db = dbClient.GetDatabase("notifications");
-
-				var collection = db.GetCollection<NotificationUser>("notificationUsers");
+				var collection = dbService.GetCollection();
 
 				var client = new HttpClient();
 
@@ -83,7 +61,7 @@ namespace Shacknews_Push_Notifications
 					var res = await client.GetAsync($"{ConfigurationManager.AppSettings["winchattyApiBase"]}getNewestEventId");
 					var json = JToken.Parse(await res.Content.ReadAsStringAsync());
 					this.lastEventId = (int)json["eventId"];
-					this.lastEventId -= 100;
+					this.lastEventId -= 50;
 				}
 
 				var resEvent = await client.GetAsync($"{ConfigurationManager.AppSettings["winchattyApiBase"]}waitForEvent?lastEventId={this.lastEventId}&includeParentAuthor=1");
@@ -96,32 +74,44 @@ namespace Shacknews_Push_Notifications
 						{
 							var jEventData = e["eventData"];
 							var parentAuthor = jEventData["parentAuthor"].ToString();
-							var user = await collection.Find(u => u.UserName.Equals(parentAuthor.ToLower())).FirstOrDefaultAsync();
-							if (user != null)
+							var latestReplyAuthor = jEventData["post"]["author"].Value<string>();
+#if !DEBUG
+							//Don't notify if self-reply.
+							if (!parentAuthor.Equals(latestReplyAuthor, StringComparison.InvariantCultureIgnoreCase))
 							{
-								if (user.NotificationInfos != null && user.NotificationInfos.Count > 0)
+#endif
+								var user = await collection.Find(u => u.UserName.Equals(parentAuthor.ToLower())).FirstOrDefaultAsync();
+								if (user != null)
 								{
-									var filter = Builders<NotificationUser>.Filter.Eq("_id", user._id);
-									var update = Builders<NotificationUser>.Update
-										.Inc(x => x.ReplyCount, 1)
-										.CurrentDate(x => x.LastNotifiedTime);
-									await collection.UpdateOneAsync(filter, update);
-									user = await collection.Find(u => u.UserName.Equals(parentAuthor.ToLower())).FirstOrDefaultAsync();
-									var newReplies = user.ReplyCount;
-									var latestReplyAuthor = jEventData["post"]["author"].Value<string>();
-									var latestReplyText = jEventData["post"]["body"].Value<string>(); //TODO: Sanitize
-									var latestPostId = jEventData["post"]["id"];
-									foreach (var info in user.NotificationInfos)
+									if (user.NotificationInfos != null && user.NotificationInfos.Count > 0)
 									{
-										await this.SendNotifications(info, newReplies, latestReplyAuthor, latestReplyText, latestPostId);
+										var filter = Builders<NotificationUser>.Filter.Eq("_id", user._id);
+										var update = Builders<NotificationUser>.Update
+											.Inc(x => x.ReplyCount, 1)
+											.CurrentDate(x => x.LastNotifiedTime);
+										await collection.UpdateOneAsync(filter, update);
+										user = await collection.Find(u => u.UserName.Equals(parentAuthor.ToLower())).FirstOrDefaultAsync();
+										var newReplies = user.ReplyCount;
+										var latestReplyText = HtmlRemoval.StripTagsRegexCompiled(jEventData["post"]["body"].Value<string>().Replace("<br />", " ").Replace(char.ConvertFromUtf32(8232), " "));
+										var latestPostId = jEventData["post"]["id"];
+										foreach (var info in user.NotificationInfos)
+										{
+											await this.SendNotifications(info, newReplies, latestReplyAuthor, latestReplyText, latestPostId);
+										}
+										Console.WriteLine($"Would notify {parentAuthor} of {newReplies} new replies with the latest being {Environment.NewLine} {latestReplyText} by {latestReplyAuthor} with a thread id { latestPostId}");
 									}
-									Console.WriteLine($"Would notify {parentAuthor} of {newReplies} new replies with the latest being {Environment.NewLine} {latestReplyText} by {latestReplyAuthor} with a thread id { latestPostId}");
 								}
+								else
+								{
+									Console.WriteLine($"No alert on reply to {parentAuthor}");
+								}
+#if !DEBUG
 							}
 							else
 							{
-								//Console.WriteLine($"No alert on reply to {parentAuthor}");
-							}
+								Console.WriteLine($"No alert on self-reply to {parentAuthor}");
+                     }
+#endif
 						}
 					}
 				}
@@ -140,6 +130,8 @@ namespace Shacknews_Push_Notifications
 				}
 				//There was a problem, delay further
 				timeDelay = Math.Pow(timeDelay, TIME_DELAY_FAIL_EXPONENT);
+				//If there was an error, reset the event ID to 0 so we get the latest, otherwise we might get stuck in a loop where the API won't return us events because there are too many.
+				lastEventId = 0;
 			}
 			finally
 			{
@@ -152,10 +144,8 @@ namespace Shacknews_Push_Notifications
 
 		async private Task SendNotifications(NotificationInfo info, int newReplies, string latestReplyAuthor, string latestReplyText, JToken latestPostId)
 		{
-			if (string.IsNullOrWhiteSpace(this.accessToken)) return;
-			
-			//var badgeDoc = new XDocument(new XElement("badge", new XAttribute("value", newReplies)));
-			//await this.SendNotificationData("wns/badge", badgeDoc, info.NotificationUri);
+			var badgeDoc = new XDocument(new XElement("badge", new XAttribute("value", newReplies)));
+			await this.notificationService.SendNotificationData(NotificationType.Badge, badgeDoc, info.NotificationUri);
 
 			var toastDoc = new XDocument(
 				new XElement("toast", new XAttribute("launch", ""),
@@ -164,7 +154,7 @@ namespace Shacknews_Push_Notifications
 							new XElement("text", new XAttribute("id", "1"), $"Reply from {latestReplyAuthor}"),
 							new XElement("text", new XAttribute("id", "2"), latestReplyText)
 				))));
-			await this.SendNotificationData("wns/toast", toastDoc, info.NotificationUri);
+			await this.notificationService.SendNotificationData(NotificationType.Toast, toastDoc, info.NotificationUri);
 
 			var tileDoc = new XDocument(
 				new XElement("tile",
@@ -173,7 +163,7 @@ namespace Shacknews_Push_Notifications
 							new XElement("text", new XAttribute("id", "1"), $"Reply from {latestReplyAuthor}"),
 							new XElement("text", new XAttribute("id", "2"), latestReplyText)))));
 
-			await this.SendNotificationData("wns/tile", tileDoc, info.NotificationUri);
+			await this.notificationService.SendNotificationData(NotificationType.Tile, tileDoc, info.NotificationUri);
 
 			tileDoc = new XDocument(
 				new XElement("tile",
@@ -182,7 +172,7 @@ namespace Shacknews_Push_Notifications
 							new XElement("text", new XAttribute("id", "1"), $"Reply from {latestReplyAuthor}"),
 							new XElement("text", new XAttribute("id", "2"), latestReplyText)))));
 
-			await this.SendNotificationData("wns/tile", tileDoc, info.NotificationUri);
+			await this.notificationService.SendNotificationData(NotificationType.Tile, tileDoc, info.NotificationUri);
 
 			tileDoc = new XDocument(
 				new XElement("tile",
@@ -194,17 +184,10 @@ namespace Shacknews_Push_Notifications
 							new XElement("text", new XAttribute("id", "4")),
 							new XElement("text", new XAttribute("id", "5")),
 							new XElement("text", new XAttribute("id", "6"))))));
-			
-			await this.SendNotificationData("wns/tile", tileDoc, info.NotificationUri);
+
+			await this.notificationService.SendNotificationData(NotificationType.Tile, tileDoc, info.NotificationUri);
 		}
 
-		async private Task SendNotificationData(string type, XDocument content, string notificationUri)
-		{
-			var client = new HttpClient();
-			var stringContent = new StringContent(content.ToString(SaveOptions.DisableFormatting), ASCIIEncoding.UTF8, "text/xml");
-			client.DefaultRequestHeaders.Add("X-WNS-Type", type);
-			client.DefaultRequestHeaders.Add("Authorization", $"Bearer {this.accessToken}");
-			var response = await client.PostAsync(notificationUri, stringContent);
-		}
+
 	}
 }

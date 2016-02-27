@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Shacknews_Push_Notifications
 {
-	class NotificationUser
+	public class NotificationUser
 	{
 		public MongoDB.Bson.ObjectId _id { get; set; }
 		public string UserName { get; set; }

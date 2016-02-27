@@ -1,4 +1,5 @@
-﻿using Nancy.Hosting.Self;
+﻿using Autofac;
+using Nancy.Hosting.Self;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
@@ -6,18 +7,25 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Shacknews_Push_Notifications
+namespace Shacknews_Push_Notifications.WebService
 {
-	class NotificationServiceApplication
+	class WebServiceProcessManager
 	{
+		private readonly IContainer container;
 		NancyHost host;
+
+		public WebServiceProcessManager(IContainer container)
+		{
+			this.container = container;
+		}
 
 		public void Start()
 		{
 			if (host == null)
 			{
 				var uri = ConfigurationManager.AppSettings["hostUri"];
-				this.host = new NancyHost(new Uri(uri));
+				var bs = new Bootstrapper(this.container);
+				this.host = new NancyHost(bs, new[] { new Uri(uri) });
 				this.host.Start();
 				Console.WriteLine("Web service started.");
 			}
