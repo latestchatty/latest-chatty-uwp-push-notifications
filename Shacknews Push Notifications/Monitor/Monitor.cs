@@ -7,6 +7,7 @@ using System.Configuration;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 
@@ -22,6 +23,7 @@ namespace Shacknews_Push_Notifications
 		int lastEventId = 0;
 		private readonly NotificationService notificationService;
 		private readonly DatabaseService dbService;
+		private CancellationTokenSource cancelToken = new CancellationTokenSource();
 
 		public Monitor(NotificationService notificationService, DatabaseService dbService)
 		{
@@ -39,6 +41,7 @@ namespace Shacknews_Push_Notifications
 		public void Stop()
 		{
 			this.timerEnabled = false;
+			this.cancelToken.Cancel();
 			if (this.mainTimer != null)
 			{
 				this.mainTimer.Dispose();
@@ -49,7 +52,7 @@ namespace Shacknews_Push_Notifications
 
 		async private void TimerCallback(object state)
 		{
-			Console.WriteLine("Notification timer.");
+			Console.WriteLine("Waiting for next monitor event...");
 			try
 			{
 				var collection = dbService.GetCollection();
@@ -58,17 +61,17 @@ namespace Shacknews_Push_Notifications
 
 				if (this.lastEventId == 0)
 				{
-					var res = await client.GetAsync($"{ConfigurationManager.AppSettings["winchattyApiBase"]}getNewestEventId");
+					var res = await client.GetAsync($"{ConfigurationManager.AppSettings["winchattyApiBase"]}getNewestEventId", this.cancelToken.Token);
 					var json = JToken.Parse(await res.Content.ReadAsStringAsync());
 					this.lastEventId = (int)json["eventId"];
 					this.lastEventId -= 50;
 				}
 
-				var resEvent = await client.GetAsync($"{ConfigurationManager.AppSettings["winchattyApiBase"]}waitForEvent?lastEventId={this.lastEventId}&includeParentAuthor=1");
+				var resEvent = await client.GetAsync($"{ConfigurationManager.AppSettings["winchattyApiBase"]}waitForEvent?lastEventId={this.lastEventId}&includeParentAuthor=1", this.cancelToken.Token);
 				var jEvent = JToken.Parse(await resEvent.Content.ReadAsStringAsync());
 				if (jEvent["events"] != null)
 				{
-					foreach (var e in jEvent["events"])
+					foreach (var e in jEvent["events"]) //PERF: Could probably Parallel.ForEach this.
 					{
 						if (e["eventType"].ToString().Equals("newPost", StringComparison.InvariantCultureIgnoreCase))
 						{
@@ -96,7 +99,7 @@ namespace Shacknews_Push_Notifications
 										var latestPostId = jEventData["post"]["id"];
 										foreach (var info in user.NotificationInfos)
 										{
-											await this.SendNotifications(info, newReplies, latestReplyAuthor, latestReplyText, latestPostId);
+											this.SendNotifications(info, newReplies, latestReplyAuthor, latestReplyText, latestPostId);
 										}
 										Console.WriteLine($"Would notify {parentAuthor} of {newReplies} new replies with the latest being {Environment.NewLine} {latestReplyText} by {latestReplyAuthor} with a thread id { latestPostId}");
 									}
@@ -122,7 +125,7 @@ namespace Shacknews_Push_Notifications
 
 				timeDelay = 0;
 			}
-			catch
+			catch (Exception ex)
 			{
 				if (timeDelay == 0)
 				{
@@ -132,7 +135,8 @@ namespace Shacknews_Push_Notifications
 				timeDelay = Math.Pow(timeDelay, TIME_DELAY_FAIL_EXPONENT);
 				//If there was an error, reset the event ID to 0 so we get the latest, otherwise we might get stuck in a loop where the API won't return us events because there are too many.
 				lastEventId = 0;
-			}
+				Console.WriteLine($"!!!!!Exception in {nameof(TimerCallback)}: {ex.ToString()}");
+         }
 			finally
 			{
 				if (this.timerEnabled)
@@ -142,10 +146,10 @@ namespace Shacknews_Push_Notifications
 			}
 		}
 
-		async private Task SendNotifications(NotificationInfo info, int newReplies, string latestReplyAuthor, string latestReplyText, JToken latestPostId)
+		private void SendNotifications(NotificationInfo info, int newReplies, string latestReplyAuthor, string latestReplyText, JToken latestPostId)
 		{
 			var badgeDoc = new XDocument(new XElement("badge", new XAttribute("value", newReplies)));
-			await this.notificationService.SendNotificationData(NotificationType.Badge, badgeDoc, info.NotificationUri);
+			this.notificationService.QueueNotificationData(NotificationType.Badge, info.NotificationUri, badgeDoc);
 
 			var toastDoc = new XDocument(
 				new XElement("toast", new XAttribute("launch", ""),
@@ -154,7 +158,7 @@ namespace Shacknews_Push_Notifications
 							new XElement("text", new XAttribute("id", "1"), $"Reply from {latestReplyAuthor}"),
 							new XElement("text", new XAttribute("id", "2"), latestReplyText)
 				))));
-			await this.notificationService.SendNotificationData(NotificationType.Toast, toastDoc, info.NotificationUri);
+			this.notificationService.QueueNotificationData(NotificationType.Toast, info.NotificationUri, toastDoc);
 
 			var tileDoc = new XDocument(
 				new XElement("tile",
@@ -163,7 +167,7 @@ namespace Shacknews_Push_Notifications
 							new XElement("text", new XAttribute("id", "1"), $"Reply from {latestReplyAuthor}"),
 							new XElement("text", new XAttribute("id", "2"), latestReplyText)))));
 
-			await this.notificationService.SendNotificationData(NotificationType.Tile, tileDoc, info.NotificationUri);
+			this.notificationService.QueueNotificationData(NotificationType.Tile, info.NotificationUri, tileDoc);
 
 			tileDoc = new XDocument(
 				new XElement("tile",
@@ -172,7 +176,7 @@ namespace Shacknews_Push_Notifications
 							new XElement("text", new XAttribute("id", "1"), $"Reply from {latestReplyAuthor}"),
 							new XElement("text", new XAttribute("id", "2"), latestReplyText)))));
 
-			await this.notificationService.SendNotificationData(NotificationType.Tile, tileDoc, info.NotificationUri);
+			this.notificationService.QueueNotificationData(NotificationType.Tile, info.NotificationUri, tileDoc);
 
 			tileDoc = new XDocument(
 				new XElement("tile",
@@ -185,7 +189,7 @@ namespace Shacknews_Push_Notifications
 							new XElement("text", new XAttribute("id", "5")),
 							new XElement("text", new XAttribute("id", "6"))))));
 
-			await this.notificationService.SendNotificationData(NotificationType.Tile, tileDoc, info.NotificationUri);
+			this.notificationService.QueueNotificationData(NotificationType.Tile, info.NotificationUri, tileDoc);
 		}
 
 

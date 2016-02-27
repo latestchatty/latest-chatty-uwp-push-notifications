@@ -2,9 +2,8 @@
 using System;
 using System.Collections.Generic;
 using System.Configuration;
-using System.Linq;
 using System.Net.Http;
-using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Shacknews_Push_Notifications.Common
@@ -13,28 +12,39 @@ namespace Shacknews_Push_Notifications.Common
 	{
 		private string accessToken = string.Empty;
 
+		SemaphoreSlim locker = new SemaphoreSlim(1);
+
 		public async Task<string> GetAccessToken()
 		{
-			if (string.IsNullOrWhiteSpace(this.accessToken))
+			try
 			{
-				Console.WriteLine("Getting access token.");
-				var client = new HttpClient();
-				var data = new FormUrlEncodedContent(new Dictionary<string, string> {
+				//Make sure we don't try to get the token multiple times in a row
+				await this.locker.WaitAsync();
+				if (string.IsNullOrWhiteSpace(this.accessToken))
+				{
+					Console.WriteLine("Getting access token.");
+					var client = new HttpClient();
+					var data = new FormUrlEncodedContent(new Dictionary<string, string> {
 					{ "grant_type", "client_credentials" },
 					{ "client_id", ConfigurationManager.AppSettings["notificationSID"] },
 					{ "client_secret", ConfigurationManager.AppSettings["clientSecret"] },
 					{ "scope", "notify.windows.com" },
 				});
-				var response = await client.PostAsync("https://login.live.com/accesstoken.srf", data);
-				if (response.StatusCode == System.Net.HttpStatusCode.OK)
-				{
-					var responseJson = JToken.Parse(await response.Content.ReadAsStringAsync());
-					if (responseJson["access_token"] != null)
+					var response = await client.PostAsync("https://login.live.com/accesstoken.srf", data);
+					if (response.StatusCode == System.Net.HttpStatusCode.OK)
 					{
-						this.accessToken = responseJson["access_token"].Value<string>();
-						Console.WriteLine($"Got access token {this.accessToken}");
+						var responseJson = JToken.Parse(await response.Content.ReadAsStringAsync());
+						if (responseJson["access_token"] != null)
+						{
+							this.accessToken = responseJson["access_token"].Value<string>();
+							Console.WriteLine($"Got access token.");
+						}
 					}
 				}
+			}
+			finally
+			{
+				this.locker.Release();
 			}
 			return this.accessToken;
 		}

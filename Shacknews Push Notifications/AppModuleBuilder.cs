@@ -13,7 +13,7 @@ namespace Shacknews_Push_Notifications
 		public IContainer BuilderContainer()
 		{
 			var builder = new ContainerBuilder();
-			builder.RegisterType<NotificationService>().InstancePerDependency();
+			builder.RegisterType<NotificationService>().SingleInstance();
 			builder.RegisterType<AccessTokenManager>().SingleInstance();
 			builder.RegisterType<DatabaseService>().InstancePerDependency();
 			builder.RegisterType<Monitor>().SingleInstance();

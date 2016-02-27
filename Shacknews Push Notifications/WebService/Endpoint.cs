@@ -74,9 +74,10 @@ namespace Shacknews_Push_Notifications
 				}
 				return new { status = "success" };
 			}
-			catch (Exception)
+			catch (Exception ex)
 			{
 				//TODO: Log exception
+				Console.WriteLine($"!!!!Exception in {nameof(DeregisterDevice)}: {ex.ToString()}");
 				return new { status = "error" };
 			}
 		}
@@ -133,9 +134,10 @@ namespace Shacknews_Push_Notifications
 				}
 				return new { status = "success" };
 			}
-			catch (Exception)
+			catch (Exception ex)
 			{
 				//TODO: Log exception
+				Console.WriteLine($"!!!!Exception in {nameof(RegisterDevice)}: {ex.ToString()}");
 				return new { status = "error" };
 			}
 		}
@@ -153,7 +155,7 @@ namespace Shacknews_Push_Notifications
 				{
 					//Update user
 					var badgeDoc = new XDocument(new XElement("badge", new XAttribute("value", 0)));
-					await this.notificationService.SendNotificationToUser(NotificationType.Badge, badgeDoc, user.UserName);
+					await this.notificationService.QueueNotificationToUser(NotificationType.Badge, badgeDoc, user.UserName);
 					await this.notificationService.RemoveAllToastsForUser(user.UserName);
 					var filter = Builders<NotificationUser>.Filter.Eq("_id", user._id);
 					var update = Builders<NotificationUser>.Update
@@ -163,13 +165,15 @@ namespace Shacknews_Push_Notifications
 				}
 				else
 				{
+					Console.WriteLine($"User {e.UserName} not found");
 					return new { status = "error", message = "User not found." };
 				}
 				return new { status = "success" };
 			}
-			catch (Exception)
+			catch (Exception ex)
 			{
 				//TODO: Log exception
+				Console.WriteLine($"!!!!Exception in {nameof(ResetCount)}: {ex.ToString()}");
 				return new { status = "error" };
 			}
 		}

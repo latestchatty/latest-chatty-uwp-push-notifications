@@ -10,6 +10,7 @@ namespace Shacknews_Push_Notifications.Common
 	{
 		Badge,
 		Tile,
-		Toast
+		Toast,
+		RemoveAllToasts
 	}
 }
