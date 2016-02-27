@@ -17,6 +17,7 @@ namespace Shacknews_Push_Notifications
 			Post["/register"] = this.RegisterDevice;
 			Post["/deregister"] = this.DeregisterDevice;
 			Post["/resetcount"] = this.ResetCount;
+			Get["/test"] = x => "Hello world!";
 		}
 
 		#region Event Bind Classes
@@ -42,6 +43,7 @@ namespace Shacknews_Push_Notifications
 		{
 			try
 			{
+				Console.WriteLine("Deregister device.");
 				var e = this.Bind<DeregisterArgs>();
 
 				var collection = this.GetDbCollection();
@@ -76,6 +78,7 @@ namespace Shacknews_Push_Notifications
 		{
 			try
 			{
+				Console.WriteLine("Register device.");
 				var e = this.Bind<RegisterArgs>();
 				var collection = this.GetDbCollection();
 
@@ -134,6 +137,7 @@ namespace Shacknews_Push_Notifications
 		{
 			try
 			{
+				Console.WriteLine("Reset count.");
 				var e = this.Bind<ResetCountArgs>();
 				var collection = this.GetDbCollection();
 
