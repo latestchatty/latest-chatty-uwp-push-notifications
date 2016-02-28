@@ -160,34 +160,26 @@ namespace Shacknews_Push_Notifications
 				))));
 			this.notificationService.QueueNotificationData(NotificationType.Toast, info.NotificationUri, toastDoc);
 
-			var tileDoc = new XDocument(
-				new XElement("tile",
-					new XElement("visual", new XAttribute("version", "2"),
-						new XElement("binding", new XAttribute("template", "TileWide310x150Text09"), new XAttribute("fallback", "TileWideText09"),
-							new XElement("text", new XAttribute("id", "1"), $"Reply from {latestReplyAuthor}"),
-							new XElement("text", new XAttribute("id", "2"), latestReplyText)))));
+			var visualElement = new XElement("visual", new XAttribute("version", "2"));
+			var tileElement = new XElement("tile", visualElement);
+			
+			visualElement.Add(new XElement("binding", new XAttribute("template", "TileWide310x150Text09"), new XAttribute("fallback", "TileWideText09"),
+				new XElement("text", new XAttribute("id", "1"), $"Reply from {latestReplyAuthor}"),
+				new XElement("text", new XAttribute("id", "2"), latestReplyText)));
+			
+			visualElement.Add(new XElement("binding", new XAttribute("template", "TileSquare150x150Text02"), new XAttribute("fallback", "TileSquareText02"),
+				new XElement("text", new XAttribute("id", "1"), $"Reply from {latestReplyAuthor}"),
+				new XElement("text", new XAttribute("id", "2"), latestReplyText)));
+			
+			visualElement.Add(new XElement("binding", new XAttribute("template", "TileSquare310x310TextList03"),
+				new XElement("text", new XAttribute("id", "1"), $"Reply from {latestReplyAuthor}"),
+				new XElement("text", new XAttribute("id", "2"), latestReplyText),
+				new XElement("text", new XAttribute("id", "3")),
+				new XElement("text", new XAttribute("id", "4")),
+				new XElement("text", new XAttribute("id", "5")),
+				new XElement("text", new XAttribute("id", "6"))));
 
-			this.notificationService.QueueNotificationData(NotificationType.Tile, info.NotificationUri, tileDoc);
-
-			tileDoc = new XDocument(
-				new XElement("tile",
-					new XElement("visual", new XAttribute("version", "2"),
-						new XElement("binding", new XAttribute("template", "TileSquare150x150Text02"), new XAttribute("fallback", "TileSquareText02"),
-							new XElement("text", new XAttribute("id", "1"), $"Reply from {latestReplyAuthor}"),
-							new XElement("text", new XAttribute("id", "2"), latestReplyText)))));
-
-			this.notificationService.QueueNotificationData(NotificationType.Tile, info.NotificationUri, tileDoc);
-
-			tileDoc = new XDocument(
-				new XElement("tile",
-					new XElement("visual", new XAttribute("version", "2"),
-						new XElement("binding", new XAttribute("template", "TileSquare310x310TextList03"),
-							new XElement("text", new XAttribute("id", "1"), $"Reply from {latestReplyAuthor}"),
-							new XElement("text", new XAttribute("id", "2"), latestReplyText),
-							new XElement("text", new XAttribute("id", "3")),
-							new XElement("text", new XAttribute("id", "4")),
-							new XElement("text", new XAttribute("id", "5")),
-							new XElement("text", new XAttribute("id", "6"))))));
+			var tileDoc = new XDocument(tileElement);
 
 			this.notificationService.QueueNotificationData(NotificationType.Tile, info.NotificationUri, tileDoc);
 		}
