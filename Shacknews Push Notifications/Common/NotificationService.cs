@@ -94,6 +94,45 @@ namespace Shacknews_Push_Notifications.Common
 			}
 		}
 
+		//async public Task QueueReplyTileNotificationForUser(string author, string reply, string userName)
+		//{
+		//	var collection = dbService.GetCollection();
+		//	var user = await collection.Find(u => u.UserName.Equals(userName.ToLower())).FirstOrDefaultAsync();
+		//	if (user != null)
+		//	{
+		//		foreach (var info in user.NotificationInfos)
+		//		{
+		//			this.QueueReplyTileNotification(author, reply, info.NotificationUri);
+		//		}
+		//	}
+		//}
+
+		//public void QueueReplyTileNotification(string author, string reply, string uri)
+		//{
+		//	var visualElement = new XElement("visual", new XAttribute("version", "2"));
+		//	var tileElement = new XElement("tile", visualElement);
+
+		//	visualElement.Add(new XElement("binding", new XAttribute("template", "TileWide310x150Text09"), new XAttribute("fallback", "TileWideText09"),
+		//		new XElement("text", new XAttribute("id", "1"), string.IsNullOrEmpty(author) ? "" : $"Reply from {author}"),
+		//		new XElement("text", new XAttribute("id", "2"), reply)));
+
+		//	visualElement.Add(new XElement("binding", new XAttribute("template", "TileSquare150x150Text02"), new XAttribute("fallback", "TileSquareText02"),
+		//		new XElement("text", new XAttribute("id", "1"), string.IsNullOrEmpty(author) ? "" : $"Reply from {author}"),
+		//		new XElement("text", new XAttribute("id", "2"), reply)));
+
+		//	visualElement.Add(new XElement("binding", new XAttribute("template", "TileSquare310x310TextList03"),
+		//		new XElement("text", new XAttribute("id", "1"), string.IsNullOrEmpty(author) ? "" : $"Reply from {author}"),
+		//		new XElement("text", new XAttribute("id", "2"), reply),
+		//		new XElement("text", new XAttribute("id", "3")),
+		//		new XElement("text", new XAttribute("id", "4")),
+		//		new XElement("text", new XAttribute("id", "5")),
+		//		new XElement("text", new XAttribute("id", "6"))));
+
+		//	var tileDoc = new XDocument(tileElement);
+
+		//	this.QueueNotificationData(NotificationType.Tile, uri, tileDoc);
+		//}
+
 		private HttpClient CreateClient(string token)
 		{
 			var client = new HttpClient();
