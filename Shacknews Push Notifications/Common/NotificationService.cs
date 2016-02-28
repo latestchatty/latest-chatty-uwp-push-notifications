@@ -17,6 +17,7 @@ namespace Shacknews_Push_Notifications.Common
 		private readonly DatabaseService dbService;
 		private System.Threading.Timer processTimer = null;
 		private ConcurrentQueue<QueuedNotificationItem> queuedItems = new ConcurrentQueue<QueuedNotificationItem>();
+		private int nextProcessDelay = 3000;
 
 		private enum ResponseResult
 		{
@@ -121,9 +122,11 @@ namespace Shacknews_Push_Notifications.Common
 					var token = await this.accessTokenManager.GetAccessToken();
 					var client = this.CreateClient(token);
 					Console.WriteLine($"Sending notification {notification.Type} with content { notification.Content?.ToString(SaveOptions.None) }");
+					var waitTime = 0;
 					ResponseResult result;
 					do
 					{
+						await Task.Delay(waitTime);
 						HttpResponseMessage response = null;
 						switch (notification.Type)
 						{
@@ -140,18 +143,25 @@ namespace Shacknews_Push_Notifications.Common
 								break;
 						}
 						result = await this.ProcessResponse(response, notification.Uri);
+						waitTime = (int)Math.Pow(Math.Max(waitTime, 1000), 1.1); //If we need to keep retrying, do it slower until we eventually succeed or get to high.
+						if (waitTime > 10 * 60 * 1000) result = ResponseResult.FailDoNotTryAgain; //Give up after a while.
 					} while (result == ResponseResult.FailTryAgain);
+				}
+				if(notification != null)
+				{
+					this.nextProcessDelay = 3000; //Reset on successful processing of queue
 				}
 				Console.WriteLine("Notification Queue empty.");
 			}
 			catch (Exception ex)
 			{
 				Console.WriteLine($"!!!!!!Exception in {nameof(ProcessNotificationQueue)} : {ex.ToString()}");
+				this.nextProcessDelay = (int)Math.Pow(this.nextProcessDelay, 1.1);
 			}
 			finally
 			{
-				//Process more stuff again in 1 second.
-				this.processTimer = new System.Threading.Timer(async x => await ProcessNotificationQueue(), null, 3000, System.Threading.Timeout.Infinite);
+				//Process again after delay.
+				this.processTimer = new System.Threading.Timer(async x => await ProcessNotificationQueue(), null, this.nextProcessDelay, System.Threading.Timeout.Infinite);
 			}
 		}
 
@@ -185,6 +195,9 @@ namespace Shacknews_Push_Notifications.Common
 							await collection.UpdateOneAsync(filter, update);
 						}
 					}
+					break;
+				case System.Net.HttpStatusCode.NotAcceptable:
+					result = ResponseResult.FailTryAgain;
 					break;
 				default:
 					break;
