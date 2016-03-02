@@ -153,19 +153,15 @@ namespace Shacknews_Push_Notifications
 				var user = await collection.Find(u => u.UserName.Equals(e.UserName)).FirstOrDefaultAsync();
 				if (user != null)
 				{
-					//Only do all this work if there are outstanding notifications that haven't been dismissed
-					if (user.ReplyCount > 0)
-					{
-						//Update user
-						var badgeDoc = new XDocument(new XElement("badge", new XAttribute("value", 0)));
-						await this.notificationService.QueueNotificationToUser(NotificationType.Badge, badgeDoc, user.UserName);
-						await this.notificationService.RemoveAllToastsForUser(user.UserName);
-						var filter = Builders<NotificationUser>.Filter.Eq("_id", user._id);
-						var update = Builders<NotificationUser>.Update
-							.CurrentDate(x => x.DateUpdated)
-							.Set(x => x.ReplyCount, 0);
-						await collection.UpdateOneAsync(filter, update);
-					}
+					//Update user
+					var badgeDoc = new XDocument(new XElement("badge", new XAttribute("value", 0)));
+					await this.notificationService.QueueNotificationToUser(NotificationType.Badge, badgeDoc, user.UserName);
+					await this.notificationService.RemoveAllToastsForUser(user.UserName);
+					var filter = Builders<NotificationUser>.Filter.Eq("_id", user._id);
+					var update = Builders<NotificationUser>.Update
+						.CurrentDate(x => x.DateUpdated)
+						.Set(x => x.ReplyCount, 0);
+					await collection.UpdateOneAsync(filter, update);
 				}
 				else
 				{
