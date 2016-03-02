@@ -64,7 +64,6 @@ namespace Shacknews_Push_Notifications
 					var res = await client.GetAsync($"{ConfigurationManager.AppSettings["winchattyApiBase"]}getNewestEventId", this.cancelToken.Token);
 					var json = JToken.Parse(await res.Content.ReadAsStringAsync());
 					this.lastEventId = (int)json["eventId"];
-					this.lastEventId -= 50;
 				}
 
 				var resEvent = await client.GetAsync($"{ConfigurationManager.AppSettings["winchattyApiBase"]}waitForEvent?lastEventId={this.lastEventId}&includeParentAuthor=1", this.cancelToken.Token);
