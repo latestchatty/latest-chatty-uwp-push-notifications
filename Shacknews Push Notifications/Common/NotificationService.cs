@@ -208,7 +208,7 @@ namespace Shacknews_Push_Notifications.Common
 		{
 			//By default, we'll just let it die if we don't know specifically that we can try again.
 			ResponseResult result = ResponseResult.FailDoNotTryAgain;
-
+			Console.WriteLine($"Notification Response Code: {response.StatusCode}");
 			switch (response.StatusCode)
 			{
 				case System.Net.HttpStatusCode.OK:
@@ -236,6 +236,11 @@ namespace Shacknews_Push_Notifications.Common
 					}
 					break;
 				case System.Net.HttpStatusCode.NotAcceptable:
+					result = ResponseResult.FailTryAgain;
+					break;
+				case System.Net.HttpStatusCode.Unauthorized:
+					//Need to refresh the token, so invalidate it and we'll pick up a new one on retry.
+					this.accessTokenManager.InvalidateToken();
 					result = ResponseResult.FailTryAgain;
 					break;
 				default:

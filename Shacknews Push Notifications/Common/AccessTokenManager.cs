@@ -51,8 +51,13 @@ namespace Shacknews_Push_Notifications.Common
 
 		public async Task<string> RefreshAccessToken()
 		{
-			this.accessToken = string.Empty;
+			this.InvalidateToken();
 			return await this.GetAccessToken();
+		}
+
+		public void InvalidateToken()
+		{
+			this.accessToken = string.Empty;
 		}
 	}
 }
