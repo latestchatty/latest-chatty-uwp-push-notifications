@@ -95,7 +95,7 @@ namespace Shacknews_Push_Notifications
 										user = await collection.Find(u => u.UserName.Equals(parentAuthor.ToLower())).FirstOrDefaultAsync();
 										var newReplies = user.ReplyCount;
 										var latestReplyText = HtmlRemoval.StripTagsRegexCompiled(jEventData["post"]["body"].Value<string>().Replace("<br />", " ").Replace(char.ConvertFromUtf32(8232), " "));
-										var latestPostId = jEventData["post"]["id"];
+										var latestPostId = (int)jEventData["post"]["id"];
 										foreach (var info in user.NotificationInfos)
 										{
 											this.SendNotifications(info, newReplies, latestReplyAuthor, latestReplyText, latestPostId);
@@ -145,18 +145,31 @@ namespace Shacknews_Push_Notifications
 			}
 		}
 
-		private void SendNotifications(NotificationInfo info, int newReplies, string latestReplyAuthor, string latestReplyText, JToken latestPostId)
+		private void SendNotifications(NotificationInfo info, int newReplies, string latestReplyAuthor, string latestReplyText, int latestPostId)
 		{
 			var badgeDoc = new XDocument(new XElement("badge", new XAttribute("value", newReplies)));
 			this.notificationService.QueueNotificationData(NotificationType.Badge, info.NotificationUri, badgeDoc);
-
+			
 			var toastDoc = new XDocument(
-				new XElement("toast", new XAttribute("launch", ""),
-					new XElement("visual", 
+				new XElement("toast", new XAttribute("launch", $"reply?postId={latestPostId}"),
+					new XElement("visual",
 						new XElement("binding", new XAttribute("template", "ToastText02"),
 							new XElement("text", new XAttribute("id", "1"), $"Reply from {latestReplyAuthor}"),
 							new XElement("text", new XAttribute("id", "2"), latestReplyText)
-				))));
+						)
+					),
+					new XElement("actions",
+							new XElement("input", new XAttribute("id", "message"),
+								new XAttribute("type", "text"), 
+								new XAttribute("placeHolderContent", "reply")),
+							new XElement("action", new XAttribute("activationType", "background"), 
+								new XAttribute("content", "reply"), 
+								new XAttribute("arguments", "reply")/*,
+								new XAttribute("imageUri", "Assets/success.png"),
+								new XAttribute("hint-inputId", "message")*/)
+					)
+				)
+			);
 			this.notificationService.QueueNotificationData(NotificationType.Toast, info.NotificationUri, toastDoc);
 
 			//this.notificationService.QueueReplyTileNotification(latestReplyAuthor, latestReplyText, info.NotificationUri);
