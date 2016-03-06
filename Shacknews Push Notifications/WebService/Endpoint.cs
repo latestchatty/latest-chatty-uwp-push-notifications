@@ -1,11 +1,13 @@
 ﻿using MongoDB.Driver;
 using Nancy;
 using Nancy.ModelBinding;
+using Newtonsoft.Json.Linq;
 using Shacknews_Push_Notifications.Common;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Linq;
+using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
@@ -24,8 +26,11 @@ namespace Shacknews_Push_Notifications
 			Post["/register"] = this.RegisterDevice;
 			Post["/deregister"] = this.DeregisterDevice;
 			Post["/resetcount"] = this.ResetCount;
+			Post["/replyToNotification"] = this.ReplyToNotification;
+			Post["/removeNotification"] = this.RemoveNotification;
 			Get["/test"] = x => "Hello world!";
 		}
+
 
 		#region Event Bind Classes
 		private class RegisterArgs
@@ -44,7 +49,127 @@ namespace Shacknews_Push_Notifications
 		{
 			public string UserName { get; set; }
 		}
+
+		private class ReplyToNotificationArgs
+		{
+			public string UserName { get; set; }
+			public string Password { get; set; }
+			public string ParentId { get; set; }
+			public string Text { get; set; }
+		}
+
+		private class RemoveNotificationArgs
+		{
+			public string UserName { get; set; }
+			public string Group { get; set; }
+			public string Tag { get; set; }
+		}
 		#endregion
+
+		async private Task<dynamic> RemoveNotification(dynamic arg)
+		{
+			Console.WriteLine("Removing notification.");
+			var e = this.Bind<RemoveNotificationArgs>();
+
+			var collection = this.dbService.GetCollection();
+
+			var user = await collection.Find(u => u.UserName.Equals(e.UserName)).FirstOrDefaultAsync();
+			if (user != null)
+			{
+				NotificationGroups group;
+				if (!Enum.TryParse(e.Group, out group))
+				{
+					group = NotificationGroups.None;
+				}
+
+				//Only decrement badge count if we're removing a reply notification.
+				if (group == NotificationGroups.ReplyToUser)
+				{
+					//Update DB Count
+					var newCount = Math.Max(user.ReplyCount - 1, 0);
+					var filter = Builders<NotificationUser>.Filter.Eq("_id", user._id);
+					var update = Builders<NotificationUser>.Update
+						.CurrentDate(x => x.DateUpdated)
+						.Set(x => x.ReplyCount, newCount);
+					await collection.UpdateOneAsync(filter, update);
+					//Update badge to reflect new count
+					var badgeDoc = new XDocument(new XElement("badge", new XAttribute("value", newCount)));
+					await this.notificationService.QueueNotificationToUser(NotificationType.Badge, badgeDoc, user.UserName);
+				}
+
+				//Delete notification for this reply from other devices.
+				await this.notificationService.QueueNotificationToUser(NotificationType.RemoveToasts, null, user.UserName, group, e.Tag);
+			}
+			else
+			{
+				Console.WriteLine($"User {e.UserName} not found when removing.");
+				return new { status = "error", message = "User not found." };
+			}
+			return new { status = "success" };
+		}
+			async private Task<dynamic> ReplyToNotification(dynamic arg)
+		{
+			try
+			{
+				Console.WriteLine("Replying to notification.");
+				var e = this.Bind<ReplyToNotificationArgs>();
+
+				var request = new HttpClient();
+				var data = new Dictionary<string, string> {
+					{ "text", e.Text },
+					{ "parentId", e.ParentId },
+					{ "username", e.UserName },
+					{ "password", e.Password }
+				};
+
+				//Winchatty seems to crap itself if the Expect: 100-continue header is there.
+				request.DefaultRequestHeaders.ExpectContinue = false;
+
+				var formContent = new FormUrlEncodedContent(data);
+
+				var response = await request.PostAsync("https://winchatty.com/v2/postComment", formContent);
+				var parsedResponse = JToken.Parse(await response.Content.ReadAsStringAsync());
+				var success = parsedResponse["result"]?.ToString().Equals("success");
+				if (success.HasValue && success.Value)
+				{
+					var collection = this.dbService.GetCollection();
+
+					var user = await collection.Find(u => u.UserName.Equals(e.UserName)).FirstOrDefaultAsync();
+					if (user != null)
+					{
+						//Update DB Count
+						var newCount = Math.Max(user.ReplyCount - 1, 0);
+						var filter = Builders<NotificationUser>.Filter.Eq("_id", user._id);
+						var update = Builders<NotificationUser>.Update
+							.CurrentDate(x => x.DateUpdated)
+							.Set(x => x.ReplyCount, newCount);
+						await collection.UpdateOneAsync(filter, update);
+						//Update badge to reflect new count
+						var badgeDoc = new XDocument(new XElement("badge", new XAttribute("value", newCount)));
+						await this.notificationService.QueueNotificationToUser(NotificationType.Badge, badgeDoc, user.UserName);
+
+						//Delete notification for this reply from other devices.
+						await this.notificationService.QueueNotificationToUser(NotificationType.RemoveToasts, null, user.UserName, NotificationGroups.ReplyToUser, e.ParentId);
+					}
+					else
+					{
+						Console.WriteLine($"User {e.UserName} not found when replying.");
+						return new { status = "error", message = "User not found." };
+					}
+					return new { status = "success" };
+				}
+				else
+				{
+					return new { status = "error" };
+				}
+			}
+			catch (Exception ex)
+			{
+				//TODO: Log exception
+				Console.WriteLine($"!!!!Exception in {nameof(ReplyToNotification)}: {ex.ToString()}");
+				return new { status = "error" };
+			}
+		}
 
 		async private Task<dynamic> DeregisterDevice(dynamic arg)
 		{
@@ -53,7 +178,7 @@ namespace Shacknews_Push_Notifications
 				Console.WriteLine("Deregister device.");
 				var e = this.Bind<DeregisterArgs>();
 
-				var collection =this. dbService.GetCollection();
+				var collection = this.dbService.GetCollection();
 
 				var userName = arg.userName.ToString().ToLower() as string;
 				var user = await collection.Find(u => u.NotificationInfos.Any(ni => ni.DeviceId.Equals(e.DeviceId))).FirstOrDefaultAsync();
@@ -156,7 +281,7 @@ namespace Shacknews_Push_Notifications
 					//Update user
 					var badgeDoc = new XDocument(new XElement("badge", new XAttribute("value", 0)));
 					await this.notificationService.QueueNotificationToUser(NotificationType.Badge, badgeDoc, user.UserName);
-					await this.notificationService.RemoveAllToastsForUser(user.UserName);
+					await this.notificationService.RemoveToastsForUser(user.UserName);
 					var filter = Builders<NotificationUser>.Filter.Eq("_id", user._id);
 					var update = Builders<NotificationUser>.Update
 						.CurrentDate(x => x.DateUpdated)

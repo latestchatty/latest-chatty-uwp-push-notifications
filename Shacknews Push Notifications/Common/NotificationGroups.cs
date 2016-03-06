@@ -6,11 +6,9 @@ using System.Threading.Tasks;
 
 namespace Shacknews_Push_Notifications.Common
 {
-	public enum NotificationType
+	public enum NotificationGroups
 	{
-		Badge,
-		Tile,
-		Toast,
-		RemoveToasts
+		ReplyToUser,
+		None
 	}
 }

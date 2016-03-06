@@ -151,7 +151,7 @@ namespace Shacknews_Push_Notifications
 			this.notificationService.QueueNotificationData(NotificationType.Badge, info.NotificationUri, badgeDoc);
 			
 			var toastDoc = new XDocument(
-				new XElement("toast", new XAttribute("launch", $"reply?postId={latestPostId}"),
+				new XElement("toast", new XAttribute("launch", $"goToPost?postId={latestPostId}"),
 					new XElement("visual",
 						new XElement("binding", new XAttribute("template", "ToastText02"),
 							new XElement("text", new XAttribute("id", "1"), $"Reply from {latestReplyAuthor}"),
@@ -160,17 +160,17 @@ namespace Shacknews_Push_Notifications
 					),
 					new XElement("actions",
 							new XElement("input", new XAttribute("id", "message"),
-								new XAttribute("type", "text"), 
+								new XAttribute("type", "text"),
 								new XAttribute("placeHolderContent", "reply")),
-							new XElement("action", new XAttribute("activationType", "background"), 
-								new XAttribute("content", "reply"), 
-								new XAttribute("arguments", "reply")/*,
+							new XElement("action", new XAttribute("activationType", "background"),
+								new XAttribute("content", "reply"),
+								new XAttribute("arguments", $"reply={latestPostId}")/*,
 								new XAttribute("imageUri", "Assets/success.png"),
 								new XAttribute("hint-inputId", "message")*/)
 					)
 				)
 			);
-			this.notificationService.QueueNotificationData(NotificationType.Toast, info.NotificationUri, toastDoc);
+			this.notificationService.QueueNotificationData(NotificationType.Toast, info.NotificationUri, toastDoc, NotificationGroups.ReplyToUser, latestPostId.ToString());
 
 			//this.notificationService.QueueReplyTileNotification(latestReplyAuthor, latestReplyText, info.NotificationUri);
 		}

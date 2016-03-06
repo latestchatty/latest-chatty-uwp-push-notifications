@@ -28,16 +28,20 @@ namespace Shacknews_Push_Notifications.Common
 
 		private class QueuedNotificationItem
 		{
-			public QueuedNotificationItem(NotificationType type, XDocument content, string uri = null)
+			public QueuedNotificationItem(NotificationType type, XDocument content, string uri = null, NotificationGroups group = NotificationGroups.None, string tag = null)
 			{
 				this.Type = type;
 				this.Content = content;
 				this.Uri = uri;
+				this.Group = group;
+				this.Tag = tag;
 			}
 
 			public XDocument Content { get; private set; }
 			public NotificationType Type { get; private set; }
 			public string Uri { get; private set; }
+			public NotificationGroups Group { get; private set; }
+			public string Tag { get; private set; }
 		}
 
 		private Dictionary<NotificationType, string> notificationTypeMapping = new Dictionary<NotificationType, string>
@@ -54,21 +58,21 @@ namespace Shacknews_Push_Notifications.Common
 			this.dbService = dbService;
 		}
 
-		public void QueueNotificationData(NotificationType type, string notificationUri, XDocument content = null)
+		public void QueueNotificationData(NotificationType type, string notificationUri, XDocument content = null, NotificationGroups group = NotificationGroups.None, string tag = null)
 		{
 			if (string.IsNullOrWhiteSpace(notificationUri)) throw new ArgumentNullException(nameof(notificationUri));
 
-			if (type != NotificationType.RemoveAllToasts)
+			if (type != NotificationType.RemoveToasts)
 			{
 				if (content == null) throw new ArgumentNullException(nameof(content));
 			}
 
-			var notificationItem = new QueuedNotificationItem(type, content, notificationUri);
+			var notificationItem = new QueuedNotificationItem(type, content, notificationUri, group, tag);
 			this.queuedItems.Enqueue(notificationItem);
 			this.StartQueueProcess();
 		}
 
-		async public Task QueueNotificationToUser(NotificationType type, XDocument content, string userName)
+		async public Task QueueNotificationToUser(NotificationType type, XDocument content, string userName, NotificationGroups group = NotificationGroups.None, string tag = null)
 		{
 			var collection = dbService.GetCollection();
 			var user = await collection.Find(u => u.UserName.Equals(userName.ToLower())).FirstOrDefaultAsync();
@@ -76,12 +80,12 @@ namespace Shacknews_Push_Notifications.Common
 			{
 				foreach (var info in user.NotificationInfos)
 				{
-					this.QueueNotificationData(type, info.NotificationUri, content);
+					this.QueueNotificationData(type, info.NotificationUri, content, group, tag);
 				}
 			}
 		}
 
-		async public Task RemoveAllToastsForUser(string userName)
+		async public Task RemoveToastsForUser(string userName, NotificationGroups group = NotificationGroups.None, string tag = null)
 		{
 			var collection = dbService.GetCollection();
 			var user = await collection.Find(u => u.UserName.Equals(userName.ToLower())).FirstOrDefaultAsync();
@@ -89,7 +93,7 @@ namespace Shacknews_Push_Notifications.Common
 			{
 				foreach (var info in user.NotificationInfos)
 				{
-					this.QueueNotificationData(NotificationType.RemoveAllToasts, info.NotificationUri);
+					this.QueueNotificationData(NotificationType.RemoveToasts, info.NotificationUri, null, group, tag);
 				}
 			}
 		}
@@ -173,11 +177,36 @@ namespace Shacknews_Push_Notifications.Common
 							case NotificationType.Tile:
 							case NotificationType.Toast:
 								client.DefaultRequestHeaders.Add("X-WNS-Type", this.notificationTypeMapping[notification.Type]);
+								if (notification.Group != NotificationGroups.None)
+								{
+									client.DefaultRequestHeaders.Add("X-WNS-Group", Uri.EscapeUriString(Enum.GetName(typeof(NotificationGroups), notification.Group)));
+								}
+								if (!string.IsNullOrWhiteSpace(notification.Tag))
+								{
+									client.DefaultRequestHeaders.Add("X-WNS-Tag", Uri.EscapeUriString(notification.Tag));
+								}
 								var stringContent = new StringContent(notification.Content.ToString(SaveOptions.DisableFormatting), Encoding.UTF8, "text/xml");
 								response = await client.PostAsync(notification.Uri, stringContent);
 								break;
-							case NotificationType.RemoveAllToasts:
-								client.DefaultRequestHeaders.Add("X-WNS-Match", "type=wns/toast;all");
+							case NotificationType.RemoveToasts:
+								var match = string.Empty;
+								if (notification.Group != NotificationGroups.None)
+								{
+									match = $"group={Uri.EscapeUriString(Enum.GetName(typeof(NotificationGroups), notification.Group))}";
+								}
+								if (!string.IsNullOrWhiteSpace(notification.Tag))
+								{
+									if(!string.IsNullOrWhiteSpace(match))
+									{
+										match += ";";
+									}
+									match += $"tag={Uri.EscapeUriString(notification.Tag)}";
+								}
+								if (string.IsNullOrWhiteSpace(match))
+								{
+									match = "all";
+								}
+								client.DefaultRequestHeaders.Add("X-WNS-Match", $"type=wns/toast;{match}");
 								response = await client.DeleteAsync(notification.Uri);
 								break;
 						}
@@ -186,11 +215,10 @@ namespace Shacknews_Push_Notifications.Common
 						if (waitTime > 10 * 60 * 1000) result = ResponseResult.FailDoNotTryAgain; //Give up after a while.
 					} while (result == ResponseResult.FailTryAgain);
 				}
-				if(notification != null)
+				if (notification != null)
 				{
 					this.nextProcessDelay = 3000; //Reset on successful processing of queue
 				}
-				Console.WriteLine("Notification Queue empty.");
 			}
 			catch (Exception ex)
 			{
