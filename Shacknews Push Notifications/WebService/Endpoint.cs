@@ -28,6 +28,7 @@ namespace Shacknews_Push_Notifications
 			Post["/resetcount"] = this.ResetCount;
 			Post["/replyToNotification"] = this.ReplyToNotification;
 			Post["/removeNotification"] = this.RemoveNotification;
+			Get["/openReplyNotifications"] = this.GetOpenReplyNotifications;
 			Get["/test"] = x => "Hello world!";
 		}
 
@@ -45,7 +46,7 @@ namespace Shacknews_Push_Notifications
 			public string DeviceId { get; set; }
 		}
 
-		private class ResetCountArgs
+		private class UserNameArgs
 		{
 			public string UserName { get; set; }
 		}
@@ -66,48 +67,98 @@ namespace Shacknews_Push_Notifications
 		}
 		#endregion
 
+		private async Task<dynamic> GetOpenReplyNotifications(dynamic arg)
+		{
+			try
+			{
+				Console.WriteLine("Getting open reply notifications.");
+				var e = this.Bind<UserNameArgs>();
+
+				Console.WriteLine($"Getting open reply notifications for user {e.UserName}.");
+				var collection = this.dbService.GetCollection();
+
+				var user = await collection.Find(u => u.UserName.Equals(e.UserName)).FirstOrDefaultAsync();
+				if (user != null)
+				{
+					return new { data = user.ReplyNotificationIds };
+				}
+				else
+				{
+					Console.WriteLine($"User {e.UserName} not found when getting open reply notifications.");
+					return new { status = "error", message = "User not found." };
+				}
+			}
+			catch (Exception ex)
+			{
+				//TODO: Log exception
+				Console.WriteLine($"!!!!Exception in {nameof(GetOpenReplyNotifications)}: {ex.ToString()}");
+				return new { status = "error" };
+			}
+		}
+
 		async private Task<dynamic> RemoveNotification(dynamic arg)
 		{
-			Console.WriteLine("Removing notification.");
-			var e = this.Bind<RemoveNotificationArgs>();
-
-			var collection = this.dbService.GetCollection();
-
-			var user = await collection.Find(u => u.UserName.Equals(e.UserName)).FirstOrDefaultAsync();
-			if (user != null)
+			try
 			{
-				NotificationGroups group;
-				if (!Enum.TryParse(e.Group, out group))
-				{
-					group = NotificationGroups.None;
-				}
+				Console.WriteLine("Removing notification.");
+				var e = this.Bind<RemoveNotificationArgs>();
 
-				//Only decrement badge count if we're removing a reply notification.
-				if (group == NotificationGroups.ReplyToUser)
-				{
-					//Update DB Count
-					var newCount = Math.Max(user.ReplyCount - 1, 0);
-					var filter = Builders<NotificationUser>.Filter.Eq("_id", user._id);
-					var update = Builders<NotificationUser>.Update
-						.CurrentDate(x => x.DateUpdated)
-						.Set(x => x.ReplyCount, newCount);
-					await collection.UpdateOneAsync(filter, update);
-					//Update badge to reflect new count
-					var badgeDoc = new XDocument(new XElement("badge", new XAttribute("value", newCount)));
-					await this.notificationService.QueueNotificationToUser(NotificationType.Badge, badgeDoc, user.UserName);
-				}
+				var collection = this.dbService.GetCollection();
 
-				//Delete notification for this reply from other devices.
-				await this.notificationService.QueueNotificationToUser(NotificationType.RemoveToasts, null, user.UserName, group, e.Tag);
+				var user = await collection.Find(u => u.UserName.Equals(e.UserName)).FirstOrDefaultAsync();
+				if (user != null)
+				{
+					NotificationGroups group;
+					if (!Enum.TryParse(e.Group, out group))
+					{
+						group = NotificationGroups.None;
+					}
+
+					//Only decrement badge count if we're removing a reply notification.
+					if (group == NotificationGroups.ReplyToUser)
+					{
+						int postId;
+						if (int.TryParse(e.Tag, out postId))
+						{
+							//Update DB Count
+							if (user.ReplyNotificationIds == null)
+							{
+								user.ReplyNotificationIds = new List<int>();
+							}
+							else
+							{
+								user.ReplyNotificationIds.Remove(postId);
+							}
+							var filter = Builders<NotificationUser>.Filter.Eq("_id", user._id);
+							var update = Builders<NotificationUser>.Update
+								.CurrentDate(x => x.DateUpdated)
+								.Set(x => x.ReplyNotificationIds, user.ReplyNotificationIds);
+							await collection.UpdateOneAsync(filter, update);
+							//Update badge to reflect new count
+							var badgeDoc = new XDocument(new XElement("badge", new XAttribute("value", user.ReplyNotificationIds.Count)));
+							await this.notificationService.QueueNotificationToUser(NotificationType.Badge, badgeDoc, user.UserName);
+						}
+					}
+
+					//Delete notification for this reply from other devices.
+					await this.notificationService.QueueNotificationToUser(NotificationType.RemoveToasts, null, user.UserName, group, e.Tag);
+				}
+				else
+				{
+					Console.WriteLine($"User {e.UserName} not found when removing.");
+					return new { status = "error", message = "User not found." };
+				}
+				return new { status = "success" };
 			}
-			else
+			catch (Exception ex)
 			{
-				Console.WriteLine($"User {e.UserName} not found when removing.");
-				return new { status = "error", message = "User not found." };
+				//TODO: Log exception
+				Console.WriteLine($"!!!!Exception in {nameof(RemoveNotification)}: {ex.ToString()}");
+				return new { status = "error" };
 			}
-			return new { status = "success" };
 		}
-			async private Task<dynamic> ReplyToNotification(dynamic arg)
+
+		async private Task<dynamic> ReplyToNotification(dynamic arg)
 		{
 			try
 			{
@@ -137,17 +188,27 @@ namespace Shacknews_Push_Notifications
 					var user = await collection.Find(u => u.UserName.Equals(e.UserName)).FirstOrDefaultAsync();
 					if (user != null)
 					{
-						//Update DB Count
-						var newCount = Math.Max(user.ReplyCount - 1, 0);
-						var filter = Builders<NotificationUser>.Filter.Eq("_id", user._id);
-						var update = Builders<NotificationUser>.Update
-							.CurrentDate(x => x.DateUpdated)
-							.Set(x => x.ReplyCount, newCount);
-						await collection.UpdateOneAsync(filter, update);
-						//Update badge to reflect new count
-						var badgeDoc = new XDocument(new XElement("badge", new XAttribute("value", newCount)));
-						await this.notificationService.QueueNotificationToUser(NotificationType.Badge, badgeDoc, user.UserName);
-
+						int postId;
+						if (int.TryParse(e.ParentId, out postId))
+						{
+							//Update DB Count
+							if (user.ReplyNotificationIds == null)
+							{
+								user.ReplyNotificationIds = new List<int>();
+							}
+							else
+							{
+								user.ReplyNotificationIds.Remove(postId);
+							}
+							var filter = Builders<NotificationUser>.Filter.Eq("_id", user._id);
+							var update = Builders<NotificationUser>.Update
+								.CurrentDate(x => x.DateUpdated)
+								.Set(x => x.ReplyNotificationIds, user.ReplyNotificationIds);
+							await collection.UpdateOneAsync(filter, update);
+							//Update badge to reflect new count
+							var badgeDoc = new XDocument(new XElement("badge", new XAttribute("value", user.ReplyNotificationIds.Count)));
+							await this.notificationService.QueueNotificationToUser(NotificationType.Badge, badgeDoc, user.UserName);
+						}
 						//Delete notification for this reply from other devices.
 						await this.notificationService.QueueNotificationToUser(NotificationType.RemoveToasts, null, user.UserName, NotificationGroups.ReplyToUser, e.ParentId);
 					}
@@ -272,7 +333,7 @@ namespace Shacknews_Push_Notifications
 			try
 			{
 				Console.WriteLine("Reset count.");
-				var e = this.Bind<ResetCountArgs>();
+				var e = this.Bind<UserNameArgs>();
 				var collection = this.dbService.GetCollection();
 
 				var user = await collection.Find(u => u.UserName.Equals(e.UserName)).FirstOrDefaultAsync();
@@ -285,7 +346,7 @@ namespace Shacknews_Push_Notifications
 					var filter = Builders<NotificationUser>.Filter.Eq("_id", user._id);
 					var update = Builders<NotificationUser>.Update
 						.CurrentDate(x => x.DateUpdated)
-						.Set(x => x.ReplyCount, 0);
+						.Set(x => x.ReplyNotificationIds, new List<int>());
 					await collection.UpdateOneAsync(filter, update);
 				}
 				else

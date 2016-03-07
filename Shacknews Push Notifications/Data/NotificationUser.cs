@@ -12,8 +12,8 @@ namespace Shacknews_Push_Notifications
 		public string UserName { get; set; }
 		public DateTime DateUpdated { get; set; }
 		public int NotificationsSent { get; set; }
-		public int ReplyCount { get; set; }
 		public DateTime LastNotifiedTime { get; set; }
 		public List<NotificationInfo> NotificationInfos { get; set; }
+		public List<int> ReplyNotificationIds { get; set; }
 	}
 }

@@ -87,20 +87,26 @@ namespace Shacknews_Push_Notifications
 								{
 									if (user.NotificationInfos != null && user.NotificationInfos.Count > 0)
 									{
+										var latestPostId = (int)jEventData["post"]["id"];
+										if (user.ReplyNotificationIds == null)
+										{
+											user.ReplyNotificationIds = new List<int>();
+										}
+										user.ReplyNotificationIds.Add(latestPostId);
 										var filter = Builders<NotificationUser>.Filter.Eq("_id", user._id);
 										var update = Builders<NotificationUser>.Update
-											.Inc(x => x.ReplyCount, 1)
+											.Set(x => x.ReplyNotificationIds, user.ReplyNotificationIds)
 											.CurrentDate(x => x.LastNotifiedTime);
 										await collection.UpdateOneAsync(filter, update);
 										user = await collection.Find(u => u.UserName.Equals(parentAuthor.ToLower())).FirstOrDefaultAsync();
-										var newReplies = user.ReplyCount;
+										var replyCount = user.ReplyNotificationIds.Count;
 										var latestReplyText = HtmlRemoval.StripTagsRegexCompiled(jEventData["post"]["body"].Value<string>().Replace("<br />", " ").Replace(char.ConvertFromUtf32(8232), " "));
-										var latestPostId = (int)jEventData["post"]["id"];
+										
 										foreach (var info in user.NotificationInfos)
 										{
-											this.SendNotifications(info, newReplies, latestReplyAuthor, latestReplyText, latestPostId);
+											this.SendNotifications(info, replyCount, latestReplyAuthor, latestReplyText, latestPostId);
 										}
-										Console.WriteLine($"Would notify {parentAuthor} of {newReplies} new replies with the latest being {Environment.NewLine} {latestReplyText} by {latestReplyAuthor} with a thread id { latestPostId}");
+										Console.WriteLine($"Would notify {parentAuthor} of {replyCount} new replies with the latest being {Environment.NewLine} {latestReplyText} by {latestReplyAuthor} with a thread id { latestPostId}");
 									}
 								}
 								else
