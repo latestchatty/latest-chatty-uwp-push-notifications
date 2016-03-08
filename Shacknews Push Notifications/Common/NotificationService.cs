@@ -28,13 +28,14 @@ namespace Shacknews_Push_Notifications.Common
 
 		private class QueuedNotificationItem
 		{
-			public QueuedNotificationItem(NotificationType type, XDocument content, string uri = null, NotificationGroups group = NotificationGroups.None, string tag = null)
+			public QueuedNotificationItem(NotificationType type, XDocument content, string uri = null, NotificationGroups group = NotificationGroups.None, string tag = null, int ttl = 0)
 			{
 				this.Type = type;
 				this.Content = content;
 				this.Uri = uri;
 				this.Group = group;
 				this.Tag = tag;
+				this.TTL = ttl;
 			}
 
 			public XDocument Content { get; private set; }
@@ -42,6 +43,7 @@ namespace Shacknews_Push_Notifications.Common
 			public string Uri { get; private set; }
 			public NotificationGroups Group { get; private set; }
 			public string Tag { get; private set; }
+			public int TTL { get; private set; }
 		}
 
 		private Dictionary<NotificationType, string> notificationTypeMapping = new Dictionary<NotificationType, string>
@@ -58,7 +60,7 @@ namespace Shacknews_Push_Notifications.Common
 			this.dbService = dbService;
 		}
 
-		public void QueueNotificationData(NotificationType type, string notificationUri, XDocument content = null, NotificationGroups group = NotificationGroups.None, string tag = null)
+		public void QueueNotificationData(NotificationType type, string notificationUri, XDocument content = null, NotificationGroups group = NotificationGroups.None, string tag = null, int ttl = 0)
 		{
 			if (string.IsNullOrWhiteSpace(notificationUri)) throw new ArgumentNullException(nameof(notificationUri));
 
@@ -67,7 +69,7 @@ namespace Shacknews_Push_Notifications.Common
 				if (content == null) throw new ArgumentNullException(nameof(content));
 			}
 
-			var notificationItem = new QueuedNotificationItem(type, content, notificationUri, group, tag);
+			var notificationItem = new QueuedNotificationItem(type, content, notificationUri, group, tag, ttl);
 			this.queuedItems.Enqueue(notificationItem);
 			this.StartQueueProcess();
 		}
@@ -184,6 +186,10 @@ namespace Shacknews_Push_Notifications.Common
 								if (!string.IsNullOrWhiteSpace(notification.Tag))
 								{
 									client.DefaultRequestHeaders.Add("X-WNS-Tag", Uri.EscapeUriString(notification.Tag));
+								}
+								if(notification.TTL > 0)
+								{
+									client.DefaultRequestHeaders.Add("X-WNS-TTL", notification.TTL.ToString());
 								}
 								var stringContent = new StringContent(notification.Content.ToString(SaveOptions.DisableFormatting), Encoding.UTF8, "text/xml");
 								response = await client.PostAsync(notification.Uri, stringContent);

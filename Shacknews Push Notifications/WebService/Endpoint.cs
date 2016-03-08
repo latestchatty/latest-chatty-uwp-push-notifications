@@ -3,6 +3,7 @@ using Nancy;
 using Nancy.ModelBinding;
 using Newtonsoft.Json.Linq;
 using Shacknews_Push_Notifications.Common;
+using Shacknews_Push_Notifications.Data;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
@@ -80,7 +81,7 @@ namespace Shacknews_Push_Notifications
 				var user = await collection.Find(u => u.UserName.Equals(e.UserName)).FirstOrDefaultAsync();
 				if (user != null)
 				{
-					return new { data = user.ReplyNotificationIds };
+					return new { data = user.ReplyEntries };
 				}
 				else
 				{
@@ -121,21 +122,25 @@ namespace Shacknews_Push_Notifications
 						if (int.TryParse(e.Tag, out postId))
 						{
 							//Update DB Count
-							if (user.ReplyNotificationIds == null)
+							if (user.ReplyEntries == null)
 							{
-								user.ReplyNotificationIds = new List<int>();
+								user.ReplyEntries = new List<ReplyEntry>();
 							}
 							else
 							{
-								user.ReplyNotificationIds.Remove(postId);
+								var entry = user.ReplyEntries.SingleOrDefault(re => re.PostId == postId);
+								if (entry != null)
+								{
+									user.ReplyEntries.Remove(entry);
+								}
 							}
 							var filter = Builders<NotificationUser>.Filter.Eq("_id", user._id);
 							var update = Builders<NotificationUser>.Update
 								.CurrentDate(x => x.DateUpdated)
-								.Set(x => x.ReplyNotificationIds, user.ReplyNotificationIds);
+								.Set(x => x.ReplyEntries, user.ReplyEntries);
 							await collection.UpdateOneAsync(filter, update);
 							//Update badge to reflect new count
-							var badgeDoc = new XDocument(new XElement("badge", new XAttribute("value", user.ReplyNotificationIds.Count)));
+							var badgeDoc = new XDocument(new XElement("badge", new XAttribute("value", user.ReplyEntries.Count)));
 							await this.notificationService.QueueNotificationToUser(NotificationType.Badge, badgeDoc, user.UserName);
 						}
 					}
@@ -192,21 +197,25 @@ namespace Shacknews_Push_Notifications
 						if (int.TryParse(e.ParentId, out postId))
 						{
 							//Update DB Count
-							if (user.ReplyNotificationIds == null)
+							if (user.ReplyEntries == null)
 							{
-								user.ReplyNotificationIds = new List<int>();
+								user.ReplyEntries = new List<ReplyEntry>();
 							}
 							else
 							{
-								user.ReplyNotificationIds.Remove(postId);
+								var entry = user.ReplyEntries.SingleOrDefault(re => re.PostId == postId);
+								if (entry != null)
+								{
+									user.ReplyEntries.Remove(entry);
+								}
 							}
 							var filter = Builders<NotificationUser>.Filter.Eq("_id", user._id);
 							var update = Builders<NotificationUser>.Update
 								.CurrentDate(x => x.DateUpdated)
-								.Set(x => x.ReplyNotificationIds, user.ReplyNotificationIds);
+								.Set(x => x.ReplyEntries, user.ReplyEntries);
 							await collection.UpdateOneAsync(filter, update);
 							//Update badge to reflect new count
-							var badgeDoc = new XDocument(new XElement("badge", new XAttribute("value", user.ReplyNotificationIds.Count)));
+							var badgeDoc = new XDocument(new XElement("badge", new XAttribute("value", user.ReplyEntries.Count)));
 							await this.notificationService.QueueNotificationToUser(NotificationType.Badge, badgeDoc, user.UserName);
 						}
 						//Delete notification for this reply from other devices.
@@ -346,7 +355,7 @@ namespace Shacknews_Push_Notifications
 					var filter = Builders<NotificationUser>.Filter.Eq("_id", user._id);
 					var update = Builders<NotificationUser>.Update
 						.CurrentDate(x => x.DateUpdated)
-						.Set(x => x.ReplyNotificationIds, new List<int>());
+						.Set(x => x.ReplyEntries, new List<ReplyEntry>());
 					await collection.UpdateOneAsync(filter, update);
 				}
 				else

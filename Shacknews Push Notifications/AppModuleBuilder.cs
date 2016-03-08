@@ -17,6 +17,7 @@ namespace Shacknews_Push_Notifications
 			builder.RegisterType<AccessTokenManager>().SingleInstance();
 			builder.RegisterType<DatabaseService>().InstancePerDependency();
 			builder.RegisterType<Monitor>().SingleInstance();
+			builder.RegisterType<MaintenanceService>().SingleInstance();
 			return builder.Build();
 		}
 	}

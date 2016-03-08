@@ -82,11 +82,13 @@
   <ItemGroup>
     <Compile Include="AppModuleBuilder.cs" />
     <Compile Include="Common\AccessTokenManager.cs" />
+    <Compile Include="Common\MaintenanceService.cs" />
     <Compile Include="Common\NotificationGroups.cs" />
     <Compile Include="Common\NotificationType.cs" />
     <Compile Include="Common\DatabaseService.cs" />
     <Compile Include="Common\HtmlRemoval.cs" />
     <Compile Include="Common\NotificationService.cs" />
+    <Compile Include="Data\ReplyEntry.cs" />
     <Compile Include="WebService\Bootstrapper.cs" />
     <Compile Include="WebService\Endpoint.cs" />
     <Compile Include="Data\NotificationInfo.cs" />

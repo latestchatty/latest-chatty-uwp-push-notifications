@@ -1,6 +1,7 @@
 ﻿using Autofac;
 using Mono.Unix;
 using Mono.Unix.Native;
+using Shacknews_Push_Notifications.Common;
 using Shacknews_Push_Notifications.WebService;
 using System;
 using System.Collections.Generic;
@@ -19,9 +20,11 @@ namespace Shacknews_Push_Notifications
 
 			var webService = new WebServiceProcessManager(container);
 			var monitor = container.Resolve<Monitor>();
+			var maintenanceService = container.Resolve<MaintenanceService>();
 
 			webService.Start();
 			monitor.Start();
+			maintenanceService.Start();
 
 			// check if we're running on mono
 			if (Type.GetType("Mono.Runtime") != null)
@@ -43,6 +46,7 @@ namespace Shacknews_Push_Notifications
 
 			webService.Stop();
 			monitor.Stop();
+			maintenanceService.Stop();
 		}
 	}
 }

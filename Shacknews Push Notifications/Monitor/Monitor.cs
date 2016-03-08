@@ -1,6 +1,7 @@
 ﻿using MongoDB.Driver;
 using Newtonsoft.Json.Linq;
 using Shacknews_Push_Notifications.Common;
+using Shacknews_Push_Notifications.Data;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
@@ -88,25 +89,57 @@ namespace Shacknews_Push_Notifications
 									if (user.NotificationInfos != null && user.NotificationInfos.Count > 0)
 									{
 										var latestPostId = (int)jEventData["post"]["id"];
-										if (user.ReplyNotificationIds == null)
+										if (user.ReplyEntries == null)
 										{
-											user.ReplyNotificationIds = new List<int>();
+											user.ReplyEntries = new List<ReplyEntry>();
 										}
-										user.ReplyNotificationIds.Add(latestPostId);
-										var filter = Builders<NotificationUser>.Filter.Eq("_id", user._id);
-										var update = Builders<NotificationUser>.Update
-											.Set(x => x.ReplyNotificationIds, user.ReplyNotificationIds)
-											.CurrentDate(x => x.LastNotifiedTime);
-										await collection.UpdateOneAsync(filter, update);
-										user = await collection.Find(u => u.UserName.Equals(parentAuthor.ToLower())).FirstOrDefaultAsync();
-										var replyCount = user.ReplyNotificationIds.Count;
-										var latestReplyText = HtmlRemoval.StripTagsRegexCompiled(jEventData["post"]["body"].Value<string>().Replace("<br />", " ").Replace(char.ConvertFromUtf32(8232), " "));
-										
-										foreach (var info in user.NotificationInfos)
+
+										//TODO: Get post id lineage and only get the first post.
+										var resThread = await client.GetAsync($"{ConfigurationManager.AppSettings["winChattyApiBase"]}getThread?id={latestPostId}");
+										TimeSpan ttl = new TimeSpan(18, 0, 0);
+										var jThread = JToken.Parse(await resThread.Content.ReadAsStringAsync());
+										DateTime minDate = DateTime.MaxValue;
+										if(jThread["threads"] != null)
 										{
-											this.SendNotifications(info, replyCount, latestReplyAuthor, latestReplyText, latestPostId);
+											foreach (var post in jThread["threads"][0]["posts"])
+											{
+												var date = DateTime.Parse(post["date"].ToString(), null, System.Globalization.DateTimeStyles.AssumeUniversal);
+												if(date < minDate)
+												{
+													minDate = date;
+												}
+											}
 										}
+										if(!minDate.Equals(DateTime.MaxValue))
+										{
+											ttl = minDate.AddHours(18).Subtract(DateTime.UtcNow);
+										}
+										var expireDate = DateTime.UtcNow.Add(ttl);
+										Console.WriteLine($"Min Date {minDate} - TTL {ttl} - Expire Date {expireDate}");
+
+										if (expireDate > DateTime.UtcNow)
+										{
+											user.ReplyEntries.Add(new ReplyEntry(expireDate, latestPostId));
+											var filter = Builders<NotificationUser>.Filter.Eq("_id", user._id);
+											var update = Builders<NotificationUser>.Update
+												.Set(x => x.ReplyEntries, user.ReplyEntries)
+												.CurrentDate(x => x.LastNotifiedTime)
+												.CurrentDate(x => x.DateUpdated);
+											await collection.UpdateOneAsync(filter, update);
+											user = await collection.Find(u => u.UserName.Equals(parentAuthor.ToLower())).FirstOrDefaultAsync();
+											var replyCount = user.ReplyEntries.Count;
+											var latestReplyText = HtmlRemoval.StripTagsRegexCompiled(jEventData["post"]["body"].Value<string>().Replace("<br />", " ").Replace(char.ConvertFromUtf32(8232), " "));
+
+											foreach (var info in user.NotificationInfos)
+											{
+												this.SendNotifications(info, replyCount, latestReplyAuthor, latestReplyText, latestPostId, (int)ttl.TotalSeconds);
+											}
 										Console.WriteLine($"Would notify {parentAuthor} of {replyCount} new replies with the latest being {Environment.NewLine} {latestReplyText} by {latestReplyAuthor} with a thread id { latestPostId}");
+										}
+										else
+										{
+											Console.WriteLine($"No notification on reply to {user.UserName} because thread is expired.");
+										}
 									}
 								}
 								else
@@ -151,7 +184,7 @@ namespace Shacknews_Push_Notifications
 			}
 		}
 
-		private void SendNotifications(NotificationInfo info, int newReplies, string latestReplyAuthor, string latestReplyText, int latestPostId)
+		private void SendNotifications(NotificationInfo info, int newReplies, string latestReplyAuthor, string latestReplyText, int latestPostId, int ttl)
 		{
 			var badgeDoc = new XDocument(new XElement("badge", new XAttribute("value", newReplies)));
 			this.notificationService.QueueNotificationData(NotificationType.Badge, info.NotificationUri, badgeDoc);
@@ -176,7 +209,7 @@ namespace Shacknews_Push_Notifications
 					)
 				)
 			);
-			this.notificationService.QueueNotificationData(NotificationType.Toast, info.NotificationUri, toastDoc, NotificationGroups.ReplyToUser, latestPostId.ToString());
+			this.notificationService.QueueNotificationData(NotificationType.Toast, info.NotificationUri, toastDoc, NotificationGroups.ReplyToUser, latestPostId.ToString(), ttl);
 
 			//this.notificationService.QueueReplyTileNotification(latestReplyAuthor, latestReplyText, info.NotificationUri);
 		}
