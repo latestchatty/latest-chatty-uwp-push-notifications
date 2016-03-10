@@ -103,7 +103,7 @@ namespace Shacknews_Push_Notifications
 										{
 											foreach (var post in jThread["threads"][0]["posts"])
 											{
-												var date = DateTime.Parse(post["date"].ToString(), null, System.Globalization.DateTimeStyles.AssumeUniversal);
+												var date = DateTime.Parse(post["date"].ToString(), null, System.Globalization.DateTimeStyles.AdjustToUniversal | System.Globalization.DateTimeStyles.AssumeUniversal);
 												if(date < minDate)
 												{
 													minDate = date;
