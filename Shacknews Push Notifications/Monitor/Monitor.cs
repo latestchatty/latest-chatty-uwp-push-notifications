@@ -169,11 +169,19 @@ namespace Shacknews_Push_Notifications
 				{
 					timeDelay = BASE_TIME_DELAY;
 				}
-				//There was a problem, delay further
-				timeDelay = Math.Pow(timeDelay, TIME_DELAY_FAIL_EXPONENT);
+				//There was a problem, delay further.  To a maximum of 3 minutes.
+				timeDelay = Math.Max(Math.Pow(timeDelay, TIME_DELAY_FAIL_EXPONENT), 180);
 				//If there was an error, reset the event ID to 0 so we get the latest, otherwise we might get stuck in a loop where the API won't return us events because there are too many.
 				lastEventId = 0;
-				Console.WriteLine($"!!!!!Exception in {nameof(TimerCallback)}: {ex.ToString()}");
+				if (ex is TaskCanceledException)
+				{
+					//This is expected, we'll still slow down our polling of winchatty if the chatty's not busy but won't print a full stack.
+					Console.WriteLine("Timed out waiting for winchatty.");
+				}
+				else
+				{
+					Console.WriteLine($"!!!!!Exception in {nameof(TimerCallback)}: {ex.ToString()}");
+				}
          }
 			finally
 			{
