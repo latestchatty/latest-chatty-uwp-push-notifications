@@ -1,7 +1,11 @@
 ﻿using MongoDB.Driver;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -46,30 +50,84 @@ namespace Shacknews_Push_Notifications.Common
 			{
 				Console.WriteLine("Running maintenance task.");
 				var collection = dbService.GetCollection();
-				var usersThatNeedCleanup = await collection.Find(u => u.ReplyEntries.Any(re => re.Expiration < DateTime.UtcNow)).ToListAsync();
-				foreach (var user in usersThatNeedCleanup)
+				var allUsers = await collection.Find(new MongoDB.Bson.BsonDocument()).ToListAsync();
+				foreach (var user in allUsers)
 				{
+					//If there's nothing to do, skip the user.
+					if (user.ReplyEntries == null || user.ReplyEntries.Count == 0) continue;
+
+					var originalEntryCount = user.ReplyEntries.Count;
+
+					//First, remove any expired entries.
 					var oldEntryCount = user.ReplyEntries.Count;
 					var newEntries = user.ReplyEntries.Where(e => e.Expiration > DateTime.UtcNow).ToList();
-					Console.WriteLine($"Removing {oldEntryCount - newEntries.Count} entries from {user.UserName}");
-					var filter = Builders<NotificationUser>.Filter.Eq("_id", user._id);
-					var update = Builders<NotificationUser>.Update
-						.Set(x => x.ReplyEntries, newEntries)
-						.CurrentDate(x => x.DateUpdated);
-					await collection.UpdateOneAsync(filter, update);
+					var expiredCount = oldEntryCount - newEntries.Count;
+					var alreadySeenCount = 0;
+					oldEntryCount = newEntries.Count;
 
-					var badgeDoc = new XDocument(new XElement("badge", new XAttribute("value", newEntries.Count)));
-					await this.notificationService.QueueNotificationToUser(NotificationType.Badge, badgeDoc, user.UserName);
+					//Next, remove any entries that might have been added because the user clicked on a post before the notification got created.
+					var seenPosts = await this.GetSeenPostIds(user.UserName);
+					if(seenPosts != null)
+					{
+						newEntries = newEntries.Where(e => !seenPosts.Contains(e.PostId)).ToList();
+						alreadySeenCount = oldEntryCount - newEntries.Count;
+					}
+
+					if (originalEntryCount != newEntries.Count)
+					{
+						Console.WriteLine($"Removing {expiredCount} expired and {alreadySeenCount} already seen entries from {user.UserName}");
+						var filter = Builders<NotificationUser>.Filter.Eq("_id", user._id);
+						var update = Builders<NotificationUser>.Update
+							.Set(x => x.ReplyEntries, newEntries)
+							.CurrentDate(x => x.DateUpdated);
+						await collection.UpdateOneAsync(filter, update);
+
+						var badgeDoc = new XDocument(new XElement("badge", new XAttribute("value", newEntries.Count)));
+						await this.notificationService.QueueNotificationToUser(NotificationType.Badge, badgeDoc, user.UserName);
+					}
 				}
+			}
+			catch(Exception ex)
+			{
+				Console.WriteLine($"Exception in maintenance task : {ex}");
 			}
 			finally
 			{
 				Console.WriteLine("Maintenance complete.");
 				if (this.timerEnabled)
 				{
-					mainTimer = new Timer(TimerCallback, null, 10000, Timeout.Infinite);
+					mainTimer = new Timer(TimerCallback, null, 30000, Timeout.Infinite);
 				}
 			}
+		}
+
+		private async Task<List<int>> GetSeenPostIds(string userName)
+		{
+			try
+			{
+				var handler = new HttpClientHandler();
+				if (handler.SupportsAutomaticDecompression)
+				{
+					handler.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
+				}
+
+				using (var request = new HttpClient(handler, true))
+				{
+					var response = await request.GetAsync($"{ConfigurationManager.AppSettings["winChattyApiBase"]}clientData/getClientData?username={Uri.EscapeUriString(userName)}&client=latestchattyUWP{Uri.EscapeUriString("SeenPosts")}");
+					var resString = await response.Content.ReadAsStringAsync();
+					var jResponse = JToken.Parse(resString);
+					var data = jResponse["data"].ToString();
+					if (!string.IsNullOrWhiteSpace(data))
+					{
+						return Newtonsoft.Json.JsonConvert.DeserializeObject<List<int>>(data);
+					}
+				}
+			}
+			catch (Exception ex)
+			{
+				Console.WriteLine($"Error retrieving post ids for {userName} : {ex}");
+         }
+			return null;
 		}
 	}
 }
