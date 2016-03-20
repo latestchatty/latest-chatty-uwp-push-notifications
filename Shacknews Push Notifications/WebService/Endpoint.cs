@@ -183,7 +183,7 @@ namespace Shacknews_Push_Notifications
 
 				var formContent = new FormUrlEncodedContent(data);
 
-				var response = await request.PostAsync("https://winchatty.com/v2/postComment", formContent);
+				var response = await request.PostAsync($"{ConfigurationManager.AppSettings["winChattyApiBase"]}postComment", formContent);
 				var parsedResponse = JToken.Parse(await response.Content.ReadAsStringAsync());
 				var success = parsedResponse["result"]?.ToString().Equals("success");
 				if (success.HasValue && success.Value)
