@@ -31,7 +31,9 @@ namespace Shacknews_Push_Notifications
 			Post["/removeNotification"] = this.RemoveNotification;
 			Get["/openReplyNotifications"] = this.GetOpenReplyNotifications;
 			Get["/test"] = x => "Hello world!";
+			Get["tileContent"] = this.GetTileContent;
 		}
+
 
 
 		#region Event Bind Classes
@@ -67,6 +69,53 @@ namespace Shacknews_Push_Notifications
 			public string Tag { get; set; }
 		}
 		#endregion
+		private dynamic GetTileContent(dynamic arg)
+		{
+			try
+			{
+				//TODO: Cache this in the DB so we don't have to hit shacknews every time.
+				Console.WriteLine("Retrieving tile content.");
+				var xDoc = XDocument.Load("http://www.shacknews.com/rss?recent_articles=1");
+				var items = xDoc.Descendants("item");
+				var itemsObj = items.Select(i => new
+				{
+					Title = i.Element("title").Value,
+					PublishDate = DateTime.Parse(i.Element("pubDate").Value.Replace("PDT", "").Trim()),
+					Author = i.Element("author").Value
+				}).OrderByDescending(i => i.PublishDate).Take(3);
+
+				var item = itemsObj.FirstOrDefault();
+
+				if (item == null) return string.Empty;
+
+				var visualElement = new XElement("visual", new XAttribute("version", "2"));
+				var tileElement = new XElement("tile", visualElement);
+
+				visualElement.Add(new XElement("binding", new XAttribute("template", "TileWide310x150Text09"), new XAttribute("fallback", "TileWideText09"),
+					new XElement("text", new XAttribute("id", "1"), $"{item.Author} posted"),
+					new XElement("text", new XAttribute("id", "2"), item.Title)));
+
+				visualElement.Add(new XElement("binding", new XAttribute("template", "TileSquare150x150Text02"), new XAttribute("fallback", "TileSquareText02"),
+					new XElement("text", new XAttribute("id", "1"), $"{item.Author} posted"),
+					new XElement("text", new XAttribute("id", "2"), item.Title)));
+
+				visualElement.Add(new XElement("binding", new XAttribute("template", "TileSquare310x310TextList03"),
+					new XElement("text", new XAttribute("id", "1"), $"{item.Author} posted"),
+					new XElement("text", new XAttribute("id", "2"), item.Title),
+					new XElement("text", new XAttribute("id", "3"), $"{ itemsObj.ElementAt(1).Author} posted"),
+					new XElement("text", new XAttribute("id", "4"), itemsObj.ElementAt(1).Title),
+					new XElement("text", new XAttribute("id", "5"), $"{itemsObj.ElementAt(2).Author} posted"),
+					new XElement("text", new XAttribute("id", "6"), itemsObj.ElementAt(2).Title)));
+				var doc = new XDocument(tileElement);
+
+				return doc.ToString(SaveOptions.DisableFormatting);
+			}
+			catch (Exception ex)
+			{
+				Console.WriteLine($"Excepiton retrieving tile content : {ex}");
+			}
+			return string.Empty;
+		}
 
 		private async Task<dynamic> GetOpenReplyNotifications(dynamic arg)
 		{
