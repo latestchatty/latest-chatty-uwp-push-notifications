@@ -363,7 +363,7 @@ namespace Shacknews_Push_Notifications
 					//Insert user
 					user = new NotificationUser()
 					{
-						UserName = e.UserName,
+						UserName = e.UserName.ToLower(),
 						DateUpdated = DateTime.UtcNow,
 						NotificationInfos = new List<NotificationInfo>(new[]
 						{
