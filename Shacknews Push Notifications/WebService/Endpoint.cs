@@ -127,7 +127,7 @@ namespace Shacknews_Push_Notifications
 				Console.WriteLine($"Getting open reply notifications for user {e.UserName}.");
 				var collection = this.dbService.GetCollection();
 
-				var user = await collection.Find(u => u.UserName.Equals(e.UserName)).FirstOrDefaultAsync();
+				var user = await collection.Find(u => u.UserName.Equals(e.UserName.ToLower())).FirstOrDefaultAsync();
 				if (user != null)
 				{
 					return new { data = user.ReplyEntries };
@@ -239,7 +239,7 @@ namespace Shacknews_Push_Notifications
 				{
 					var collection = this.dbService.GetCollection();
 
-					var user = await collection.Find(u => u.UserName.Equals(e.UserName)).FirstOrDefaultAsync();
+					var user = await collection.Find(u => u.UserName.Equals(e.UserName.ToLower())).FirstOrDefaultAsync();
 					if (user != null)
 					{
 						int postId;
@@ -334,7 +334,7 @@ namespace Shacknews_Push_Notifications
 				var e = this.Bind<RegisterArgs>();
 				var collection = this.dbService.GetCollection();
 
-				var user = await collection.Find(u => u.UserName.Equals(e.UserName)).FirstOrDefaultAsync();
+				var user = await collection.Find(u => u.UserName.Equals(e.UserName.ToLower())).FirstOrDefaultAsync();
 				if (user != null)
 				{
 					//Update user
@@ -394,7 +394,7 @@ namespace Shacknews_Push_Notifications
 				var e = this.Bind<UserNameArgs>();
 				var collection = this.dbService.GetCollection();
 
-				var user = await collection.Find(u => u.UserName.Equals(e.UserName)).FirstOrDefaultAsync();
+				var user = await collection.Find(u => u.UserName.Equals(e.UserName.ToLower())).FirstOrDefaultAsync();
 				if (user != null)
 				{
 					//Update user
