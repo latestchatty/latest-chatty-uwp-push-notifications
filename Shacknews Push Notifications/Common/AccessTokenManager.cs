@@ -23,21 +23,23 @@ namespace Shacknews_Push_Notifications.Common
 				if (string.IsNullOrWhiteSpace(this.accessToken))
 				{
 					Console.WriteLine("Getting access token.");
-					var client = new HttpClient();
-					var data = new FormUrlEncodedContent(new Dictionary<string, string> {
-					{ "grant_type", "client_credentials" },
-					{ "client_id", ConfigurationManager.AppSettings["notificationSID"] },
-					{ "client_secret", ConfigurationManager.AppSettings["clientSecret"] },
-					{ "scope", "notify.windows.com" },
-				});
-					var response = await client.PostAsync("https://login.live.com/accesstoken.srf", data);
-					if (response.StatusCode == System.Net.HttpStatusCode.OK)
+					using (var client = new HttpClient())
 					{
-						var responseJson = JToken.Parse(await response.Content.ReadAsStringAsync());
-						if (responseJson["access_token"] != null)
+						var data = new FormUrlEncodedContent(new Dictionary<string, string> {
+							{ "grant_type", "client_credentials" },
+							{ "client_id", ConfigurationManager.AppSettings["notificationSID"] },
+							{ "client_secret", ConfigurationManager.AppSettings["clientSecret"] },
+							{ "scope", "notify.windows.com" },
+						});
+						var response = await client.PostAsync("https://login.live.com/accesstoken.srf", data);
+						if (response.StatusCode == System.Net.HttpStatusCode.OK)
 						{
-							this.accessToken = responseJson["access_token"].Value<string>();
-							Console.WriteLine($"Got access token.");
+							var responseJson = JToken.Parse(await response.Content.ReadAsStringAsync());
+							if (responseJson["access_token"] != null)
+							{
+								this.accessToken = responseJson["access_token"].Value<string>();
+								Console.WriteLine($"Got access token.");
+							}
 						}
 					}
 				}

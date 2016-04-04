@@ -219,67 +219,69 @@ namespace Shacknews_Push_Notifications
 				Console.WriteLine("Replying to notification.");
 				var e = this.Bind<ReplyToNotificationArgs>();
 
-				var request = new HttpClient();
-				var data = new Dictionary<string, string> {
-					{ "text", e.Text },
-					{ "parentId", e.ParentId },
-					{ "username", e.UserName },
-					{ "password", e.Password }
-				};
-
-				//Winchatty seems to crap itself if the Expect: 100-continue header is there.
-				request.DefaultRequestHeaders.ExpectContinue = false;
-
-				var formContent = new FormUrlEncodedContent(data);
-
-				var response = await request.PostAsync($"{ConfigurationManager.AppSettings["winChattyApiBase"]}postComment", formContent);
-				var parsedResponse = JToken.Parse(await response.Content.ReadAsStringAsync());
-				var success = parsedResponse["result"]?.ToString().Equals("success");
-				if (success.HasValue && success.Value)
+				using (var request = new HttpClient())
 				{
-					var collection = this.dbService.GetCollection();
+					var data = new Dictionary<string, string> {
+						{ "text", e.Text },
+						{ "parentId", e.ParentId },
+						{ "username", e.UserName },
+						{ "password", e.Password }
+					};
 
-					var user = await collection.Find(u => u.UserName.Equals(e.UserName.ToLower())).FirstOrDefaultAsync();
-					if (user != null)
+					//Winchatty seems to crap itself if the Expect: 100-continue header is there.
+					request.DefaultRequestHeaders.ExpectContinue = false;
+
+					var formContent = new FormUrlEncodedContent(data);
+
+					var response = await request.PostAsync($"{ConfigurationManager.AppSettings["winChattyApiBase"]}postComment", formContent);
+					var parsedResponse = JToken.Parse(await response.Content.ReadAsStringAsync());
+					var success = parsedResponse["result"]?.ToString().Equals("success");
+					if (success.HasValue && success.Value)
 					{
-						int postId;
-						if (int.TryParse(e.ParentId, out postId))
+						var collection = this.dbService.GetCollection();
+
+						var user = await collection.Find(u => u.UserName.Equals(e.UserName.ToLower())).FirstOrDefaultAsync();
+						if (user != null)
 						{
-							//Update DB Count
-							if (user.ReplyEntries == null)
+							int postId;
+							if (int.TryParse(e.ParentId, out postId))
 							{
-								user.ReplyEntries = new List<ReplyEntry>();
-							}
-							else
-							{
-								var entry = user.ReplyEntries.SingleOrDefault(re => re.PostId == postId);
-								if (entry != null)
+								//Update DB Count
+								if (user.ReplyEntries == null)
 								{
-									user.ReplyEntries.Remove(entry);
+									user.ReplyEntries = new List<ReplyEntry>();
 								}
+								else
+								{
+									var entry = user.ReplyEntries.SingleOrDefault(re => re.PostId == postId);
+									if (entry != null)
+									{
+										user.ReplyEntries.Remove(entry);
+									}
+								}
+								var filter = Builders<NotificationUser>.Filter.Eq("_id", user._id);
+								var update = Builders<NotificationUser>.Update
+									.CurrentDate(x => x.DateUpdated)
+									.Set(x => x.ReplyEntries, user.ReplyEntries);
+								await collection.UpdateOneAsync(filter, update);
+								//Update badge to reflect new count
+								var badgeDoc = new XDocument(new XElement("badge", new XAttribute("value", user.ReplyEntries.Count)));
+								await this.notificationService.QueueNotificationToUser(NotificationType.Badge, badgeDoc, user.UserName);
 							}
-							var filter = Builders<NotificationUser>.Filter.Eq("_id", user._id);
-							var update = Builders<NotificationUser>.Update
-								.CurrentDate(x => x.DateUpdated)
-								.Set(x => x.ReplyEntries, user.ReplyEntries);
-							await collection.UpdateOneAsync(filter, update);
-							//Update badge to reflect new count
-							var badgeDoc = new XDocument(new XElement("badge", new XAttribute("value", user.ReplyEntries.Count)));
-							await this.notificationService.QueueNotificationToUser(NotificationType.Badge, badgeDoc, user.UserName);
+							//Delete notification for this reply from other devices.
+							await this.notificationService.QueueNotificationToUser(NotificationType.RemoveToasts, null, user.UserName, NotificationGroups.ReplyToUser, e.ParentId);
 						}
-						//Delete notification for this reply from other devices.
-						await this.notificationService.QueueNotificationToUser(NotificationType.RemoveToasts, null, user.UserName, NotificationGroups.ReplyToUser, e.ParentId);
+						else
+						{
+							Console.WriteLine($"User {e.UserName} not found when replying.");
+							return new { status = "error", message = "User not found." };
+						}
+						return new { status = "success" };
 					}
 					else
 					{
-						Console.WriteLine($"User {e.UserName} not found when replying.");
-						return new { status = "error", message = "User not found." };
+						return new { status = "error" };
 					}
-					return new { status = "success" };
-				}
-				else
-				{
-					return new { status = "error" };
 				}
 			}
 			catch (Exception ex)
