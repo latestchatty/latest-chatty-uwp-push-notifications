@@ -207,7 +207,8 @@ namespace Shacknews_Push_Notifications
 					var update = Builders<NotificationUser>.Update
 						.Set(x => x.ReplyEntries, user.ReplyEntries)
 						.CurrentDate(x => x.LastNotifiedTime)
-						.CurrentDate(x => x.DateUpdated);
+						.CurrentDate(x => x.DateUpdated)
+						.Inc(x => x.NotificationsSent, 1);
 					await collection.UpdateOneAsync(filter, update);
 					user = await collection.Find(u => u.UserName.Equals(user.UserName)).FirstOrDefaultAsync();
 					var replyCount = user.ReplyEntries.Count;
