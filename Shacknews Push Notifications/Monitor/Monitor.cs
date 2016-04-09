@@ -18,13 +18,14 @@ namespace Shacknews_Push_Notifications
 	{
 		const int BASE_TIME_DELAY = 2;
 		const double TIME_DELAY_FAIL_EXPONENT = 1.5;
-		System.Threading.Timer mainTimer;
+		Timer mainTimer;
 		double timeDelay = 0;
 		bool timerEnabled = false;
 		int lastEventId = 0;
 		private readonly NotificationService notificationService;
 		private readonly DatabaseService dbService;
 		private CancellationTokenSource cancelToken = new CancellationTokenSource();
+		private bool timerCallbackRunning;
 
 		public Monitor(NotificationService notificationService, DatabaseService dbService)
 		{
@@ -35,7 +36,7 @@ namespace Shacknews_Push_Notifications
 		public void Start()
 		{
 			this.timerEnabled = true;
-			this.mainTimer = new System.Threading.Timer(TimerCallback, null, 0, System.Threading.Timeout.Infinite);
+			this.mainTimer = new Timer(TimerCallback, null, 0, 1000);
 			Console.WriteLine("Notification monitor started.");
 		}
 
@@ -53,6 +54,8 @@ namespace Shacknews_Push_Notifications
 
 		async private void TimerCallback(object state)
 		{
+			if (this.timerCallbackRunning) return;
+			this.timerCallbackRunning = true;
 			Console.WriteLine("Waiting for next monitor event...");
 			try
 			{
@@ -86,10 +89,10 @@ namespace Shacknews_Push_Notifications
 								if (!parentAuthor.Equals(latestReplyAuthor, StringComparison.InvariantCultureIgnoreCase))
 								{
 #endif
-									var user = await collection.Find(u => u.UserName.Equals(parentAuthor.ToLower())).FirstOrDefaultAsync();
-									if (user != null)
+									var usr = await collection.Find(u => u.UserName.Equals(parentAuthor.ToLower())).FirstOrDefaultAsync();
+									if (usr != null)
 									{
-										this.NotifyUser(user, latestPostId, collection, $"Reply from {latestReplyAuthor}", postBody);
+										this.NotifyUser(usr, latestPostId, collection, $"Reply from {latestReplyAuthor}", postBody);
 									}
 									else
 									{
@@ -145,10 +148,8 @@ namespace Shacknews_Push_Notifications
 			}
 			finally
 			{
-				if (this.timerEnabled)
-				{
-					mainTimer = new System.Threading.Timer(TimerCallback, null, (int)(this.timeDelay * 1000), System.Threading.Timeout.Infinite);
-				}
+				await Task.Delay(new TimeSpan(0, 0, 0, 0, (int)timeDelay), this.cancelToken.Token);
+				this.timerCallbackRunning = false;
 			}
 		}
 

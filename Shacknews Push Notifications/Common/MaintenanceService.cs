@@ -15,10 +15,11 @@ namespace Shacknews_Push_Notifications.Common
 {
 	class MaintenanceService
 	{
-		DatabaseService dbService;
-		NotificationService notificationService;
-		Timer mainTimer;
-		bool timerEnabled = false;
+		private DatabaseService dbService;
+		private NotificationService notificationService;
+		private Timer mainTimer;
+		private bool timerEnabled = false;
+		private bool timerRunning;
 
 		public MaintenanceService(DatabaseService dbService, NotificationService notificationService)
 		{
@@ -30,7 +31,7 @@ namespace Shacknews_Push_Notifications.Common
 		{
 			if (timerEnabled) return;
 			timerEnabled = true;
-			this.mainTimer = new Timer(TimerCallback, null, 0, Timeout.Infinite);
+			this.mainTimer = new Timer(TimerCallback, null, 0, 30000);
 			Console.WriteLine("Maintenance service started.");
 		}
 
@@ -48,6 +49,12 @@ namespace Shacknews_Push_Notifications.Common
 		{
 			try
 			{
+				if(this.timerRunning)
+				{
+					Console.WriteLine("Skipping maintenance task because it's currently running.");
+					return;
+				}
+				this.timerRunning = true;
 				Console.WriteLine("Running maintenance task.");
 				var collection = dbService.GetCollection();
 				var allUsers = await collection.Find(new MongoDB.Bson.BsonDocument()).ToListAsync();
@@ -94,10 +101,7 @@ namespace Shacknews_Push_Notifications.Common
 			finally
 			{
 				Console.WriteLine("Maintenance complete.");
-				if (this.timerEnabled)
-				{
-					mainTimer = new Timer(TimerCallback, null, 30000, Timeout.Infinite);
-				}
+				this.timerRunning = false;
 			}
 		}
 
