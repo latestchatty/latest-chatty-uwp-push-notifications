@@ -31,14 +31,16 @@ namespace Shacknews_Push_Notifications.Common
 							{ "client_secret", ConfigurationManager.AppSettings["clientSecret"] },
 							{ "scope", "notify.windows.com" },
 						});
-						var response = await client.PostAsync("https://login.live.com/accesstoken.srf", data);
-						if (response.StatusCode == System.Net.HttpStatusCode.OK)
+						using (var response = await client.PostAsync("https://login.live.com/accesstoken.srf", data))
 						{
-							var responseJson = JToken.Parse(await response.Content.ReadAsStringAsync());
-							if (responseJson["access_token"] != null)
+							if (response.StatusCode == System.Net.HttpStatusCode.OK)
 							{
-								this.accessToken = responseJson["access_token"].Value<string>();
-								Console.WriteLine($"Got access token.");
+								var responseJson = JToken.Parse(await response.Content.ReadAsStringAsync());
+								if (responseJson["access_token"] != null)
+								{
+									this.accessToken = responseJson["access_token"].Value<string>();
+									Console.WriteLine($"Got access token.");
+								}
 							}
 						}
 					}

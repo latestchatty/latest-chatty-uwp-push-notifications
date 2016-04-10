@@ -117,13 +117,15 @@ namespace Shacknews_Push_Notifications.Common
 
 				using (var request = new HttpClient(handler, true))
 				{
-					var response = await request.GetAsync($"{ConfigurationManager.AppSettings["winChattyApiBase"]}clientData/getClientData?username={Uri.EscapeUriString(userName)}&client=latestchattyUWP{Uri.EscapeUriString("SeenPosts")}");
-					var resString = await response.Content.ReadAsStringAsync();
-					var jResponse = JToken.Parse(resString);
-					var data = jResponse["data"].ToString();
-					if (!string.IsNullOrWhiteSpace(data))
+					using (var response = await request.GetAsync($"{ConfigurationManager.AppSettings["winChattyApiBase"]}clientData/getClientData?username={Uri.EscapeUriString(userName)}&client=latestchattyUWP{Uri.EscapeUriString("SeenPosts")}"))
 					{
-						return Newtonsoft.Json.JsonConvert.DeserializeObject<List<int>>(data);
+						var resString = await response.Content.ReadAsStringAsync();
+						var jResponse = JToken.Parse(resString);
+						var data = jResponse["data"].ToString();
+						if (!string.IsNullOrWhiteSpace(data))
+						{
+							return Newtonsoft.Json.JsonConvert.DeserializeObject<List<int>>(data);
+						}
 					}
 				}
 			}

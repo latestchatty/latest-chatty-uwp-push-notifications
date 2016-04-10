@@ -66,13 +66,18 @@ namespace Shacknews_Push_Notifications
 
 					if (this.lastEventId == 0)
 					{
-						var res = await client.GetAsync($"{ConfigurationManager.AppSettings["winchattyApiBase"]}getNewestEventId", this.cancelToken.Token);
-						var json = JToken.Parse(await res.Content.ReadAsStringAsync());
-						this.lastEventId = (int)json["eventId"];
+						using (var res = await client.GetAsync($"{ConfigurationManager.AppSettings["winchattyApiBase"]}getNewestEventId", this.cancelToken.Token))
+						{
+							var json = JToken.Parse(await res.Content.ReadAsStringAsync());
+							this.lastEventId = (int)json["eventId"];
+						}
 					}
 
-					var resEvent = await client.GetAsync($"{ConfigurationManager.AppSettings["winchattyApiBase"]}waitForEvent?lastEventId={this.lastEventId}&includeParentAuthor=1", this.cancelToken.Token);
-					var jEvent = JToken.Parse(await resEvent.Content.ReadAsStringAsync());
+					JToken jEvent;
+					using (var resEvent = await client.GetAsync($"{ConfigurationManager.AppSettings["winchattyApiBase"]}waitForEvent?lastEventId={this.lastEventId}&includeParentAuthor=1", this.cancelToken.Token))
+					{
+						jEvent = JToken.Parse(await resEvent.Content.ReadAsStringAsync());
+					}
 					if (jEvent["events"] != null)
 					{
 						foreach (var e in jEvent["events"]) //PERF: Could probably Parallel.ForEach this.
@@ -169,8 +174,10 @@ namespace Shacknews_Push_Notifications
 				using (var client = new HttpClient())
 				{
 					//TODO: Get post id lineage and only get the first post.
-					var resThread = await client.GetAsync($"{ConfigurationManager.AppSettings["winChattyApiBase"]}getThread?id={latestPostId}");
-					jThread = JToken.Parse(await resThread.Content.ReadAsStringAsync());
+					using (var resThread = await client.GetAsync($"{ConfigurationManager.AppSettings["winChattyApiBase"]}getThread?id={latestPostId}"))
+					{
+						jThread = JToken.Parse(await resThread.Content.ReadAsStringAsync());
+					}
 				}
 
 				DateTime minDate = DateTime.MaxValue;

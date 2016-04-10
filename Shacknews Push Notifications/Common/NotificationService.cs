@@ -135,52 +135,62 @@ namespace Shacknews_Push_Notifications.Common
 							{
 								await Task.Delay(waitTime);
 								HttpResponseMessage response = null;
-								switch (notification.Type)
+								try
 								{
-									case NotificationType.Badge:
-									case NotificationType.Tile:
-									case NotificationType.Toast:
-										client.DefaultRequestHeaders.Add("X-WNS-Type", this.notificationTypeMapping[notification.Type]);
-										if (notification.Group != NotificationGroups.None)
-										{
-											client.DefaultRequestHeaders.Add("X-WNS-Group", Uri.EscapeUriString(Enum.GetName(typeof(NotificationGroups), notification.Group)));
-										}
-										if (!string.IsNullOrWhiteSpace(notification.Tag))
-										{
-											client.DefaultRequestHeaders.Add("X-WNS-Tag", Uri.EscapeUriString(notification.Tag));
-										}
-										if (notification.TTL > 0)
-										{
-											client.DefaultRequestHeaders.Add("X-WNS-TTL", notification.TTL.ToString());
-										}
-										using (var stringContent = new StringContent(notification.Content.ToString(SaveOptions.DisableFormatting), Encoding.UTF8, "text/xml"))
-										{
-											response = await client.PostAsync(notification.Uri, stringContent);
-										}
-										break;
-									case NotificationType.RemoveToasts:
-										var match = string.Empty;
-										if (notification.Group != NotificationGroups.None)
-										{
-											match = $"group={Uri.EscapeUriString(Enum.GetName(typeof(NotificationGroups), notification.Group))}";
-										}
-										if (!string.IsNullOrWhiteSpace(notification.Tag))
-										{
-											if (!string.IsNullOrWhiteSpace(match))
+									switch (notification.Type)
+									{
+										case NotificationType.Badge:
+										case NotificationType.Tile:
+										case NotificationType.Toast:
+											client.DefaultRequestHeaders.Add("X-WNS-Type", this.notificationTypeMapping[notification.Type]);
+											if (notification.Group != NotificationGroups.None)
 											{
-												match += ";";
+												client.DefaultRequestHeaders.Add("X-WNS-Group", Uri.EscapeUriString(Enum.GetName(typeof(NotificationGroups), notification.Group)));
 											}
-											match += $"tag={Uri.EscapeUriString(notification.Tag)}";
-										}
-										if (string.IsNullOrWhiteSpace(match))
-										{
-											match = "all";
-										}
-										client.DefaultRequestHeaders.Add("X-WNS-Match", $"type=wns/toast;{match}");
-										response = await client.DeleteAsync(notification.Uri);
-										break;
+											if (!string.IsNullOrWhiteSpace(notification.Tag))
+											{
+												client.DefaultRequestHeaders.Add("X-WNS-Tag", Uri.EscapeUriString(notification.Tag));
+											}
+											if (notification.TTL > 0)
+											{
+												client.DefaultRequestHeaders.Add("X-WNS-TTL", notification.TTL.ToString());
+											}
+											using (var stringContent = new StringContent(notification.Content.ToString(SaveOptions.DisableFormatting), Encoding.UTF8, "text/xml"))
+											{
+												response = await client.PostAsync(notification.Uri, stringContent);
+											}
+											break;
+										case NotificationType.RemoveToasts:
+											var match = string.Empty;
+											if (notification.Group != NotificationGroups.None)
+											{
+												match = $"group={Uri.EscapeUriString(Enum.GetName(typeof(NotificationGroups), notification.Group))}";
+											}
+											if (!string.IsNullOrWhiteSpace(notification.Tag))
+											{
+												if (!string.IsNullOrWhiteSpace(match))
+												{
+													match += ";";
+												}
+												match += $"tag={Uri.EscapeUriString(notification.Tag)}";
+											}
+											if (string.IsNullOrWhiteSpace(match))
+											{
+												match = "all";
+											}
+											client.DefaultRequestHeaders.Add("X-WNS-Match", $"type=wns/toast;{match}");
+											response = await client.DeleteAsync(notification.Uri);
+											break;
+									}
+									result = await this.ProcessResponse(response, notification.Uri);
 								}
-								result = await this.ProcessResponse(response, notification.Uri);
+								finally
+								{
+									if (response != null)
+									{
+										response.Dispose();
+									}
+								}
 								waitTime = (int)Math.Pow(Math.Max(waitTime, 1000), 1.1); //If we need to keep retrying, do it slower until we eventually succeed or get to high.
 								if (waitTime > 10 * 60 * 1000) result = ResponseResult.FailDoNotTryAgain; //Give up after a while.
 							} while (result == ResponseResult.FailTryAgain);

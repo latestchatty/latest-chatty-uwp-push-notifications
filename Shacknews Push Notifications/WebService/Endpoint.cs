@@ -67,7 +67,7 @@ namespace Shacknews_Push_Notifications
 			public string Tag { get; set; }
 		}
 		#endregion
-		
+
 		private dynamic GetTileContent(dynamic arg)
 		{
 			try
@@ -241,8 +241,11 @@ namespace Shacknews_Push_Notifications
 
 					var formContent = new FormUrlEncodedContent(data);
 
-					var response = await request.PostAsync($"{ConfigurationManager.AppSettings["winChattyApiBase"]}postComment", formContent);
-					var parsedResponse = JToken.Parse(await response.Content.ReadAsStringAsync());
+					JToken parsedResponse = null;
+					using (var response = await request.PostAsync($"{ConfigurationManager.AppSettings["winChattyApiBase"]}postComment", formContent))
+					{
+						parsedResponse = JToken.Parse(await response.Content.ReadAsStringAsync());
+					}
 					var success = parsedResponse["result"]?.ToString().Equals("success");
 					if (success.HasValue && success.Value)
 					{
