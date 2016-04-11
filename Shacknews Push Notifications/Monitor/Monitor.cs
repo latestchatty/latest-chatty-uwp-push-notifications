@@ -171,46 +171,9 @@ namespace Shacknews_Push_Notifications
 					user.ReplyEntries = new List<ReplyEntry>();
 				}
 
-				var minPostIdInThread = int.MaxValue;
-				TimeSpan ttl = new TimeSpan(18, 0, 0);
-				JToken jThread = null;
-
-				using (var client = new HttpClient())
-				{
-					//TODO: Get post id lineage and only get the first post.
-					using (var resThread = await client.GetAsync($"{ConfigurationManager.AppSettings["winChattyApiBase"]}getThread?id={latestPostId}"))
-					{
-						jThread = JToken.Parse(await resThread.Content.ReadAsStringAsync());
-					}
-				}
-
-				DateTime minDate = DateTime.MaxValue;
-				if (jThread != null && jThread["threads"] != null)
-				{
-					foreach (var post in jThread["threads"][0]["posts"])
-					{
-						var date = DateTime.Parse(post["date"].ToString(), null, System.Globalization.DateTimeStyles.AdjustToUniversal | System.Globalization.DateTimeStyles.AssumeUniversal);
-						if (date < minDate)
-						{
-							minDate = date;
-							minPostIdInThread = (int)post["id"];
-						}
-					}
-				}
-
-				if (!minDate.Equals(DateTime.MaxValue))
-				{
-					ttl = minDate.AddHours(18).Subtract(DateTime.UtcNow);
-				}
-
-				//This is an old thread I use for testing.  Still want notifications to it.
-				if (minPostIdInThread == 29374230 && user.UserName.Equals("boarder2", StringComparison.InvariantCultureIgnoreCase))
-				{
-					ttl = new TimeSpan(0, 5, 0);
-				}
+				TimeSpan ttl = new TimeSpan(48, 0, 0);
 
 				var expireDate = DateTime.UtcNow.Add(ttl);
-				Console.WriteLine($"Min Date {minDate} - TTL {ttl} - Expire Date {expireDate}");
 
 				if (expireDate > DateTime.UtcNow)
 				{
