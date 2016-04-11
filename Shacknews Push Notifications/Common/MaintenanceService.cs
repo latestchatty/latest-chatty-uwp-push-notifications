@@ -13,7 +13,7 @@ using System.Xml.Linq;
 
 namespace Shacknews_Push_Notifications.Common
 {
-	class MaintenanceService
+	class MaintenanceService : IDisposable
 	{
 		private DatabaseService dbService;
 		private NotificationService notificationService;
@@ -49,7 +49,7 @@ namespace Shacknews_Push_Notifications.Common
 		{
 			try
 			{
-				if(this.timerRunning)
+				if (this.timerRunning)
 				{
 					Console.WriteLine("Skipping maintenance task because it's currently running.");
 					return;
@@ -74,7 +74,7 @@ namespace Shacknews_Push_Notifications.Common
 
 					//Next, remove any entries that might have been added because the user clicked on a post before the notification got created.
 					var seenPosts = await this.GetSeenPostIds(user.UserName);
-					if(seenPosts != null)
+					if (seenPosts != null)
 					{
 						newEntries = newEntries.Where(e => !seenPosts.Contains(e.PostId)).ToList();
 						alreadySeenCount = oldEntryCount - newEntries.Count;
@@ -94,7 +94,7 @@ namespace Shacknews_Push_Notifications.Common
 					}
 				}
 			}
-			catch(Exception ex)
+			catch (Exception ex)
 			{
 				Console.WriteLine($"Exception in maintenance task : {ex}");
 			}
@@ -132,8 +132,46 @@ namespace Shacknews_Push_Notifications.Common
 			catch (Exception ex)
 			{
 				Console.WriteLine($"Error retrieving post ids for {userName} : {ex}");
-         }
+			}
 			return null;
 		}
+
+		#region IDisposable Support
+		private bool disposedValue = false; // To detect redundant calls
+
+		protected virtual void Dispose(bool disposing)
+		{
+			if (!disposedValue)
+			{
+				if (disposing)
+				{
+					if(this.mainTimer != null)
+					{
+						this.mainTimer.Dispose();
+					}
+				}
+
+				// TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
+				// TODO: set large fields to null.
+
+				disposedValue = true;
+			}
+		}
+
+		// TODO: override a finalizer only if Dispose(bool disposing) above has code to free unmanaged resources.
+		// ~MaintenanceService() {
+		//   // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
+		//   Dispose(false);
+		// }
+
+		// This code added to correctly implement the disposable pattern.
+		public void Dispose()
+		{
+			// Do not change this code. Put cleanup code in Dispose(bool disposing) above.
+			Dispose(true);
+			// TODO: uncomment the following line if the finalizer is overridden above.
+			// GC.SuppressFinalize(this);
+		}
+		#endregion
 	}
 }

@@ -14,7 +14,7 @@ using System.Xml.Linq;
 
 namespace Shacknews_Push_Notifications
 {
-	class Monitor
+	class Monitor : IDisposable
 	{
 		const int BASE_TIME_DELAY = 2;
 		const double TIME_DELAY_FAIL_EXPONENT = 1.5;
@@ -35,6 +35,7 @@ namespace Shacknews_Push_Notifications
 
 		public void Start()
 		{
+			if (this.timerEnabled) return;
 			this.timerEnabled = true;
 			this.mainTimer = new Timer(TimerCallback, null, 0, 1000);
 			Console.WriteLine("Notification monitor started.");
@@ -262,6 +263,48 @@ namespace Shacknews_Push_Notifications
 
 			//this.notificationService.QueueReplyTileNotification(latestReplyAuthor, latestReplyText, info.NotificationUri);
 		}
+
+		#region IDisposable Support
+		private bool disposedValue = false; // To detect redundant calls
+
+		protected virtual void Dispose(bool disposing)
+		{
+			if (!disposedValue)
+			{
+				if (disposing)
+				{
+					if(this.mainTimer != null)
+					{
+						this.mainTimer.Dispose();
+					}
+					if(this.cancelToken != null)
+					{
+						this.cancelToken.Dispose();
+					}
+				}
+
+				// TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
+				// TODO: set large fields to null.
+
+				disposedValue = true;
+			}
+		}
+
+		// TODO: override a finalizer only if Dispose(bool disposing) above has code to free unmanaged resources.
+		// ~Monitor() {
+		//   // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
+		//   Dispose(false);
+		// }
+
+		// This code added to correctly implement the disposable pattern.
+		public void Dispose()
+		{
+			// Do not change this code. Put cleanup code in Dispose(bool disposing) above.
+			Dispose(true);
+			// TODO: uncomment the following line if the finalizer is overridden above.
+			// GC.SuppressFinalize(this);
+		}
+		#endregion
 
 
 	}
