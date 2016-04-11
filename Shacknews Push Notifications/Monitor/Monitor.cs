@@ -118,6 +118,10 @@ namespace Shacknews_Push_Notifications
 									}
 								}
 							}
+							else
+							{
+								Console.WriteLine($"Event type {e["eventType"].ToString()} not handled.");
+							}
 						}
 					}
 					if (jEvent["lastEventId"] != null)
