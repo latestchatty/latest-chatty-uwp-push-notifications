@@ -25,7 +25,6 @@ namespace Shacknews_Push_Notifications
 		private readonly NotificationService notificationService;
 		private readonly DatabaseService dbService;
 		private CancellationTokenSource cancelToken = new CancellationTokenSource();
-		private bool timerCallbackRunning;
 
 		public Monitor(NotificationService notificationService, DatabaseService dbService)
 		{
@@ -37,7 +36,7 @@ namespace Shacknews_Push_Notifications
 		{
 			if (this.timerEnabled) return;
 			this.timerEnabled = true;
-			this.mainTimer = new Timer(TimerCallback, null, 0, 1000);
+			this.mainTimer = new System.Threading.Timer(TimerCallback, null, 0, System.Threading.Timeout.Infinite);
 			Console.WriteLine("Notification monitor started.");
 		}
 
@@ -55,8 +54,6 @@ namespace Shacknews_Push_Notifications
 
 		async private void TimerCallback(object state)
 		{
-			if (this.timerCallbackRunning) return;
-			this.timerCallbackRunning = true;
 			Console.WriteLine("Waiting for next monitor event...");
 			try
 			{
@@ -154,8 +151,10 @@ namespace Shacknews_Push_Notifications
 			}
 			finally
 			{
-				await Task.Delay(new TimeSpan(0, 0, 0, 0, (int)timeDelay), this.cancelToken.Token);
-				this.timerCallbackRunning = false;
+				if (this.timerEnabled)
+				{
+					mainTimer.Change((int)(this.timeDelay * 1000), Timeout.Infinite);
+				}
 			}
 		}
 
