@@ -196,10 +196,7 @@ namespace Shacknews_Push_Notifications.Common
 							} while (result == ResponseResult.FailTryAgain);
 
 						}
-						if (notification != null)
-						{
-							this.nextProcessDelay = 3000; //Reset on successful processing of queue
-						}
+						this.nextProcessDelay = 0; //Reset on successful processing of a notification
 					}
 					catch (Exception ex)
 					{
