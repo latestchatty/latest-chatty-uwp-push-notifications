@@ -238,13 +238,14 @@ namespace Shacknews_Push_Notifications
 
 					//Winchatty seems to crap itself if the Expect: 100-continue header is there.
 					request.DefaultRequestHeaders.ExpectContinue = false;
-
-					var formContent = new FormUrlEncodedContent(data);
-
 					JToken parsedResponse = null;
-					using (var response = await request.PostAsync($"{ConfigurationManager.AppSettings["winChattyApiBase"]}postComment", formContent))
+
+					using (var formContent = new FormUrlEncodedContent(data))
 					{
-						parsedResponse = JToken.Parse(await response.Content.ReadAsStringAsync());
+						using (var response = await request.PostAsync($"{ConfigurationManager.AppSettings["winChattyApiBase"]}postComment", formContent))
+						{
+							parsedResponse = JToken.Parse(await response.Content.ReadAsStringAsync());
+						}
 					}
 					var success = parsedResponse["result"]?.ToString().Equals("success");
 					if (success.HasValue && success.Value)
