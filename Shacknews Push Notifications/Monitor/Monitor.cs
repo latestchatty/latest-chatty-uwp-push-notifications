@@ -37,7 +37,7 @@ namespace Shacknews_Push_Notifications
 			if (this.timerEnabled) return;
 			this.timerEnabled = true;
 			this.mainTimer = new System.Threading.Timer(TimerCallback, null, 0, System.Threading.Timeout.Infinite);
-			Console.WriteLine("Notification monitor started.");
+			ConsoleLog.LogMessage("Notification monitor started.");
 		}
 
 		public void Stop()
@@ -49,12 +49,12 @@ namespace Shacknews_Push_Notifications
 				this.mainTimer.Dispose();
 				this.mainTimer = null;
 			}
-			Console.WriteLine("Notification monitor stopped.");
+			ConsoleLog.LogMessage("Notification monitor stopped.");
 		}
 
 		async private void TimerCallback(object state)
 		{
-			Console.WriteLine("Waiting for next monitor event...");
+			ConsoleLog.LogMessage("Waiting for next monitor event...");
 			try
 			{
 				var collection = dbService.GetCollection();
@@ -99,13 +99,13 @@ namespace Shacknews_Push_Notifications
 									}
 									else
 									{
-										Console.WriteLine($"No alert on reply to {parentAuthor}");
+										ConsoleLog.LogMessage($"No alert on reply to {parentAuthor}");
 									}
 #if !DEBUG
 								}
 								else
 								{
-									Console.WriteLine($"No alert on self-reply to {parentAuthor}");
+									ConsoleLog.LogMessage($"No alert on self-reply to {parentAuthor}");
 								}
 #endif
 								var users = await collection.Find(new MongoDB.Bson.BsonDocument()).ToListAsync();
@@ -113,14 +113,14 @@ namespace Shacknews_Push_Notifications
 								{
 									if (postBody.ToLower().Contains(user.UserName.ToLower()))
 									{
-										Console.WriteLine($"Notifying {user.UserName} of mention by {latestReplyAuthor}");
+										ConsoleLog.LogMessage($"Notifying {user.UserName} of mention by {latestReplyAuthor}");
 										await this.NotifyUser(user, latestPostId, collection, $"Mentioned by {latestReplyAuthor}", postBody);
 									}
 								}
 							}
 							else
 							{
-								Console.WriteLine($"Event type {e["eventType"].ToString()} not handled.");
+								ConsoleLog.LogMessage($"Event type {e["eventType"].ToString()} not handled.");
 							}
 						}
 					}
@@ -144,13 +144,13 @@ namespace Shacknews_Push_Notifications
 				{
 					//This is expected, we'll still slow down our polling of winchatty if the chatty's not busy but won't print a full stack.
 					//Don't reset the event ID though, since nothing happened.  Don't want to miss events.
-					Console.WriteLine("Timed out waiting for winchatty.");
+					ConsoleLog.LogMessage("Timed out waiting for winchatty.");
 				}
 				else
 				{
 					//If there was an error, reset the event ID to 0 so we get the latest, otherwise we might get stuck in a loop where the API won't return us events because there are too many.
 					lastEventId = 0;
-					Console.Error.WriteLine($"!!!!!Exception in {nameof(TimerCallback)}: {ex.ToString()}");
+					ConsoleLog.LogError($"!!!!!Exception in {nameof(TimerCallback)}: {ex.ToString()}");
 				}
 			}
 			finally
@@ -195,7 +195,7 @@ namespace Shacknews_Push_Notifications
 				}
 				else
 				{
-					Console.WriteLine($"No notification on reply to {user.UserName} because thread is expired.");
+					ConsoleLog.LogMessage($"No notification on reply to {user.UserName} because thread is expired.");
 				}
 			}
 		}

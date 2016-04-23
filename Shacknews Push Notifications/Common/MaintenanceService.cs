@@ -31,7 +31,7 @@ namespace Shacknews_Push_Notifications.Common
 			if (timerEnabled) return;
 			timerEnabled = true;
 			this.mainTimer = new Timer(TimerCallback, null, 0, Timeout.Infinite);
-			Console.WriteLine("Maintenance service started.");
+			ConsoleLog.LogMessage("Maintenance service started.");
 		}
 
 		public void Stop()
@@ -42,13 +42,13 @@ namespace Shacknews_Push_Notifications.Common
 				this.mainTimer = null;
 			}
 			timerEnabled = false;
-			Console.WriteLine("Maintenance service stopped.");
+			ConsoleLog.LogMessage("Maintenance service stopped.");
 		}
 		async private void TimerCallback(object state)
 		{
 			try
 			{
-				Console.WriteLine("Running maintenance task.");
+				ConsoleLog.LogMessage("Running maintenance task.");
 				var collection = dbService.GetCollection();
 				var allUsers = await collection.Find(new MongoDB.Bson.BsonDocument()).ToListAsync();
 				foreach (var user in allUsers)
@@ -75,7 +75,7 @@ namespace Shacknews_Push_Notifications.Common
 
 					if (originalEntryCount != newEntries.Count)
 					{
-						Console.WriteLine($"Removing {expiredCount} expired and {alreadySeenCount} already seen entries from {user.UserName}");
+						ConsoleLog.LogMessage($"Removing {expiredCount} expired and {alreadySeenCount} already seen entries from {user.UserName}");
 						var filter = Builders<NotificationUser>.Filter.Eq("_id", user._id);
 						var update = Builders<NotificationUser>.Update
 							.Set(x => x.ReplyEntries, newEntries)
@@ -89,11 +89,11 @@ namespace Shacknews_Push_Notifications.Common
 			}
 			catch (Exception ex)
 			{
-				Console.Error.WriteLine($"Exception in maintenance task : {ex}");
+				ConsoleLog.LogError($"Exception in maintenance task : {ex}");
 			}
 			finally
 			{
-				Console.WriteLine("Maintenance complete.");
+				ConsoleLog.LogMessage("Maintenance complete.");
 				if (this.timerEnabled)
 				{
 					mainTimer.Change(30000, Timeout.Infinite);
@@ -127,7 +127,7 @@ namespace Shacknews_Push_Notifications.Common
 			}
 			catch (Exception ex)
 			{
-				Console.Error.WriteLine($"Error retrieving post ids for {userName} : {ex}");
+				ConsoleLog.LogError($"Error retrieving post ids for {userName} : {ex}");
 			}
 			return null;
 		}

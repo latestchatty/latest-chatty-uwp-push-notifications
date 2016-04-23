@@ -83,6 +83,7 @@
   <ItemGroup>
     <Compile Include="AppModuleBuilder.cs" />
     <Compile Include="Common\AccessTokenManager.cs" />
+    <Compile Include="Common\ConsoleLog.cs" />
     <Compile Include="Common\MaintenanceService.cs" />
     <Compile Include="Common\NotificationGroups.cs" />
     <Compile Include="Common\NotificationType.cs" />

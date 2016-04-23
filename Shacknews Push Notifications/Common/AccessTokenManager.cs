@@ -22,7 +22,7 @@ namespace Shacknews_Push_Notifications.Common
 				await this.locker.WaitAsync();
 				if (string.IsNullOrWhiteSpace(this.accessToken))
 				{
-					Console.WriteLine("Getting access token.");
+					ConsoleLog.LogMessage("Getting access token.");
 					using (var client = new HttpClient())
 					{
 						var data = new FormUrlEncodedContent(new Dictionary<string, string> {
@@ -39,7 +39,7 @@ namespace Shacknews_Push_Notifications.Common
 								if (responseJson["access_token"] != null)
 								{
 									this.accessToken = responseJson["access_token"].Value<string>();
-									Console.WriteLine($"Got access token.");
+									ConsoleLog.LogMessage($"Got access token.");
 								}
 							}
 						}

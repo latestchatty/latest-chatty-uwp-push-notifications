@@ -41,7 +41,7 @@ namespace Shacknews_Push_Notifications
 			}
 			else
 			{
-				Console.WriteLine("Press a key to exit.");
+				ConsoleLog.LogMessage("Press a key to exit.");
 				Console.ReadKey();
 			}
 
@@ -52,7 +52,7 @@ namespace Shacknews_Push_Notifications
 
 		private static void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
 		{
-			Console.Error.WriteLine($"Unhandled exception. {e}");
+			ConsoleLog.LogError($"Unhandled exception. {e}");
 		}
 	}
 }

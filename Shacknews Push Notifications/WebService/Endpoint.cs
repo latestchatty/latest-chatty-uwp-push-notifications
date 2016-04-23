@@ -76,7 +76,7 @@ namespace Shacknews_Push_Notifications
 				var tileContent = cache.Get("tileContent") as string;
 				if (string.IsNullOrWhiteSpace(tileContent))
 				{
-					Console.WriteLine("Retrieving tile content.");
+					ConsoleLog.LogMessage("Retrieving tile content.");
 					var xDoc = XDocument.Load("http://www.shacknews.com/rss?recent_articles=1");
 					var items = xDoc.Descendants("item");
 					var itemsObj = items.Select(i => new
@@ -114,13 +114,13 @@ namespace Shacknews_Push_Notifications
 				}
 				else
 				{
-					Console.WriteLine("Retrieved cached tile content.");
+					ConsoleLog.LogMessage("Retrieved cached tile content.");
 				}
 				return tileContent;
 			}
 			catch (Exception ex)
 			{
-				Console.WriteLine($"Excepiton retrieving tile content : {ex}");
+				ConsoleLog.LogMessage($"Excepiton retrieving tile content : {ex}");
 			}
 			return string.Empty;
 		}
@@ -129,10 +129,10 @@ namespace Shacknews_Push_Notifications
 		{
 			try
 			{
-				Console.WriteLine("Getting open reply notifications.");
+				ConsoleLog.LogMessage("Getting open reply notifications.");
 				var e = this.Bind<UserNameArgs>();
 
-				Console.WriteLine($"Getting open reply notifications for user {e.UserName}.");
+				ConsoleLog.LogMessage($"Getting open reply notifications for user {e.UserName}.");
 				var collection = this.dbService.GetCollection();
 
 				var user = await collection.Find(u => u.UserName.Equals(e.UserName.ToLower())).FirstOrDefaultAsync();
@@ -142,14 +142,14 @@ namespace Shacknews_Push_Notifications
 				}
 				else
 				{
-					Console.WriteLine($"User {e.UserName} not found when getting open reply notifications.");
+					ConsoleLog.LogMessage($"User {e.UserName} not found when getting open reply notifications.");
 					return new { status = "error", message = "User not found." };
 				}
 			}
 			catch (Exception ex)
 			{
 				//TODO: Log exception
-				Console.Error.WriteLine($"!!!!Exception in {nameof(GetOpenReplyNotifications)}: {ex.ToString()}");
+				ConsoleLog.LogError($"!!!!Exception in {nameof(GetOpenReplyNotifications)}: {ex.ToString()}");
 				return new { status = "error" };
 			}
 		}
@@ -158,7 +158,7 @@ namespace Shacknews_Push_Notifications
 		{
 			try
 			{
-				Console.WriteLine("Removing notification.");
+				ConsoleLog.LogMessage("Removing notification.");
 				var e = this.Bind<RemoveNotificationArgs>();
 
 				var collection = this.dbService.GetCollection();
@@ -207,7 +207,7 @@ namespace Shacknews_Push_Notifications
 				}
 				else
 				{
-					Console.WriteLine($"User {e.UserName} not found when removing.");
+					ConsoleLog.LogMessage($"User {e.UserName} not found when removing.");
 					return new { status = "error", message = "User not found." };
 				}
 				return new { status = "success" };
@@ -215,7 +215,7 @@ namespace Shacknews_Push_Notifications
 			catch (Exception ex)
 			{
 				//TODO: Log exception
-				Console.Error.WriteLine($"!!!!Exception in {nameof(RemoveNotification)}: {ex.ToString()}");
+				ConsoleLog.LogError($"!!!!Exception in {nameof(RemoveNotification)}: {ex.ToString()}");
 				return new { status = "error" };
 			}
 		}
@@ -224,7 +224,7 @@ namespace Shacknews_Push_Notifications
 		{
 			try
 			{
-				Console.WriteLine("Replying to notification.");
+				ConsoleLog.LogMessage("Replying to notification.");
 				var e = this.Bind<ReplyToNotificationArgs>();
 
 				using (var request = new HttpClient())
@@ -285,7 +285,7 @@ namespace Shacknews_Push_Notifications
 						}
 						else
 						{
-							Console.WriteLine($"User {e.UserName} not found when replying.");
+							ConsoleLog.LogMessage($"User {e.UserName} not found when replying.");
 							return new { status = "error", message = "User not found." };
 						}
 						return new { status = "success" };
@@ -299,7 +299,7 @@ namespace Shacknews_Push_Notifications
 			catch (Exception ex)
 			{
 				//TODO: Log exception
-				Console.Error.WriteLine($"!!!!Exception in {nameof(ReplyToNotification)}: {ex.ToString()}");
+				ConsoleLog.LogError($"!!!!Exception in {nameof(ReplyToNotification)}: {ex.ToString()}");
 				return new { status = "error" };
 			}
 		}
@@ -308,7 +308,7 @@ namespace Shacknews_Push_Notifications
 		{
 			try
 			{
-				Console.WriteLine("Deregister device.");
+				ConsoleLog.LogMessage("Deregister device.");
 				var e = this.Bind<DeregisterArgs>();
 
 				var collection = this.dbService.GetCollection();
@@ -335,7 +335,7 @@ namespace Shacknews_Push_Notifications
 			catch (Exception ex)
 			{
 				//TODO: Log exception
-				Console.Error.WriteLine($"!!!!Exception in {nameof(DeregisterDevice)}: {ex.ToString()}");
+				ConsoleLog.LogError($"!!!!Exception in {nameof(DeregisterDevice)}: {ex.ToString()}");
 				return new { status = "error" };
 			}
 		}
@@ -344,7 +344,7 @@ namespace Shacknews_Push_Notifications
 		{
 			try
 			{
-				Console.WriteLine("Register device.");
+				ConsoleLog.LogMessage("Register device.");
 				var e = this.Bind<RegisterArgs>();
 				var collection = this.dbService.GetCollection();
 
@@ -395,7 +395,7 @@ namespace Shacknews_Push_Notifications
 			catch (Exception ex)
 			{
 				//TODO: Log exception
-				Console.Error.WriteLine($"!!!!Exception in {nameof(RegisterDevice)}: {ex.ToString()}");
+				ConsoleLog.LogError($"!!!!Exception in {nameof(RegisterDevice)}: {ex.ToString()}");
 				return new { status = "error" };
 			}
 		}
@@ -404,7 +404,7 @@ namespace Shacknews_Push_Notifications
 		{
 			try
 			{
-				Console.WriteLine("Reset count.");
+				ConsoleLog.LogMessage("Reset count.");
 				var e = this.Bind<UserNameArgs>();
 				var collection = this.dbService.GetCollection();
 
@@ -423,7 +423,7 @@ namespace Shacknews_Push_Notifications
 				}
 				else
 				{
-					Console.WriteLine($"User {e.UserName} not found");
+					ConsoleLog.LogMessage($"User {e.UserName} not found");
 					return new { status = "error", message = "User not found." };
 				}
 				return new { status = "success" };
@@ -431,7 +431,7 @@ namespace Shacknews_Push_Notifications
 			catch (Exception ex)
 			{
 				//TODO: Log exception
-				Console.Error.WriteLine($"!!!!Exception in {nameof(ResetCount)}: {ex.ToString()}");
+				ConsoleLog.LogError($"!!!!Exception in {nameof(ResetCount)}: {ex.ToString()}");
 				return new { status = "error" };
 			}
 		}

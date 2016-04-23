@@ -1,5 +1,6 @@
 ﻿using Autofac;
 using Nancy.Hosting.Self;
+using Shacknews_Push_Notifications.Common;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
@@ -27,7 +28,7 @@ namespace Shacknews_Push_Notifications.WebService
 				var bs = new Bootstrapper(this.container);
 				this.host = new NancyHost(bs, new[] { new Uri(uri) });
 				this.host.Start();
-				Console.WriteLine("Web service started.");
+				ConsoleLog.LogMessage("Web service started.");
 			}
 		}
 
@@ -38,7 +39,7 @@ namespace Shacknews_Push_Notifications.WebService
 				if (host != null)
 				{
 					this.host.Dispose(); //Stops the host as well.
-					Console.WriteLine("Web service stopped.");
+					ConsoleLog.LogMessage("Web service stopped.");
 				}
 			}
 			finally

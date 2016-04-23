@@ -122,13 +122,13 @@ namespace Shacknews_Push_Notifications.Common
 				QueuedNotificationItem notification = null;
 				while (this.queuedItems.TryDequeue(out notification))
 				{
-					Console.WriteLine("Processing notification queue.");
+					ConsoleLog.LogMessage("Processing notification queue.");
 					try
 					{
 						var token = await this.accessTokenManager.GetAccessToken();
 						using (var client = this.CreateClient(token))
 						{
-							Console.WriteLine($"Sending notification {notification.Type} with content { notification.Content?.ToString(SaveOptions.None) }");
+							ConsoleLog.LogMessage($"Sending notification {notification.Type} with content { notification.Content?.ToString(SaveOptions.None) }");
 							var waitTime = 0;
 							ResponseResult result;
 							do
@@ -200,7 +200,7 @@ namespace Shacknews_Push_Notifications.Common
 					}
 					catch (Exception ex)
 					{
-						Console.Error.WriteLine($"!!!!!!Exception in {nameof(ProcessNotificationQueue)} : {ex.ToString()}");
+						ConsoleLog.LogError($"!!!!!!Exception in {nameof(ProcessNotificationQueue)} : {ex.ToString()}");
 						this.nextProcessDelay = (int)Math.Pow(this.nextProcessDelay, 1.1);
 					}
 					finally
@@ -220,7 +220,7 @@ namespace Shacknews_Push_Notifications.Common
 		{
 			//By default, we'll just let it die if we don't know specifically that we can try again.
 			ResponseResult result = ResponseResult.FailDoNotTryAgain;
-			Console.WriteLine($"Notification Response Code: {response.StatusCode}");
+			ConsoleLog.LogMessage($"Notification Response Code: {response.StatusCode}");
 			switch (response.StatusCode)
 			{
 				case System.Net.HttpStatusCode.OK:
