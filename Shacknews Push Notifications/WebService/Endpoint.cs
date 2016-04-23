@@ -149,7 +149,7 @@ namespace Shacknews_Push_Notifications
 			catch (Exception ex)
 			{
 				//TODO: Log exception
-				Console.WriteLine($"!!!!Exception in {nameof(GetOpenReplyNotifications)}: {ex.ToString()}");
+				Console.Error.WriteLine($"!!!!Exception in {nameof(GetOpenReplyNotifications)}: {ex.ToString()}");
 				return new { status = "error" };
 			}
 		}
@@ -215,7 +215,7 @@ namespace Shacknews_Push_Notifications
 			catch (Exception ex)
 			{
 				//TODO: Log exception
-				Console.WriteLine($"!!!!Exception in {nameof(RemoveNotification)}: {ex.ToString()}");
+				Console.Error.WriteLine($"!!!!Exception in {nameof(RemoveNotification)}: {ex.ToString()}");
 				return new { status = "error" };
 			}
 		}
@@ -299,7 +299,7 @@ namespace Shacknews_Push_Notifications
 			catch (Exception ex)
 			{
 				//TODO: Log exception
-				Console.WriteLine($"!!!!Exception in {nameof(ReplyToNotification)}: {ex.ToString()}");
+				Console.Error.WriteLine($"!!!!Exception in {nameof(ReplyToNotification)}: {ex.ToString()}");
 				return new { status = "error" };
 			}
 		}
@@ -335,7 +335,7 @@ namespace Shacknews_Push_Notifications
 			catch (Exception ex)
 			{
 				//TODO: Log exception
-				Console.WriteLine($"!!!!Exception in {nameof(DeregisterDevice)}: {ex.ToString()}");
+				Console.Error.WriteLine($"!!!!Exception in {nameof(DeregisterDevice)}: {ex.ToString()}");
 				return new { status = "error" };
 			}
 		}
@@ -395,7 +395,7 @@ namespace Shacknews_Push_Notifications
 			catch (Exception ex)
 			{
 				//TODO: Log exception
-				Console.WriteLine($"!!!!Exception in {nameof(RegisterDevice)}: {ex.ToString()}");
+				Console.Error.WriteLine($"!!!!Exception in {nameof(RegisterDevice)}: {ex.ToString()}");
 				return new { status = "error" };
 			}
 		}
@@ -431,7 +431,7 @@ namespace Shacknews_Push_Notifications
 			catch (Exception ex)
 			{
 				//TODO: Log exception
-				Console.WriteLine($"!!!!Exception in {nameof(ResetCount)}: {ex.ToString()}");
+				Console.Error.WriteLine($"!!!!Exception in {nameof(ResetCount)}: {ex.ToString()}");
 				return new { status = "error" };
 			}
 		}

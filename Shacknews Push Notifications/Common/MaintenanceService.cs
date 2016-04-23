@@ -89,7 +89,7 @@ namespace Shacknews_Push_Notifications.Common
 			}
 			catch (Exception ex)
 			{
-				Console.WriteLine($"Exception in maintenance task : {ex}");
+				Console.Error.WriteLine($"Exception in maintenance task : {ex}");
 			}
 			finally
 			{
@@ -127,7 +127,7 @@ namespace Shacknews_Push_Notifications.Common
 			}
 			catch (Exception ex)
 			{
-				Console.WriteLine($"Error retrieving post ids for {userName} : {ex}");
+				Console.Error.WriteLine($"Error retrieving post ids for {userName} : {ex}");
 			}
 			return null;
 		}

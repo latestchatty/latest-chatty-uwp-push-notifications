@@ -15,6 +15,7 @@ namespace Shacknews_Push_Notifications
 	{
 		static void Main(string[] args)
 		{
+			AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
 			var builder = new AppModuleBuilder();
 			var container = builder.BuilderContainer();
 
@@ -47,6 +48,11 @@ namespace Shacknews_Push_Notifications
 			webService.Stop();
 			monitor.Stop();
 			maintenanceService.Stop();
+		}
+
+		private static void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
+		{
+			Console.Error.WriteLine($"Unhandled exception. {e}");
 		}
 	}
 }

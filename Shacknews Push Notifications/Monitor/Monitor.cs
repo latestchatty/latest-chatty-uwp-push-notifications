@@ -150,7 +150,7 @@ namespace Shacknews_Push_Notifications
 				{
 					//If there was an error, reset the event ID to 0 so we get the latest, otherwise we might get stuck in a loop where the API won't return us events because there are too many.
 					lastEventId = 0;
-					Console.WriteLine($"!!!!!Exception in {nameof(TimerCallback)}: {ex.ToString()}");
+					Console.Error.WriteLine($"!!!!!Exception in {nameof(TimerCallback)}: {ex.ToString()}");
 				}
 			}
 			finally

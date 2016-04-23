@@ -200,7 +200,7 @@ namespace Shacknews_Push_Notifications.Common
 					}
 					catch (Exception ex)
 					{
-						Console.WriteLine($"!!!!!!Exception in {nameof(ProcessNotificationQueue)} : {ex.ToString()}");
+						Console.Error.WriteLine($"!!!!!!Exception in {nameof(ProcessNotificationQueue)} : {ex.ToString()}");
 						this.nextProcessDelay = (int)Math.Pow(this.nextProcessDelay, 1.1);
 					}
 					finally
