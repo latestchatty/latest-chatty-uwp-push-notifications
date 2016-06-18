@@ -111,7 +111,8 @@ namespace Shacknews_Push_Notifications
 								var users = await collection.Find(new MongoDB.Bson.BsonDocument()).ToListAsync();
 								foreach (var user in users)
 								{
-									if (postBody.ToLower().Contains(user.UserName.ToLower()))
+									//Pad with spaces so we don't match a partial username.
+									if ((" " + postBody.ToLower() + " ").Contains(" " + user.UserName.ToLower() + " "))
 									{
 										ConsoleLog.LogMessage($"Notifying {user.UserName} of mention by {latestReplyAuthor}");
 										await this.NotifyUser(user, latestPostId, collection, $"Mentioned by {latestReplyAuthor}", postBody);
