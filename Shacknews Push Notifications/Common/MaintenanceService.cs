@@ -103,6 +103,8 @@ namespace Shacknews_Push_Notifications.Common
 
 		private async Task<List<int>> GetSeenPostIds(string userName)
 		{
+			if (string.IsNullOrWhiteSpace(userName)) return null;
+
 			try
 			{
 				var handler = new HttpClientHandler();
@@ -125,6 +127,26 @@ namespace Shacknews_Push_Notifications.Common
 					}
 				}
 			}
+			catch (Newtonsoft.Json.JsonSerializationException ex)
+			{
+				Console.WriteLine($"Messed up SeenPosts for {userName} - fixing.");
+				if (ex.Message.Contains("Unexpected end"))
+				{
+					// For some reason seen posts get messed up, so we should fix 'em.
+					using (var client = new HttpClient())
+					{
+						using (var content = new FormUrlEncodedContent(new Dictionary<string, string>()
+							{
+								{"username", Uri.EscapeUriString(userName) },
+								{"client", $"latestchattyUWP{ Uri.EscapeUriString("SeenPosts") }" },
+								{"data", "[]"}
+							}))
+						{
+							await client.PostAsync($"{ConfigurationManager.AppSettings["winChattyApiBase"]}clientData/setClientData", content);
+						}
+					}
+				}
+			}
 			catch (Exception ex)
 			{
 				ConsoleLog.LogError($"Error retrieving post ids for {userName} : {ex}");
@@ -141,7 +163,7 @@ namespace Shacknews_Push_Notifications.Common
 			{
 				if (disposing)
 				{
-					if(this.mainTimer != null)
+					if (this.mainTimer != null)
 					{
 						this.mainTimer.Dispose();
 					}
