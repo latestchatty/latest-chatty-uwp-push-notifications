@@ -17,37 +17,38 @@ namespace Shacknews_Push_Notifications
 		{
 			AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
 			var builder = new AppModuleBuilder();
-			var container = builder.BuilderContainer();
-
-			var webService = new WebServiceProcessManager(container);
-			var monitor = container.Resolve<Monitor>();
-			var maintenanceService = container.Resolve<MaintenanceService>();
-
-			webService.Start();
-			monitor.Start();
-			maintenanceService.Start();
-
-			// check if we're running on mono
-			if (Type.GetType("Mono.Runtime") != null)
+			using (var container = builder.BuilderContainer())
 			{
-				// on mono, processes will usually run as daemons - this allows you to listen
-				// for termination signals (ctrl+c, shutdown, etc) and finalize correctly
-				UnixSignal.WaitAny(new[] {
+				var webService = new WebServiceProcessManager(container);
+				var monitor = container.Resolve<Monitor>();
+				var maintenanceService = container.Resolve<MaintenanceService>();
+
+				webService.Start();
+				monitor.Start();
+				maintenanceService.Start();
+
+				// check if we're running on mono
+				if (Type.GetType("Mono.Runtime") != null)
+				{
+					// on mono, processes will usually run as daemons - this allows you to listen
+					// for termination signals (ctrl+c, shutdown, etc) and finalize correctly
+					UnixSignal.WaitAny(new[] {
 						  new UnixSignal(Signum.SIGINT),
 						  new UnixSignal(Signum.SIGTERM),
 						  new UnixSignal(Signum.SIGQUIT),
 						  new UnixSignal(Signum.SIGHUP)
 					 });
-			}
-			else
-			{
-				ConsoleLog.LogMessage("Press a key to exit.");
-				Console.ReadKey();
-			}
+				}
+				else
+				{
+					ConsoleLog.LogMessage("Press a key to exit.");
+					Console.ReadKey();
+				}
 
-			webService.Stop();
-			monitor.Stop();
-			maintenanceService.Stop();
+				webService.Stop();
+				monitor.Stop();
+				maintenanceService.Stop();
+			}
 		}
 
 		private static void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
