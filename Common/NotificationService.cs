@@ -228,6 +228,7 @@ namespace Shacknews_Push_Notifications.Common
 					break;
 				case System.Net.HttpStatusCode.NotFound:
 				case System.Net.HttpStatusCode.Gone:
+				case System.Net.HttpStatusCode.Forbidden:
 					//Invalid Uri or expired, remove it from the DB
 					var collection = this.dbService.GetCollection();
 					var user = await collection.Find(u => u.NotificationInfos.Any(ni => ni.NotificationUri.Equals(uri))).FirstOrDefaultAsync();
@@ -254,10 +255,6 @@ namespace Shacknews_Push_Notifications.Common
 					//Need to refresh the token, so invalidate it and we'll pick up a new one on retry.
 					this.accessTokenManager.InvalidateToken();
 					result = ResponseResult.FailTryAgain;
-					break;
-				case System.Net.HttpStatusCode.Forbidden:
-					this.accessTokenManager.InvalidateToken();
-					result = ResponseResult.FailDoNotTryAgain;
 					break;
 				default:
 					break;
