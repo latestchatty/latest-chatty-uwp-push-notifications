@@ -251,6 +251,7 @@ namespace Shacknews_Push_Notifications.Common
 					result = ResponseResult.FailTryAgain;
 					break;
 				case System.Net.HttpStatusCode.Unauthorized:
+				case System.Net.HttpStatusCode.Forbidden:
 					//Need to refresh the token, so invalidate it and we'll pick up a new one on retry.
 					this.accessTokenManager.InvalidateToken();
 					result = ResponseResult.FailTryAgain;
