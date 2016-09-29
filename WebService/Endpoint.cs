@@ -30,7 +30,7 @@ namespace Shacknews_Push_Notifications
 			Post["/replyToNotification"] = this.ReplyToNotification;
 			Post["/removeNotification"] = this.RemoveNotification;
 			Get["/openReplyNotifications"] = this.GetOpenReplyNotifications;
-			Get["/test"] = x => "Hello world!";
+			Get["/test"] = x => new { status = "ok" };
 			Get["tileContent"] = this.GetTileContent;
 		}
 
