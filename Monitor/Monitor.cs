@@ -186,12 +186,10 @@ namespace Shacknews_Push_Notifications
 						.CurrentDate(x => x.DateUpdated)
 						.Inc(x => x.NotificationsSent, 1);
 					await collection.UpdateOneAsync(filter, update);
-					user = await collection.Find(u => u.UserName.Equals(user.UserName)).FirstOrDefaultAsync();
-					var replyCount = user.ReplyEntries.Count;
 
 					foreach (var info in user.NotificationInfos)
 					{
-						this.SendNotifications(info, replyCount, title, message, latestPostId, (int)ttl.TotalSeconds);
+						this.SendNotifications(info, title, message, latestPostId, (int)ttl.TotalSeconds);
 					}
 				}
 				else
@@ -201,9 +199,9 @@ namespace Shacknews_Push_Notifications
 			}
 		}
 
-		private void SendNotifications(NotificationInfo info, int newReplies, string title, string message, int postId, int ttl)
+		private void SendNotifications(NotificationInfo info, string title, string message, int postId, int ttl)
 		{
-			var badgeDoc = new XDocument(new XElement("badge", new XAttribute("value", newReplies)));
+			var badgeDoc = new XDocument(new XElement("badge", new XAttribute("value", 0)));
 			this.notificationService.QueueNotificationData(NotificationType.Badge, info.NotificationUri, badgeDoc);
 
 			var toastDoc = new XDocument(

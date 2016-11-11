@@ -197,7 +197,7 @@ namespace Shacknews_Push_Notifications
 								.Set(x => x.ReplyEntries, user.ReplyEntries);
 							await collection.UpdateOneAsync(filter, update);
 							//Update badge to reflect new count
-							var badgeDoc = new XDocument(new XElement("badge", new XAttribute("value", user.ReplyEntries.Count)));
+							var badgeDoc = new XDocument(new XElement("badge", new XAttribute("value", 0)));
 							await this.notificationService.QueueNotificationToUser(NotificationType.Badge, badgeDoc, user.UserName);
 						}
 					}
@@ -277,7 +277,7 @@ namespace Shacknews_Push_Notifications
 									.Set(x => x.ReplyEntries, user.ReplyEntries);
 								await collection.UpdateOneAsync(filter, update);
 								//Update badge to reflect new count
-								var badgeDoc = new XDocument(new XElement("badge", new XAttribute("value", user.ReplyEntries.Count)));
+								var badgeDoc = new XDocument(new XElement("badge", new XAttribute("value", 0)));
 								await this.notificationService.QueueNotificationToUser(NotificationType.Badge, badgeDoc, user.UserName);
 							}
 							//Delete notification for this reply from other devices.
