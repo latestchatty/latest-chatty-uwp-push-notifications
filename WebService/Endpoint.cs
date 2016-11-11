@@ -82,7 +82,7 @@ namespace Shacknews_Push_Notifications
 					var itemsObj = items.Select(i => new
 					{
 						Title = i.Element("title").Value,
-						PublishDate = DateTime.Parse(i.Element("pubDate").Value.Replace("PDT", "").Trim()),
+						PublishDate = DateTime.Parse(i.Element("pubDate").Value.Replace("PDT", "").Replace("PST", "").Trim()),
 						Author = i.Element("author").Value
 					}).OrderByDescending(i => i.PublishDate).Take(3);
 
