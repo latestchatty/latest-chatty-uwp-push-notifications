@@ -3,7 +3,6 @@ using Nancy;
 using Nancy.ModelBinding;
 using Newtonsoft.Json.Linq;
 using Shacknews_Push_Notifications.Common;
-using Shacknews_Push_Notifications.Data;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
@@ -125,99 +124,14 @@ namespace Shacknews_Push_Notifications
 			return string.Empty;
 		}
 
-		private async Task<dynamic> GetOpenReplyNotifications(dynamic arg)
+		private dynamic GetOpenReplyNotifications(dynamic arg)
 		{
-			try
-			{
-				ConsoleLog.LogMessage("Getting open reply notifications.");
-				var e = this.Bind<UserNameArgs>();
-
-				ConsoleLog.LogMessage($"Getting open reply notifications for user {e.UserName}.");
-				var collection = this.dbService.GetCollection();
-
-				var user = await collection.Find(u => u.UserName.Equals(e.UserName.ToLower())).FirstOrDefaultAsync();
-				if (user != null)
-				{
-					return new { data = user.ReplyEntries };
-				}
-				else
-				{
-					ConsoleLog.LogMessage($"User {e.UserName} not found when getting open reply notifications.");
-					return new { status = "error", message = "User not found." };
-				}
-			}
-			catch (Exception ex)
-			{
-				//TODO: Log exception
-				ConsoleLog.LogError($"!!!!Exception in {nameof(GetOpenReplyNotifications)}: {ex.ToString()}");
-				return new { status = "error" };
-			}
+			return new { data = new List<int>() };
 		}
 
-		async private Task<dynamic> RemoveNotification(dynamic arg)
+		private dynamic RemoveNotification(dynamic arg)
 		{
-			try
-			{
-				ConsoleLog.LogMessage("Removing notification.");
-				var e = this.Bind<RemoveNotificationArgs>();
-
-				var collection = this.dbService.GetCollection();
-
-				var user = await collection.Find(u => u.UserName.Equals(e.UserName)).FirstOrDefaultAsync();
-				if (user != null)
-				{
-					NotificationGroups group;
-					if (!Enum.TryParse(e.Group, out group))
-					{
-						group = NotificationGroups.None;
-					}
-
-					//Only decrement badge count if we're removing a reply notification.
-					if (group == NotificationGroups.ReplyToUser)
-					{
-						int postId;
-						if (int.TryParse(e.Tag, out postId))
-						{
-							//Update DB Count
-							if (user.ReplyEntries == null)
-							{
-								user.ReplyEntries = new List<ReplyEntry>();
-							}
-							else
-							{
-								var entry = user.ReplyEntries.SingleOrDefault(re => re.PostId == postId);
-								if (entry != null)
-								{
-									user.ReplyEntries.Remove(entry);
-								}
-							}
-							var filter = Builders<NotificationUser>.Filter.Eq("_id", user._id);
-							var update = Builders<NotificationUser>.Update
-								.CurrentDate(x => x.DateUpdated)
-								.Set(x => x.ReplyEntries, user.ReplyEntries);
-							await collection.UpdateOneAsync(filter, update);
-							//Update badge to reflect new count
-							var badgeDoc = new XDocument(new XElement("badge", new XAttribute("value", 0)));
-							await this.notificationService.QueueNotificationToUser(NotificationType.Badge, badgeDoc, user.UserName);
-						}
-					}
-
-					//Delete notification for this reply from other devices.
-					await this.notificationService.QueueNotificationToUser(NotificationType.RemoveToasts, null, user.UserName, group, e.Tag);
-				}
-				else
-				{
-					ConsoleLog.LogMessage($"User {e.UserName} not found when removing.");
-					return new { status = "error", message = "User not found." };
-				}
-				return new { status = "success" };
-			}
-			catch (Exception ex)
-			{
-				//TODO: Log exception
-				ConsoleLog.LogError($"!!!!Exception in {nameof(RemoveNotification)}: {ex.ToString()}");
-				return new { status = "error" };
-			}
+			return new { status = "success" };
 		}
 
 		async private Task<dynamic> ReplyToNotification(dynamic arg)
@@ -253,37 +167,7 @@ namespace Shacknews_Push_Notifications
 						var collection = this.dbService.GetCollection();
 
 						var user = await collection.Find(u => u.UserName.Equals(e.UserName.ToLower())).FirstOrDefaultAsync();
-						if (user != null)
-						{
-							int postId;
-							if (int.TryParse(e.ParentId, out postId))
-							{
-								//Update DB Count
-								if (user.ReplyEntries == null)
-								{
-									user.ReplyEntries = new List<ReplyEntry>();
-								}
-								else
-								{
-									var entry = user.ReplyEntries.SingleOrDefault(re => re.PostId == postId);
-									if (entry != null)
-									{
-										user.ReplyEntries.Remove(entry);
-									}
-								}
-								var filter = Builders<NotificationUser>.Filter.Eq("_id", user._id);
-								var update = Builders<NotificationUser>.Update
-									.CurrentDate(x => x.DateUpdated)
-									.Set(x => x.ReplyEntries, user.ReplyEntries);
-								await collection.UpdateOneAsync(filter, update);
-								//Update badge to reflect new count
-								var badgeDoc = new XDocument(new XElement("badge", new XAttribute("value", 0)));
-								await this.notificationService.QueueNotificationToUser(NotificationType.Badge, badgeDoc, user.UserName);
-							}
-							//Delete notification for this reply from other devices.
-							await this.notificationService.QueueNotificationToUser(NotificationType.RemoveToasts, null, user.UserName, NotificationGroups.ReplyToUser, e.ParentId);
-						}
-						else
+						if (user == null)
 						{
 							ConsoleLog.LogMessage($"User {e.UserName} not found when replying.");
 							return new { status = "error", message = "User not found." };
@@ -400,40 +284,9 @@ namespace Shacknews_Push_Notifications
 			}
 		}
 
-		async private Task<dynamic> ResetCount(dynamic arg)
+		private dynamic ResetCount(dynamic arg)
 		{
-			try
-			{
-				ConsoleLog.LogMessage("Reset count.");
-				var e = this.Bind<UserNameArgs>();
-				var collection = this.dbService.GetCollection();
-
-				var user = await collection.Find(u => u.UserName.Equals(e.UserName.ToLower())).FirstOrDefaultAsync();
-				if (user != null)
-				{
-					//Update user
-					var badgeDoc = new XDocument(new XElement("badge", new XAttribute("value", 0)));
-					await this.notificationService.QueueNotificationToUser(NotificationType.Badge, badgeDoc, user.UserName);
-					await this.notificationService.RemoveToastsForUser(user.UserName);
-					var filter = Builders<NotificationUser>.Filter.Eq("_id", user._id);
-					var update = Builders<NotificationUser>.Update
-						.CurrentDate(x => x.DateUpdated)
-						.Set(x => x.ReplyEntries, new List<ReplyEntry>());
-					await collection.UpdateOneAsync(filter, update);
-				}
-				else
-				{
-					ConsoleLog.LogMessage($"User {e.UserName} not found");
-					return new { status = "error", message = "User not found." };
-				}
-				return new { status = "success" };
-			}
-			catch (Exception ex)
-			{
-				//TODO: Log exception
-				ConsoleLog.LogError($"!!!!Exception in {nameof(ResetCount)}: {ex.ToString()}");
-				return new { status = "error" };
-			}
+			return new { status = "success" };
 		}
 	}
 }
