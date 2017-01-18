@@ -1,5 +1,9 @@
-﻿using System;
+﻿using Shacknews_Push_Notifications.Data;
+using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace Shacknews_Push_Notifications
 {
@@ -11,5 +15,6 @@ namespace Shacknews_Push_Notifications
 		public int NotificationsSent { get; set; }
 		public DateTime LastNotifiedTime { get; set; }
 		public List<NotificationInfo> NotificationInfos { get; set; }
+		public List<ReplyEntry> ReplyEntries { get; set; }
 	}
 }

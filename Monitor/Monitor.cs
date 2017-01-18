@@ -1,6 +1,7 @@
 ﻿using MongoDB.Driver;
 using Newtonsoft.Json.Linq;
 using Shacknews_Push_Notifications.Common;
+using Shacknews_Push_Notifications.Data;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
@@ -94,7 +95,7 @@ namespace Shacknews_Push_Notifications
 									var usr = await collection.Find(u => u.UserName.Equals(parentAuthor.ToLower())).FirstOrDefaultAsync();
 									if (usr != null)
 									{
-										this.NotifyUser(usr, latestPostId, collection, $"Reply from {latestReplyAuthor}", postBody);
+										await this.NotifyUser(usr, latestPostId, collection, $"Reply from {latestReplyAuthor}", postBody);
 									}
 									else
 									{
@@ -114,7 +115,7 @@ namespace Shacknews_Push_Notifications
 									if ((" " + postBody.ToLower() + " ").Contains(" " + user.UserName.ToLower() + " "))
 									{
 										ConsoleLog.LogMessage($"Notifying {user.UserName} of mention by {latestReplyAuthor}");
-										this.NotifyUser(user, latestPostId, collection, $"Mentioned by {latestReplyAuthor}", postBody);
+										await this.NotifyUser(user, latestPostId, collection, $"Mentioned by {latestReplyAuthor}", postBody);
 									}
 								}
 							}
@@ -162,16 +163,30 @@ namespace Shacknews_Push_Notifications
 			}
 		}
 
-		private void NotifyUser(NotificationUser user, int latestPostId, IMongoCollection<NotificationUser> collection, string title, string message)
+		private async Task NotifyUser(NotificationUser user, int latestPostId, IMongoCollection<NotificationUser> collection, string title, string message)
 		{
 			if (user.NotificationInfos != null && user.NotificationInfos.Count > 0)
 			{
+				if (user.ReplyEntries == null)
+				{
+					user.ReplyEntries = new List<ReplyEntry>();
+				}
+
 				TimeSpan ttl = new TimeSpan(48, 0, 0);
 
 				var expireDate = DateTime.UtcNow.Add(ttl);
 
 				if (expireDate > DateTime.UtcNow)
 				{
+					user.ReplyEntries.Add(new ReplyEntry(expireDate, latestPostId));
+					var filter = Builders<NotificationUser>.Filter.Eq("_id", user._id);
+					var update = Builders<NotificationUser>.Update
+						.Set(x => x.ReplyEntries, user.ReplyEntries)
+						.CurrentDate(x => x.LastNotifiedTime)
+						.CurrentDate(x => x.DateUpdated)
+						.Inc(x => x.NotificationsSent, 1);
+					await collection.UpdateOneAsync(filter, update);
+
 					foreach (var info in user.NotificationInfos)
 					{
 						this.SendNotifications(info, title, message, latestPostId, (int)ttl.TotalSeconds);
