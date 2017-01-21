@@ -20,7 +20,6 @@ namespace Shacknews_Push_Notifications
 			var builder = new ContainerBuilder();
 			builder.RegisterType<NotificationService>().SingleInstance();
 			builder.RegisterType<AccessTokenManager>().SingleInstance();
-			builder.RegisterType<DatabaseService>().InstancePerDependency();
 			builder.RegisterType<Monitor>().SingleInstance();
 			builder.Register<AppConfiguration>(x =>
 			{
@@ -34,6 +33,7 @@ namespace Shacknews_Push_Notifications
 				return appConfig;
 			}).SingleInstance();
 			builder.Register<MemoryCache>(x => new MemoryCache(new MemoryCacheOptions())).SingleInstance();
+			builder.RegisterType<UserRepo>().InstancePerDependency();
 			return builder.Build();
 		}
 	}

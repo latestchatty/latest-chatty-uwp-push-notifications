@@ -13,7 +13,7 @@ namespace Shacknews_Push_Notifications.Common
 	public class NotificationService
 	{
 		private readonly AccessTokenManager accessTokenManager;
-		private readonly DatabaseService dbService;
+		private readonly UserRepo dbService;
 		private ConcurrentQueue<QueuedNotificationItem> queuedItems = new ConcurrentQueue<QueuedNotificationItem>();
 		private int nextProcessDelay = 3000;
 
@@ -52,7 +52,7 @@ namespace Shacknews_Push_Notifications.Common
 		};
 		private bool processingNotificationQueue;
 
-		public NotificationService(AccessTokenManager accessTokenManager, DatabaseService dbService)
+		public NotificationService(AccessTokenManager accessTokenManager, UserRepo dbService)
 		{
 			this.accessTokenManager = accessTokenManager;
 			this.dbService = dbService;

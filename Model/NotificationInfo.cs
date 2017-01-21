@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Shacknews_Push_Notifications
+namespace Shacknews_Push_Notifications.Model
 {
 	public class NotificationInfo
 	{

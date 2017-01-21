@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using Microsoft.Extensions.Configuration;
+using Shacknews_Push_Notifications.Model;
 using System.IO;
 
 namespace Shacknews_Push_Notifications
@@ -22,11 +23,11 @@ namespace Shacknews_Push_Notifications
 		bool timerEnabled = false;
 		int lastEventId = 0;
 		private readonly NotificationService notificationService;
-		private readonly DatabaseService dbService;
+		private readonly UserRepo dbService;
 		private readonly AppConfiguration configuration;
 		private CancellationTokenSource cancelToken = new CancellationTokenSource();
 
-		public Monitor(NotificationService notificationService, DatabaseService dbService, AppConfiguration config)
+		public Monitor(NotificationService notificationService, UserRepo dbService, AppConfiguration config)
 		{
 			this.notificationService = notificationService;
 			this.dbService = dbService;
@@ -92,15 +93,15 @@ namespace Shacknews_Push_Notifications
 								if (!parentAuthor.Equals(latestReplyAuthor, StringComparison.OrdinalIgnoreCase))
 								{
 #endif
-									// var usr = await collection.Find(u => u.UserName.Equals(parentAuthor.ToLower())).FirstOrDefaultAsync();
-									// if (usr != null)
-									// {
-									// 	this.NotifyUser(usr, latestPostId, $"Reply from {latestReplyAuthor}", postBody);
-									// }
-									// else
-									// {
-									// 	ConsoleLog.LogMessage($"No alert on reply to {parentAuthor}");
-									// }
+									var usr = await this.dbService.FindUser(parentAuthor);
+									if (usr != null)
+									{
+										this.NotifyUser(usr, latestPostId, $"Reply from {latestReplyAuthor}", postBody);
+									}
+									else
+									{
+										ConsoleLog.LogMessage($"No alert on reply to {parentAuthor}");
+									}
 #if !DEBUG
 								}
 								else
