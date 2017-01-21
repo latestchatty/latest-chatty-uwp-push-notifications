@@ -1,19 +1,26 @@
 ﻿using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using Shacknews_Push_Notifications.Common;
+
+using Microsoft.Extensions.Configuration;
+using System.IO;
 
 namespace Shacknews_Push_Notifications.Common
 {
 	public class AccessTokenManager : IDisposable
 	{
 		private string accessToken = string.Empty;
-
+		private AppConfiguration configuration;
 		SemaphoreSlim locker = new SemaphoreSlim(1);
 
+		public AccessTokenManager(AppConfiguration config)
+		{
+			this.configuration = config;
+		}
 		public async Task<string> GetAccessToken()
 		{
 			try
@@ -27,8 +34,8 @@ namespace Shacknews_Push_Notifications.Common
 					{
 						var data = new FormUrlEncodedContent(new Dictionary<string, string> {
 							{ "grant_type", "client_credentials" },
-							{ "client_id", ConfigurationManager.AppSettings["notificationSID"] },
-							{ "client_secret", ConfigurationManager.AppSettings["clientSecret"] },
+							{ "client_id", configuration.NotificationSID },
+							{ "client_secret", configuration.ClientSecret },
 							{ "scope", "notify.windows.com" },
 						});
 						using (var response = await client.PostAsync("https://login.live.com/accesstoken.srf", data))

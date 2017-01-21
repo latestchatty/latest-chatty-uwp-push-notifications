@@ -1,36 +1,32 @@
-﻿using MongoDB.Driver;
-using Nancy;
+﻿using Nancy;
 using Nancy.ModelBinding;
 using Newtonsoft.Json.Linq;
 using Shacknews_Push_Notifications.Common;
 using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.Linq;
 using System.Net.Http;
-using System.Runtime.Caching;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using Microsoft.Extensions.Caching.Memory;
+using Autofac;
 
 namespace Shacknews_Push_Notifications
 {
 	public class Endpoint : NancyModule
 	{
-		private readonly NotificationService notificationService;
-		private readonly DatabaseService dbService;
-
-		public Endpoint(NotificationService notificationService, DatabaseService dbService)
+		private readonly MemoryCache cache;
+		public Endpoint()
 		{
-			this.notificationService = notificationService;
-			this.dbService = dbService;
-			Post["/register"] = this.RegisterDevice;
-			Post["/deregister"] = this.DeregisterDevice;
-			Post["/resetcount"] = this.ResetCount;
-			Post["/replyToNotification"] = this.ReplyToNotification;
-			Post["/removeNotification"] = this.RemoveNotification;
-			Get["/openReplyNotifications"] = this.GetOpenReplyNotifications;
-			Get["/test"] = x => new { status = "ok" };
-			Get["tileContent"] = this.GetTileContent;
+			Post("/register", this.RegisterDevice);
+			Post("/deregister", this.DeregisterDevice);
+			Post("/resetcount", this.ResetCount);
+			Post("/replyToNotification", this.ReplyToNotification);
+			Post("/removeNotification", this.RemoveNotification);
+			Get("/openReplyNotifications", this.GetOpenReplyNotifications);
+			Get("/test",x => new { status = "ok" });
+			Get("tileContent", this.GetTileContent);
+			this.cache = AppModuleBuilder.Container.Resolve<MemoryCache>();
 		}
 
 		#region Event Bind Classes
@@ -67,16 +63,24 @@ namespace Shacknews_Push_Notifications
 		}
 		#endregion
 
-		private dynamic GetTileContent(dynamic arg)
+		async private Task<dynamic> GetTileContent(dynamic arg)
 		{
 			try
 			{
-				var cache = MemoryCache.Default;
-				var tileContent = cache.Get("tileContent") as string;
+				var tileContent = this.cache.Get("tileContent") as string;
 				if (string.IsNullOrWhiteSpace(tileContent))
 				{
 					ConsoleLog.LogMessage("Retrieving tile content.");
-					var xDoc = XDocument.Load("http://www.shacknews.com/rss?recent_articles=1");
+
+					XDocument xDoc;
+					using (var client = new HttpClient())
+					{
+						using (var fileStream = await client.GetStreamAsync("http://www.shacknews.com/rss?recent_articles=1"))
+						{
+							xDoc = XDocument.Load(fileStream);
+						}
+					}
+
 					var items = xDoc.Descendants("item");
 					var itemsObj = items.Select(i => new
 					{
@@ -109,7 +113,7 @@ namespace Shacknews_Push_Notifications
 						new XElement("text", new XAttribute("id", "6"), itemsObj.ElementAt(2).Title)));
 					var doc = new XDocument(tileElement);
 					tileContent = doc.ToString(SaveOptions.DisableFormatting);
-					cache.Add("tileContent", tileContent, DateTimeOffset.UtcNow.AddMinutes(5));
+					this.cache.Set("tileContent", tileContent, DateTimeOffset.UtcNow.AddMinutes(5));
 				}
 				else
 				{
@@ -124,12 +128,12 @@ namespace Shacknews_Push_Notifications
 			return string.Empty;
 		}
 
-		private dynamic GetOpenReplyNotifications(dynamic arg)
+		async private Task<dynamic> GetOpenReplyNotifications(dynamic arg)
 		{
 			return new { data = new List<int>() };
 		}
 
-		private dynamic RemoveNotification(dynamic arg)
+		async private Task<dynamic> RemoveNotification(dynamic arg)
 		{
 			return new { status = "success" };
 		}
@@ -141,44 +145,45 @@ namespace Shacknews_Push_Notifications
 				ConsoleLog.LogMessage("Replying to notification.");
 				var e = this.Bind<ReplyToNotificationArgs>();
 
-				using (var request = new HttpClient())
-				{
-					var data = new Dictionary<string, string> {
-						{ "text", e.Text },
-						{ "parentId", e.ParentId },
-						{ "username", e.UserName },
-						{ "password", e.Password }
-					};
+				// using (var request = new HttpClient())
+				// {
+				// 	var data = new Dictionary<string, string> {
+				// 		{ "text", e.Text },
+				// 		{ "parentId", e.ParentId },
+				// 		{ "username", e.UserName },
+				// 		{ "password", e.Password }
+				// 	};
 
-					//Winchatty seems to crap itself if the Expect: 100-continue header is there.
-					request.DefaultRequestHeaders.ExpectContinue = false;
-					JToken parsedResponse = null;
+				// 	//Winchatty seems to crap itself if the Expect: 100-continue header is there.
+				// 	request.DefaultRequestHeaders.ExpectContinue = false;
+				// 	JToken parsedResponse = null;
 
-					using (var formContent = new FormUrlEncodedContent(data))
-					{
-						using (var response = await request.PostAsync($"{ConfigurationManager.AppSettings["winChattyApiBase"]}postComment", formContent))
-						{
-							parsedResponse = JToken.Parse(await response.Content.ReadAsStringAsync());
-						}
-					}
-					var success = parsedResponse["result"]?.ToString().Equals("success");
-					if (success.HasValue && success.Value)
-					{
-						var collection = this.dbService.GetCollection();
+				// 	using (var formContent = new FormUrlEncodedContent(data))
+				// 	{
+				// 		using (var response = await request.PostAsync($"{ConfigurationManager.AppSettings["winChattyApiBase"]}postComment", formContent))
+				// 		{
+				// 			parsedResponse = JToken.Parse(await response.Content.ReadAsStringAsync());
+				// 		}
+				// 	}
+				// 	var success = parsedResponse["result"]?.ToString().Equals("success");
+				// 	if (success.HasValue && success.Value)
+				// 	{
+				// 		var collection = this.dbService.GetCollection();
 
-						var user = await collection.Find(u => u.UserName.Equals(e.UserName.ToLower())).FirstOrDefaultAsync();
-						if (user == null)
-						{
-							ConsoleLog.LogMessage($"User {e.UserName} not found when replying.");
-							return new { status = "error", message = "User not found." };
-						}
-						return new { status = "success" };
-					}
-					else
-					{
-						return new { status = "error" };
-					}
-				}
+				// 		var user = await collection.Find(u => u.UserName.Equals(e.UserName.ToLower())).FirstOrDefaultAsync();
+				// 		if (user == null)
+				// 		{
+				// 			ConsoleLog.LogMessage($"User {e.UserName} not found when replying.");
+				// 			return new { status = "error", message = "User not found." };
+				// 		}
+				// 		return new { status = "success" };
+				// 	}
+				// 	else
+				// 	{
+				// 		return new { status = "error" };
+				// 	}
+				// }
+				return new { status = "success" };
 			}
 			catch (Exception ex)
 			{
@@ -195,25 +200,25 @@ namespace Shacknews_Push_Notifications
 				ConsoleLog.LogMessage("Deregister device.");
 				var e = this.Bind<DeregisterArgs>();
 
-				var collection = this.dbService.GetCollection();
+				// var collection = this.dbService.GetCollection();
 
-				var userName = arg.userName.ToString().ToLower() as string;
-				var user = await collection.Find(u => u.NotificationInfos.Any(ni => ni.DeviceId.Equals(e.DeviceId))).FirstOrDefaultAsync();
-				if (user != null)
-				{
-					var infos = user.NotificationInfos;
-					var infoToRemove = infos.SingleOrDefault(x => x.DeviceId.Equals(e.DeviceId));
-					if (infoToRemove != null)
-					{
-						infos.Remove(infoToRemove);
+				// var userName = arg.userName.ToString().ToLower() as string;
+				// var user = await collection.Find(u => u.NotificationInfos.Any(ni => ni.DeviceId.Equals(e.DeviceId))).FirstOrDefaultAsync();
+				// if (user != null)
+				// {
+				// 	var infos = user.NotificationInfos;
+				// 	var infoToRemove = infos.SingleOrDefault(x => x.DeviceId.Equals(e.DeviceId));
+				// 	if (infoToRemove != null)
+				// 	{
+				// 		infos.Remove(infoToRemove);
 
-						var filter = Builders<NotificationUser>.Filter.Eq("_id", user._id);
-						var update = Builders<NotificationUser>.Update
-							.CurrentDate(x => x.DateUpdated)
-							.Set(x => x.NotificationInfos, infos);
-						await collection.UpdateOneAsync(filter, update);
-					}
-				}
+				// 		var filter = Builders<NotificationUser>.Filter.Eq("_id", user._id);
+				// 		var update = Builders<NotificationUser>.Update
+				// 			.CurrentDate(x => x.DateUpdated)
+				// 			.Set(x => x.NotificationInfos, infos);
+				// 		await collection.UpdateOneAsync(filter, update);
+				// 	}
+				// }
 				return new { status = "success" };
 			}
 			catch (Exception ex)
@@ -230,50 +235,50 @@ namespace Shacknews_Push_Notifications
 			{
 				ConsoleLog.LogMessage("Register device.");
 				var e = this.Bind<RegisterArgs>();
-				var collection = this.dbService.GetCollection();
+				// var collection = this.dbService.GetCollection();
 
-				var user = await collection.Find(u => u.UserName.Equals(e.UserName.ToLower())).FirstOrDefaultAsync();
-				if (user != null)
-				{
-					//Update user
-					var infos = user.NotificationInfos;
-					var info = infos.SingleOrDefault(x => x.DeviceId.Equals(e.DeviceId));
-					if (info != null)
-					{
-						info.NotificationUri = e.ChannelUri;
-					}
-					else
-					{
-						infos.Add(new NotificationInfo()
-						{
-							DeviceId = e.DeviceId,
-							NotificationUri = e.ChannelUri
-						});
-					}
-					var filter = Builders<NotificationUser>.Filter.Eq("_id", user._id);
-					var update = Builders<NotificationUser>.Update
-						.CurrentDate(x => x.DateUpdated)
-						.Set(x => x.NotificationInfos, infos);
-					await collection.UpdateOneAsync(filter, update);
-				}
-				else
-				{
-					//Insert user
-					user = new NotificationUser()
-					{
-						UserName = e.UserName.ToLower(),
-						DateUpdated = DateTime.UtcNow,
-						NotificationInfos = new List<NotificationInfo>(new[]
-						{
-							new NotificationInfo()
-							{
-								DeviceId = e.DeviceId,
-								NotificationUri = e.ChannelUri
-							}
-						})
-					};
-					await collection.InsertOneAsync(user);
-				}
+				// var user = await collection.Find(u => u.UserName.Equals(e.UserName.ToLower())).FirstOrDefaultAsync();
+				// if (user != null)
+				// {
+				// 	//Update user
+				// 	var infos = user.NotificationInfos;
+				// 	var info = infos.SingleOrDefault(x => x.DeviceId.Equals(e.DeviceId));
+				// 	if (info != null)
+				// 	{
+				// 		info.NotificationUri = e.ChannelUri;
+				// 	}
+				// 	else
+				// 	{
+				// 		infos.Add(new NotificationInfo()
+				// 		{
+				// 			DeviceId = e.DeviceId,
+				// 			NotificationUri = e.ChannelUri
+				// 		});
+				// 	}
+				// 	var filter = Builders<NotificationUser>.Filter.Eq("_id", user._id);
+				// 	var update = Builders<NotificationUser>.Update
+				// 		.CurrentDate(x => x.DateUpdated)
+				// 		.Set(x => x.NotificationInfos, infos);
+				// 	await collection.UpdateOneAsync(filter, update);
+				// }
+				// else
+				// {
+				// 	//Insert user
+				// 	user = new NotificationUser()
+				// 	{
+				// 		UserName = e.UserName.ToLower(),
+				// 		DateUpdated = DateTime.UtcNow,
+				// 		NotificationInfos = new List<NotificationInfo>(new[]
+				// 		{
+				// 			new NotificationInfo()
+				// 			{
+				// 				DeviceId = e.DeviceId,
+				// 				NotificationUri = e.ChannelUri
+				// 			}
+				// 		})
+				// 	};
+				// 	await collection.InsertOneAsync(user);
+				// }
 				return new { status = "success" };
 			}
 			catch (Exception ex)
@@ -284,7 +289,7 @@ namespace Shacknews_Push_Notifications
 			}
 		}
 
-		private dynamic ResetCount(dynamic arg)
+		async private Task<dynamic> ResetCount(dynamic arg)
 		{
 			return new { status = "success" };
 		}

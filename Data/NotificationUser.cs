@@ -5,7 +5,7 @@ namespace Shacknews_Push_Notifications
 {
 	public class NotificationUser
 	{
-		public MongoDB.Bson.ObjectId _id { get; set; }
+		public int _id { get; set; }
 		public string UserName { get; set; }
 		public DateTime DateUpdated { get; set; }
 		public int NotificationsSent { get; set; }

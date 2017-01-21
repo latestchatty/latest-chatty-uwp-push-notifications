@@ -1,15 +1,15 @@
-﻿using MongoDB.Driver;
-using Newtonsoft.Json.Linq;
+﻿using Newtonsoft.Json.Linq;
 using Shacknews_Push_Notifications.Common;
 using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using Microsoft.Extensions.Configuration;
+using System.IO;
 
 namespace Shacknews_Push_Notifications
 {
@@ -23,12 +23,14 @@ namespace Shacknews_Push_Notifications
 		int lastEventId = 0;
 		private readonly NotificationService notificationService;
 		private readonly DatabaseService dbService;
+		private readonly AppConfiguration configuration;
 		private CancellationTokenSource cancelToken = new CancellationTokenSource();
 
-		public Monitor(NotificationService notificationService, DatabaseService dbService)
+		public Monitor(NotificationService notificationService, DatabaseService dbService, AppConfiguration config)
 		{
 			this.notificationService = notificationService;
 			this.dbService = dbService;
+			this.configuration = config;
 		}
 
 		public void Start()
@@ -56,14 +58,13 @@ namespace Shacknews_Push_Notifications
 			ConsoleLog.LogMessage("Waiting for next monitor event...");
 			try
 			{
-				var collection = dbService.GetCollection();
+				//var collection = dbService.GetCollection();
 
 				using (var client = new HttpClient())
 				{
-
 					if (this.lastEventId == 0)
 					{
-						using (var res = await client.GetAsync($"{ConfigurationManager.AppSettings["winchattyApiBase"]}getNewestEventId", this.cancelToken.Token))
+						using (var res = await client.GetAsync($"{this.configuration.WinchattyAPIBase}getNewestEventId", this.cancelToken.Token))
 						{
 							var json = JToken.Parse(await res.Content.ReadAsStringAsync());
 							this.lastEventId = (int)json["eventId"];
@@ -71,7 +72,7 @@ namespace Shacknews_Push_Notifications
 					}
 
 					JToken jEvent;
-					using (var resEvent = await client.GetAsync($"{ConfigurationManager.AppSettings["winchattyApiBase"]}waitForEvent?lastEventId={this.lastEventId}&includeParentAuthor=1", this.cancelToken.Token))
+					using (var resEvent = await client.GetAsync($"{this.configuration.WinchattyAPIBase}waitForEvent?lastEventId={this.lastEventId}&includeParentAuthor=1", this.cancelToken.Token))
 					{
 						jEvent = JToken.Parse(await resEvent.Content.ReadAsStringAsync());
 					}
@@ -79,7 +80,7 @@ namespace Shacknews_Push_Notifications
 					{
 						foreach (var e in jEvent["events"]) //PERF: Could probably Parallel.ForEach this.
 						{
-							if (e["eventType"].ToString().Equals("newPost", StringComparison.InvariantCultureIgnoreCase))
+							if (e["eventType"].ToString().Equals("newPost", StringComparison.OrdinalIgnoreCase))
 							{
 								var jEventData = e["eventData"];
 								var parentAuthor = jEventData["parentAuthor"].Value<string>();
@@ -88,18 +89,18 @@ namespace Shacknews_Push_Notifications
 								var postBody = HtmlRemoval.StripTagsRegexCompiled(System.Net.WebUtility.HtmlDecode(jEventData["post"]["body"].Value<string>()).Replace("<br />", " ").Replace(char.ConvertFromUtf32(8232), " "));
 #if !DEBUG
 								//Don't notify if self-reply.
-								if (!parentAuthor.Equals(latestReplyAuthor, StringComparison.InvariantCultureIgnoreCase))
+								if (!parentAuthor.Equals(latestReplyAuthor, StringComparison.OrdinalIgnoreCase))
 								{
 #endif
-									var usr = await collection.Find(u => u.UserName.Equals(parentAuthor.ToLower())).FirstOrDefaultAsync();
-									if (usr != null)
-									{
-										this.NotifyUser(usr, latestPostId, collection, $"Reply from {latestReplyAuthor}", postBody);
-									}
-									else
-									{
-										ConsoleLog.LogMessage($"No alert on reply to {parentAuthor}");
-									}
+									// var usr = await collection.Find(u => u.UserName.Equals(parentAuthor.ToLower())).FirstOrDefaultAsync();
+									// if (usr != null)
+									// {
+									// 	this.NotifyUser(usr, latestPostId, $"Reply from {latestReplyAuthor}", postBody);
+									// }
+									// else
+									// {
+									// 	ConsoleLog.LogMessage($"No alert on reply to {parentAuthor}");
+									// }
 #if !DEBUG
 								}
 								else
@@ -107,16 +108,16 @@ namespace Shacknews_Push_Notifications
 									ConsoleLog.LogMessage($"No alert on self-reply to {parentAuthor}");
 								}
 #endif
-								var users = await collection.Find(new MongoDB.Bson.BsonDocument()).ToListAsync();
-								foreach (var user in users)
-								{
-									//Pad with spaces so we don't match a partial username.
-									if ((" " + postBody.ToLower() + " ").Contains(" " + user.UserName.ToLower() + " "))
-									{
-										ConsoleLog.LogMessage($"Notifying {user.UserName} of mention by {latestReplyAuthor}");
-										this.NotifyUser(user, latestPostId, collection, $"Mentioned by {latestReplyAuthor}", postBody);
-									}
-								}
+								// var users = await collection.Find(new MongoDB.Bson.BsonDocument()).ToListAsync();
+								// foreach (var user in users)
+								// {
+								// 	//Pad with spaces so we don't match a partial username.
+								// 	if ((" " + postBody.ToLower() + " ").Contains(" " + user.UserName.ToLower() + " "))
+								// 	{
+								// 		ConsoleLog.LogMessage($"Notifying {user.UserName} of mention by {latestReplyAuthor}");
+								// 		this.NotifyUser(user, latestPostId, $"Mentioned by {latestReplyAuthor}", postBody);
+								// 	}
+								// }
 							}
 							else
 							{
@@ -162,7 +163,7 @@ namespace Shacknews_Push_Notifications
 			}
 		}
 
-		private void NotifyUser(NotificationUser user, int latestPostId, IMongoCollection<NotificationUser> collection, string title, string message)
+		private void NotifyUser(NotificationUser user, int latestPostId, string title, string message)
 		{
 			if (user.NotificationInfos != null && user.NotificationInfos.Count > 0)
 			{

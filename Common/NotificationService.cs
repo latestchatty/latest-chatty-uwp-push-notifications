@@ -1,5 +1,4 @@
-﻿using MongoDB.Driver;
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -75,28 +74,28 @@ namespace Shacknews_Push_Notifications.Common
 
 		async public Task QueueNotificationToUser(NotificationType type, XDocument content, string userName, NotificationGroups group = NotificationGroups.None, string tag = null)
 		{
-			var collection = dbService.GetCollection();
-			var user = await collection.Find(u => u.UserName.Equals(userName.ToLower())).FirstOrDefaultAsync();
-			if (user != null)
-			{
-				foreach (var info in user.NotificationInfos)
-				{
-					this.QueueNotificationData(type, info.NotificationUri, content, group, tag);
-				}
-			}
+			// var collection = dbService.GetCollection();
+			// var user = await collection.Find(u => u.UserName.Equals(userName.ToLower())).FirstOrDefaultAsync();
+			// if (user != null)
+			// {
+			// 	foreach (var info in user.NotificationInfos)
+			// 	{
+			// 		this.QueueNotificationData(type, info.NotificationUri, content, group, tag);
+			// 	}
+			// }
 		}
 
 		async public Task RemoveToastsForUser(string userName, NotificationGroups group = NotificationGroups.None, string tag = null)
 		{
-			var collection = dbService.GetCollection();
-			var user = await collection.Find(u => u.UserName.Equals(userName.ToLower())).FirstOrDefaultAsync();
-			if (user != null)
-			{
-				foreach (var info in user.NotificationInfos)
-				{
-					this.QueueNotificationData(NotificationType.RemoveToasts, info.NotificationUri, null, group, tag);
-				}
-			}
+			// var collection = dbService.GetCollection();
+			// var user = await collection.Find(u => u.UserName.Equals(userName.ToLower())).FirstOrDefaultAsync();
+			// if (user != null)
+			// {
+			// 	foreach (var info in user.NotificationInfos)
+			// 	{
+			// 		this.QueueNotificationData(NotificationType.RemoveToasts, info.NotificationUri, null, group, tag);
+			// 	}
+			// }
 		}
 
 		private HttpClient CreateClient(string token)
@@ -107,7 +106,7 @@ namespace Shacknews_Push_Notifications.Common
 			return client;
 		}
 
-		[MethodImpl(MethodImplOptions.Synchronized)]
+		// [MethodImpl(MethodImplOptions.Synchronized)]
 		private void StartQueueProcess()
 		{
 			if (this.processingNotificationQueue) return;
@@ -230,23 +229,23 @@ namespace Shacknews_Push_Notifications.Common
 				case System.Net.HttpStatusCode.Gone:
 				case System.Net.HttpStatusCode.Forbidden:
 					//Invalid Uri or expired, remove it from the DB
-					var collection = this.dbService.GetCollection();
-					var user = await collection.Find(u => u.NotificationInfos.Any(ni => ni.NotificationUri.Equals(uri))).FirstOrDefaultAsync();
-					if (user != null)
-					{
-						var infos = user.NotificationInfos;
-						var infoToRemove = infos.SingleOrDefault(x => x.NotificationUri.Equals(uri));
-						if (infoToRemove != null)
-						{
-							infos.Remove(infoToRemove);
+					// var collection = this.dbService.GetCollection();
+					// var user = await collection.Find(u => u.NotificationInfos.Any(ni => ni.NotificationUri.Equals(uri))).FirstOrDefaultAsync();
+					// if (user != null)
+					// {
+					// 	var infos = user.NotificationInfos;
+					// 	var infoToRemove = infos.SingleOrDefault(x => x.NotificationUri.Equals(uri));
+					// 	if (infoToRemove != null)
+					// 	{
+					// 		infos.Remove(infoToRemove);
 
-							var filter = Builders<NotificationUser>.Filter.Eq("_id", user._id);
-							var update = Builders<NotificationUser>.Update
-								.CurrentDate(x => x.DateUpdated)
-								.Set(x => x.NotificationInfos, infos);
-							await collection.UpdateOneAsync(filter, update);
-						}
-					}
+					// 		var filter = Builders<NotificationUser>.Filter.Eq("_id", user._id);
+					// 		var update = Builders<NotificationUser>.Update
+					// 			.CurrentDate(x => x.DateUpdated)
+					// 			.Set(x => x.NotificationInfos, infos);
+					// 		await collection.UpdateOneAsync(filter, update);
+					// 	}
+					// }
 					break;
 				case System.Net.HttpStatusCode.NotAcceptable:
 					result = ResponseResult.FailTryAgain;
