@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Dapper;
@@ -18,6 +20,14 @@ namespace Shacknews_Push_Notifications
                         new { userName = userName.ToLower() }
                         )
                     ).FirstOrDefault();
+            }
+        }
+
+        public async Task<List<string>> GetAllUserNames()
+        {
+            using (var con = UserRepo.GetConnection())
+            {
+                return (await con.QueryAsync<string>(@"SELECT UserName FROM User")).ToList();
             }
         }
     }
