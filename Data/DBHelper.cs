@@ -6,7 +6,7 @@ namespace Shacknews_Push_Notifications.Data
 {
     public class DBHelper
     {
-        private static readonly string DB_FILE  = Directory.GetCurrentDirectory() + "Notifications.db";
+		  private static readonly string DB_FILE  = Path.Combine(Directory.GetCurrentDirectory(), "Notifications.db");
         public static SqliteConnection GetConnection()
         {
 
@@ -35,8 +35,7 @@ namespace Shacknews_Push_Notifications.Data
                             Id INTEGER PRIMARY KEY AUTOINCREMENT,
                             UserName VARCHAR(100) NOT NULL,
                             DateAdded INTEGER NOT NULL DEFAULT(datetime('now')),
-                            NotificationsSent INTEGER NOT NULL DEFAULT 0,
-                            LastNotifiedTime INTEGER NULL
+                            NotificationsSent INTEGER NOT NULL DEFAULT 0
                         );
                         CREATE INDEX UserUserName ON User(UserName);
                         CREATE TABLE Device
@@ -48,6 +47,7 @@ namespace Shacknews_Push_Notifications.Data
                         );
                         CREATE INDEX DeviceUserId ON Device(UserId);
                         CREATE INDEX DeviceId ON Device(Id);
+								CREATE INDEX DeviceNotificationUri ON Device(NotificationUri);
                         ");
                     tx.Commit();
                 }                

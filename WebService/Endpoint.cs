@@ -10,12 +10,15 @@ using System.Threading.Tasks;
 using System.Xml.Linq;
 using Microsoft.Extensions.Caching.Memory;
 using Autofac;
+using Shacknews_Push_Notifications.Data;
+using Shacknews_Push_Notifications.Model;
 
 namespace Shacknews_Push_Notifications
 {
 	public class Endpoint : NancyModule
 	{
 		private readonly MemoryCache cache;
+		private readonly UserRepo userRepo;
 		public Endpoint()
 		{
 			Post("/register", this.RegisterDevice);
@@ -24,9 +27,10 @@ namespace Shacknews_Push_Notifications
 			Post("/replyToNotification", this.ReplyToNotification);
 			Post("/removeNotification", this.RemoveNotification);
 			Get("/openReplyNotifications", this.GetOpenReplyNotifications);
-			Get("/test",x => new { status = "ok" });
+			Get("/test", x => new { status = "ok" });
 			Get("tileContent", this.GetTileContent);
 			this.cache = AppModuleBuilder.Container.Resolve<MemoryCache>();
+			this.userRepo = AppModuleBuilder.Container.Resolve<UserRepo>();
 		}
 
 		#region Event Bind Classes
@@ -235,50 +239,18 @@ namespace Shacknews_Push_Notifications
 			{
 				ConsoleLog.LogMessage("Register device.");
 				var e = this.Bind<RegisterArgs>();
-				// var collection = this.dbService.GetCollection();
 
-				// var user = await collection.Find(u => u.UserName.Equals(e.UserName.ToLower())).FirstOrDefaultAsync();
-				// if (user != null)
-				// {
-				// 	//Update user
-				// 	var infos = user.NotificationInfos;
-				// 	var info = infos.SingleOrDefault(x => x.DeviceId.Equals(e.DeviceId));
-				// 	if (info != null)
-				// 	{
-				// 		info.NotificationUri = e.ChannelUri;
-				// 	}
-				// 	else
-				// 	{
-				// 		infos.Add(new NotificationInfo()
-				// 		{
-				// 			DeviceId = e.DeviceId,
-				// 			NotificationUri = e.ChannelUri
-				// 		});
-				// 	}
-				// 	var filter = Builders<NotificationUser>.Filter.Eq("_id", user._id);
-				// 	var update = Builders<NotificationUser>.Update
-				// 		.CurrentDate(x => x.DateUpdated)
-				// 		.Set(x => x.NotificationInfos, infos);
-				// 	await collection.UpdateOneAsync(filter, update);
-				// }
-				// else
-				// {
-				// 	//Insert user
-				// 	user = new NotificationUser()
-				// 	{
-				// 		UserName = e.UserName.ToLower(),
-				// 		DateUpdated = DateTime.UtcNow,
-				// 		NotificationInfos = new List<NotificationInfo>(new[]
-				// 		{
-				// 			new NotificationInfo()
-				// 			{
-				// 				DeviceId = e.DeviceId,
-				// 				NotificationUri = e.ChannelUri
-				// 			}
-				// 		})
-				// 	};
-				// 	await collection.InsertOneAsync(user);
-				// }
+				var user = await this.userRepo.FindUser(e.UserName);
+				if (user == null)
+				{
+					user = await this.userRepo.AddUser(new NotificationUser
+					{
+						UserName = e.UserName,
+						DateAdded = DateTime.UtcNow
+					});
+				}
+
+				await this.userRepo.AddOrUpdateDevice(user, new NotificationInfo { DeviceId = e.DeviceId, NotificationUri = e.ChannelUri });
 				return new { status = "success" };
 			}
 			catch (Exception ex)
