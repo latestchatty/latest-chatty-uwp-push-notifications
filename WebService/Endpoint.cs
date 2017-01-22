@@ -19,18 +19,26 @@ namespace Shacknews_Push_Notifications
 	{
 		private readonly MemoryCache cache;
 		private readonly UserRepo userRepo;
+		private readonly AppConfiguration configuration;
 		public Endpoint()
 		{
 			Post("/register", this.RegisterDevice);
 			Post("/deregister", this.DeregisterDevice);
-			Post("/resetcount", this.ResetCount);
 			Post("/replyToNotification", this.ReplyToNotification);
-			Post("/removeNotification", this.RemoveNotification);
-			Get("/openReplyNotifications", this.GetOpenReplyNotifications);
 			Get("/test", x => new { status = "ok" });
 			Get("tileContent", this.GetTileContent);
+
+			#region Deprecated Routes 
+			//Remove these in a future update, once the app has been updated to not call them.
+			//For now, just return default results.
+			Post("/resetcount", x => new { status = "success" });
+			Post("/removeNotification", x => new { status = "success" });
+			Get("/openReplyNotifications", x => new { data = new List<int>() });
+			#endregion
+
 			this.cache = AppModuleBuilder.Container.Resolve<MemoryCache>();
 			this.userRepo = AppModuleBuilder.Container.Resolve<UserRepo>();
+			this.configuration = AppModuleBuilder.Container.Resolve<AppConfiguration>();
 		}
 
 		#region Event Bind Classes
@@ -131,16 +139,7 @@ namespace Shacknews_Push_Notifications
 			}
 			return string.Empty;
 		}
-
-		async private Task<dynamic> GetOpenReplyNotifications(dynamic arg)
-		{
-			return new { data = new List<int>() };
-		}
-
-		async private Task<dynamic> RemoveNotification(dynamic arg)
-		{
-			return new { status = "success" };
-		}
+		
 
 		async private Task<dynamic> ReplyToNotification(dynamic arg)
 		{
@@ -149,45 +148,36 @@ namespace Shacknews_Push_Notifications
 				ConsoleLog.LogMessage("Replying to notification.");
 				var e = this.Bind<ReplyToNotificationArgs>();
 
-				// using (var request = new HttpClient())
-				// {
-				// 	var data = new Dictionary<string, string> {
-				// 		{ "text", e.Text },
-				// 		{ "parentId", e.ParentId },
-				// 		{ "username", e.UserName },
-				// 		{ "password", e.Password }
-				// 	};
+				using (var request = new HttpClient())
+				{
+					var data = new Dictionary<string, string> {
+				 		{ "text", e.Text },
+				 		{ "parentId", e.ParentId },
+				 		{ "username", e.UserName },
+				 		{ "password", e.Password }
+				 	};
 
-				// 	//Winchatty seems to crap itself if the Expect: 100-continue header is there.
-				// 	request.DefaultRequestHeaders.ExpectContinue = false;
-				// 	JToken parsedResponse = null;
+					//Winchatty seems to crap itself if the Expect: 100-continue header is there.
+					request.DefaultRequestHeaders.ExpectContinue = false;
+					JToken parsedResponse = null;
 
-				// 	using (var formContent = new FormUrlEncodedContent(data))
-				// 	{
-				// 		using (var response = await request.PostAsync($"{ConfigurationManager.AppSettings["winChattyApiBase"]}postComment", formContent))
-				// 		{
-				// 			parsedResponse = JToken.Parse(await response.Content.ReadAsStringAsync());
-				// 		}
-				// 	}
-				// 	var success = parsedResponse["result"]?.ToString().Equals("success");
-				// 	if (success.HasValue && success.Value)
-				// 	{
-				// 		var collection = this.dbService.GetCollection();
-
-				// 		var user = await collection.Find(u => u.UserName.Equals(e.UserName.ToLower())).FirstOrDefaultAsync();
-				// 		if (user == null)
-				// 		{
-				// 			ConsoleLog.LogMessage($"User {e.UserName} not found when replying.");
-				// 			return new { status = "error", message = "User not found." };
-				// 		}
-				// 		return new { status = "success" };
-				// 	}
-				// 	else
-				// 	{
-				// 		return new { status = "error" };
-				// 	}
-				// }
-				return new { status = "success" };
+					using (var formContent = new FormUrlEncodedContent(data))
+					{
+						using (var response = await request.PostAsync($"{this.configuration.WinchattyAPIBase}postComment", formContent))
+						{
+							parsedResponse = JToken.Parse(await response.Content.ReadAsStringAsync());
+						}
+					}
+					var success = parsedResponse["result"]?.ToString().Equals("success");
+					if (success.HasValue && success.Value)
+					{
+						return new { status = "success" };
+					}
+					else
+					{
+						return new { status = "error" };
+					}
+				}
 			}
 			catch (Exception ex)
 			{
@@ -204,25 +194,7 @@ namespace Shacknews_Push_Notifications
 				ConsoleLog.LogMessage("Deregister device.");
 				var e = this.Bind<DeregisterArgs>();
 
-				// var collection = this.dbService.GetCollection();
-
-				// var userName = arg.userName.ToString().ToLower() as string;
-				// var user = await collection.Find(u => u.NotificationInfos.Any(ni => ni.DeviceId.Equals(e.DeviceId))).FirstOrDefaultAsync();
-				// if (user != null)
-				// {
-				// 	var infos = user.NotificationInfos;
-				// 	var infoToRemove = infos.SingleOrDefault(x => x.DeviceId.Equals(e.DeviceId));
-				// 	if (infoToRemove != null)
-				// 	{
-				// 		infos.Remove(infoToRemove);
-
-				// 		var filter = Builders<NotificationUser>.Filter.Eq("_id", user._id);
-				// 		var update = Builders<NotificationUser>.Update
-				// 			.CurrentDate(x => x.DateUpdated)
-				// 			.Set(x => x.NotificationInfos, infos);
-				// 		await collection.UpdateOneAsync(filter, update);
-				// 	}
-				// }
+				await this.userRepo.DeleteDevice(e.DeviceId);
 				return new { status = "success" };
 			}
 			catch (Exception ex)
@@ -259,11 +231,6 @@ namespace Shacknews_Push_Notifications
 				ConsoleLog.LogError($"!!!!Exception in {nameof(RegisterDevice)}: {ex.ToString()}");
 				return new { status = "error" };
 			}
-		}
-
-		async private Task<dynamic> ResetCount(dynamic arg)
-		{
-			return new { status = "success" };
 		}
 	}
 }

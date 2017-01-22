@@ -12,7 +12,7 @@ namespace Shacknews_Push_Notifications
 	{
 		public async Task<NotificationUser> FindUser(string userName)
 		{
-			using (var con = UserRepo.GetConnection())
+			using (var con = GetConnection())
 			{
 				return (
 					 await con.QueryAsync<NotificationUser>(
@@ -25,7 +25,7 @@ namespace Shacknews_Push_Notifications
 
 		public async Task<List<string>> GetAllUserNames()
 		{
-			using (var con = UserRepo.GetConnection())
+			using (var con = GetConnection())
 			{
 				return (await con.QueryAsync<string>(@"SELECT UserName FROM User")).ToList();
 			}
@@ -33,7 +33,7 @@ namespace Shacknews_Push_Notifications
 
 		public async Task AddOrUpdateDevice(NotificationUser user, NotificationInfo notificationInfo)
 		{
-			using (var con = UserRepo.GetConnection())
+			using (var con = GetConnection())
 			{
 				var info = await con.QueryFirstOrDefaultAsync<NotificationInfo>(
 					@"SELECT * FROM Device WHERE Id=@DeviceId AND UserId=@UserId",
@@ -57,7 +57,7 @@ namespace Shacknews_Push_Notifications
 
 		public async Task<NotificationUser> AddUser(NotificationUser user)
 		{
-			using (var con = UserRepo.GetConnection())
+			using (var con = GetConnection())
 			{
 				user.Id = await con.QuerySingleAsync<long>(@"
 					INSERT INTO User
@@ -66,6 +66,22 @@ namespace Shacknews_Push_Notifications
 					select last_insert_rowid();
 					", new { user.UserName, user.DateAdded });
 				return user;
+			}
+		}
+
+		public async Task DeleteDevice(string deviceId)
+		{
+			using (var con = GetConnection())
+			{
+				await con.ExecuteAsync("DELETE FROM Device WHERE Id=@deviceId", new { deviceId });
+			}
+		}
+
+		public async Task DeleteDeviceByUri(string uri)
+		{
+			using (var con = GetConnection())
+			{
+				await con.ExecuteAsync("DELETE FROM Device WHERE NotificationUri=@uri", new { uri });
 			}
 		}
 	}
