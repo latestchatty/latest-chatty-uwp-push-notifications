@@ -4,10 +4,6 @@ using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using Shacknews_Push_Notifications.Common;
-
-using Microsoft.Extensions.Configuration;
-using System.IO;
 
 namespace Shacknews_Push_Notifications.Common
 {

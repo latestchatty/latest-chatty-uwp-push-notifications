@@ -1,13 +1,9 @@
 using Autofac;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Configuration;
 using Shacknews_Push_Notifications.Common;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Microsoft.Extensions.Configuration;
 using System.IO;
-using Microsoft.Extensions.Caching.Memory;
 
 namespace Shacknews_Push_Notifications
 {
@@ -21,7 +17,7 @@ namespace Shacknews_Push_Notifications
 			builder.RegisterType<NotificationService>().SingleInstance();
 			builder.RegisterType<AccessTokenManager>().SingleInstance();
 			builder.RegisterType<Monitor>().SingleInstance();
-			builder.Register<AppConfiguration>(x =>
+			builder.Register(x =>
 			{
 				var configBuilder = new ConfigurationBuilder()
 												.AddJsonFile("appsettings.json")
@@ -32,7 +28,7 @@ namespace Shacknews_Push_Notifications
 				ConfigurationBinder.Bind(config, appConfig);
 				return appConfig;
 			}).SingleInstance();
-			builder.Register<MemoryCache>(x => new MemoryCache(new MemoryCacheOptions())).SingleInstance();
+			builder.Register(x => new MemoryCache(new MemoryCacheOptions())).SingleInstance();
 			builder.RegisterType<UserRepo>().InstancePerDependency();
 			return builder.Build();
 		}

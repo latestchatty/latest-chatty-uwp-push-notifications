@@ -1,17 +1,16 @@
-﻿using Nancy;
+﻿using Autofac;
+using Microsoft.Extensions.Caching.Memory;
+using Nancy;
 using Nancy.ModelBinding;
 using Newtonsoft.Json.Linq;
 using Shacknews_Push_Notifications.Common;
+using Shacknews_Push_Notifications.Model;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Xml.Linq;
-using Microsoft.Extensions.Caching.Memory;
-using Autofac;
-using Shacknews_Push_Notifications.Data;
-using Shacknews_Push_Notifications.Model;
 
 namespace Shacknews_Push_Notifications
 {
@@ -54,24 +53,12 @@ namespace Shacknews_Push_Notifications
 			public string DeviceId { get; set; }
 		}
 
-		private class UserNameArgs
-		{
-			public string UserName { get; set; }
-		}
-
 		private class ReplyToNotificationArgs
 		{
 			public string UserName { get; set; }
 			public string Password { get; set; }
 			public string ParentId { get; set; }
 			public string Text { get; set; }
-		}
-
-		private class RemoveNotificationArgs
-		{
-			public string UserName { get; set; }
-			public string Group { get; set; }
-			public string Tag { get; set; }
 		}
 		#endregion
 
@@ -139,7 +126,7 @@ namespace Shacknews_Push_Notifications
 			}
 			return string.Empty;
 		}
-		
+
 
 		async private Task<dynamic> ReplyToNotification(dynamic arg)
 		{
@@ -222,7 +209,7 @@ namespace Shacknews_Push_Notifications
 					});
 				}
 
-				await this.userRepo.AddOrUpdateDevice(user, new NotificationInfo { DeviceId = e.DeviceId, NotificationUri = e.ChannelUri });
+				await this.userRepo.AddOrUpdateDevice(user, new DeviceInfo { DeviceId = e.DeviceId, NotificationUri = e.ChannelUri });
 				return new { status = "success" };
 			}
 			catch (Exception ex)

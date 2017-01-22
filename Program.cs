@@ -1,8 +1,7 @@
 ﻿using Autofac;
+using Microsoft.AspNetCore.Hosting;
 using System;
 using System.IO;
-using Microsoft.AspNetCore.Hosting;
-using Shacknews_Push_Notifications.Common;
 
 namespace Shacknews_Push_Notifications
 {
@@ -13,12 +12,12 @@ namespace Shacknews_Push_Notifications
 			using (var container = AppModuleBuilder.Container)
 			{
 				var monitor = container.Resolve<Monitor>();
-
+				var config = container.Resolve<AppConfiguration>();
 				monitor.Start();
 
 				Console.WriteLine("Hello World!");
 				var host = new WebHostBuilder()
-					.UseUrls("http://0.0.0.0:4000")
+					.UseUrls(config.HostUrl)
 					.UseContentRoot(Directory.GetCurrentDirectory())
 					.UseKestrel()
 					.UseStartup<Startup>()

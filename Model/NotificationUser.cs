@@ -8,7 +8,5 @@ namespace Shacknews_Push_Notifications.Model
 		public long Id { get; set; }
 		public string UserName { get; set; }
 		public DateTime DateAdded { get; set; }
-		public long NotificationsSent { get; set; }
-		public List<NotificationInfo> NotificationInfos { get; set; }
 	}
 }

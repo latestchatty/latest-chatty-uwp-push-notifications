@@ -31,11 +31,27 @@ namespace Shacknews_Push_Notifications
 			}
 		}
 
-		public async Task AddOrUpdateDevice(NotificationUser user, NotificationInfo notificationInfo)
+
+
+		public async Task<NotificationUser> AddUser(NotificationUser user)
 		{
 			using (var con = GetConnection())
 			{
-				var info = await con.QueryFirstOrDefaultAsync<NotificationInfo>(
+				user.Id = await con.QuerySingleAsync<long>(@"
+					INSERT INTO User
+					(UserName, DateAdded)
+					VALUES(@UserName, @DateAdded);
+					select last_insert_rowid();
+					", new { user.UserName, user.DateAdded });
+				return user;
+			}
+		}
+
+		public async Task AddOrUpdateDevice(NotificationUser user, DeviceInfo notificationInfo)
+		{
+			using (var con = GetConnection())
+			{
+				var info = await con.QueryFirstOrDefaultAsync<DeviceInfo>(
 					@"SELECT * FROM Device WHERE Id=@DeviceId AND UserId=@UserId",
 					new { notificationInfo.DeviceId, UserId = user.Id });
 				if (info == null)
@@ -55,17 +71,11 @@ namespace Shacknews_Push_Notifications
 			}
 		}
 
-		public async Task<NotificationUser> AddUser(NotificationUser user)
+		public async Task<IEnumerable<DeviceInfo>> GetUserDeviceInfos(NotificationUser user)
 		{
 			using (var con = GetConnection())
 			{
-				user.Id = await con.QuerySingleAsync<long>(@"
-					INSERT INTO User
-					(UserName, DateAdded)
-					VALUES(@UserName, @DateAdded);
-					select last_insert_rowid();
-					", new { user.UserName, user.DateAdded });
-				return user;
+				return await con.QueryAsync<DeviceInfo>("SELECT * FROM Device WHERE UserId=@Id", new { user.Id });
 			}
 		}
 
