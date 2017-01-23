@@ -1,12 +1,35 @@
 using Dapper;
 using Microsoft.Data.Sqlite;
 using System.IO;
+using Autofac;
+using Shacknews_Push_Notifications.Common;
 
 namespace Shacknews_Push_Notifications.Data
 {
 	public class DBHelper
 	{
-		private static readonly string DB_FILE = Path.Combine(Directory.GetCurrentDirectory(), "Notifications.db");
+		private static string db_file;
+		private static string DB_FILE
+		{
+			get
+			{
+				if (db_file == null)
+				{
+					var config = AppModuleBuilder.Container.Resolve<AppConfiguration>();
+					if (string.IsNullOrWhiteSpace(config.DBLocation))
+					{
+						db_file = Path.Combine(Directory.GetCurrentDirectory(), "Notifications.db");
+					}
+					else
+					{
+						db_file = config.DBLocation;
+					}
+					ConsoleLog.LogMessage($"Using database location {db_file}");
+				}
+				return db_file;
+			}
+		}
+
 		public static SqliteConnection GetConnection()
 		{
 
