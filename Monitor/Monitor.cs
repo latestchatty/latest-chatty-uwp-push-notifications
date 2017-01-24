@@ -194,9 +194,6 @@ namespace Shacknews_Push_Notifications
 
 		private void SendNotifications(DeviceInfo info, string title, string message, int postId, int ttl)
 		{
-			var badgeDoc = new XDocument(new XElement("badge", new XAttribute("value", 0)));
-			this.notificationService.QueueNotificationData(NotificationType.Badge, info.NotificationUri, badgeDoc);
-
 			var toastDoc = new XDocument(
 				 new XElement("toast", new XAttribute("launch", $"goToPost?postId={postId}"),
 					  new XElement("visual",
