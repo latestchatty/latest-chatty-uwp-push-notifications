@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Serilog;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Net.Http;
@@ -12,6 +13,7 @@ namespace Shacknews_Push_Notifications.Common
 	{
 		private readonly AccessTokenManager accessTokenManager;
 		private readonly UserRepo dbService;
+		private readonly ILogger logger;
 		private ConcurrentQueue<QueuedNotificationItem> queuedItems = new ConcurrentQueue<QueuedNotificationItem>();
 		private int nextProcessDelay = 3000;
 
@@ -50,10 +52,11 @@ namespace Shacknews_Push_Notifications.Common
 		  };
 		private bool processingNotificationQueue;
 
-		public NotificationService(AccessTokenManager accessTokenManager, UserRepo dbService)
+		public NotificationService(AccessTokenManager accessTokenManager, UserRepo dbService, ILogger logger)
 		{
 			this.accessTokenManager = accessTokenManager;
 			this.dbService = dbService;
+			this.logger = logger;
 		}
 
 		public void QueueNotificationData(NotificationType type, string notificationUri, XDocument content = null, NotificationGroups group = NotificationGroups.None, string tag = null, int ttl = 0)
@@ -97,13 +100,15 @@ namespace Shacknews_Push_Notifications.Common
 				QueuedNotificationItem notification = null;
 				while (this.queuedItems.TryDequeue(out notification))
 				{
-					ConsoleLog.LogMessage("Processing notification queue.");
+					this.logger.Verbose("Processing notification queue.");
 					try
 					{
 						var token = await this.accessTokenManager.GetAccessToken();
 						using (var client = this.CreateClient(token))
 						{
-							ConsoleLog.LogMessage($"Sending notification {notification.Type} with content { notification.Content?.ToString(SaveOptions.None) }");
+							this.logger.Information(
+								"Sending notification {notificationType} with content {contentType}",
+								notification.Type, notification.Content?.ToString(SaveOptions.None));
 							var waitTime = 0;
 							ResponseResult result;
 							do
@@ -175,7 +180,7 @@ namespace Shacknews_Push_Notifications.Common
 					}
 					catch (Exception ex)
 					{
-						ConsoleLog.LogError($"!!!!!!Exception in {nameof(ProcessNotificationQueue)} : {ex.ToString()}");
+						this.logger.Error(ex, $"Exception in {nameof(ProcessNotificationQueue)}");
 						this.nextProcessDelay = (int)Math.Pow(this.nextProcessDelay, 1.1);
 					}
 					finally
@@ -195,7 +200,7 @@ namespace Shacknews_Push_Notifications.Common
 		{
 			//By default, we'll just let it die if we don't know specifically that we can try again.
 			ResponseResult result = ResponseResult.FailDoNotTryAgain;
-			ConsoleLog.LogMessage($"Notification Response Code: {response.StatusCode}");
+			this.logger.Verbose("Notification Response Code: {responseStatusCode}", response.StatusCode);
 			switch (response.StatusCode)
 			{
 				case System.Net.HttpStatusCode.OK:

@@ -3,6 +3,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Nancy;
 using Nancy.ModelBinding;
 using Newtonsoft.Json.Linq;
+using Serilog;
 using Shacknews_Push_Notifications.Common;
 using Shacknews_Push_Notifications.Model;
 using System;
@@ -19,6 +20,8 @@ namespace Shacknews_Push_Notifications
 		private readonly MemoryCache cache;
 		private readonly UserRepo userRepo;
 		private readonly AppConfiguration configuration;
+		private readonly ILogger logger;
+
 		public Endpoint()
 		{
 			Post("/register", this.RegisterDevice);
@@ -38,6 +41,7 @@ namespace Shacknews_Push_Notifications
 			this.cache = AppModuleBuilder.Container.Resolve<MemoryCache>();
 			this.userRepo = AppModuleBuilder.Container.Resolve<UserRepo>();
 			this.configuration = AppModuleBuilder.Container.Resolve<AppConfiguration>();
+			this.logger = AppModuleBuilder.Container.Resolve<ILogger>();
 		}
 
 		#region Event Bind Classes
@@ -69,7 +73,7 @@ namespace Shacknews_Push_Notifications
 				var tileContent = this.cache.Get("tileContent") as string;
 				if (string.IsNullOrWhiteSpace(tileContent))
 				{
-					ConsoleLog.LogMessage("Retrieving tile content.");
+					this.logger.Information("Retrieving tile content.");
 
 					XDocument xDoc;
 					using (var client = new HttpClient())
@@ -116,13 +120,13 @@ namespace Shacknews_Push_Notifications
 				}
 				else
 				{
-					ConsoleLog.LogMessage("Retrieved cached tile content.");
+					this.logger.Information("Retrieved cached tile content.");
 				}
 				return tileContent;
 			}
 			catch (Exception ex)
 			{
-				ConsoleLog.LogMessage($"Excepiton retrieving tile content : {ex}");
+				this.logger.Error(ex, "Excepiton retrieving tile content.");
 			}
 			return string.Empty;
 		}
@@ -132,7 +136,7 @@ namespace Shacknews_Push_Notifications
 		{
 			try
 			{
-				ConsoleLog.LogMessage("Replying to notification.");
+				this.logger.Information("Replying to notification.");
 				var e = this.Bind<ReplyToNotificationArgs>();
 
 				using (var request = new HttpClient())
@@ -169,7 +173,7 @@ namespace Shacknews_Push_Notifications
 			catch (Exception ex)
 			{
 				//TODO: Log exception
-				ConsoleLog.LogError($"!!!!Exception in {nameof(ReplyToNotification)}: {ex.ToString()}");
+				this.logger.Error(ex, $"Exception in {nameof(ReplyToNotification)}");
 				return new { status = "error" };
 			}
 		}
@@ -178,7 +182,7 @@ namespace Shacknews_Push_Notifications
 		{
 			try
 			{
-				ConsoleLog.LogMessage("Deregister device.");
+				this.logger.Information("Deregister device.");
 				var e = this.Bind<DeregisterArgs>();
 
 				await this.userRepo.DeleteDevice(e.DeviceId);
@@ -186,8 +190,7 @@ namespace Shacknews_Push_Notifications
 			}
 			catch (Exception ex)
 			{
-				//TODO: Log exception
-				ConsoleLog.LogError($"!!!!Exception in {nameof(DeregisterDevice)}: {ex.ToString()}");
+				this.logger.Error(ex, $"Exception in {nameof(DeregisterDevice)}");
 				return new { status = "error" };
 			}
 		}
@@ -196,7 +199,7 @@ namespace Shacknews_Push_Notifications
 		{
 			try
 			{
-				ConsoleLog.LogMessage("Register device.");
+				this.logger.Information("Register device.");
 				var e = this.Bind<RegisterArgs>();
 
 				var user = await this.userRepo.FindUser(e.UserName);
@@ -214,8 +217,7 @@ namespace Shacknews_Push_Notifications
 			}
 			catch (Exception ex)
 			{
-				//TODO: Log exception
-				ConsoleLog.LogError($"!!!!Exception in {nameof(RegisterDevice)}: {ex.ToString()}");
+				this.logger.Error(ex, $"Exception in {nameof(RegisterDevice)}");
 				return new { status = "error" };
 			}
 		}

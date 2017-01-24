@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json.Linq;
+using Serilog;
 using Shacknews_Push_Notifications.Common;
 using Shacknews_Push_Notifications.Model;
 using System;
@@ -21,13 +22,15 @@ namespace Shacknews_Push_Notifications
 		private readonly NotificationService notificationService;
 		private readonly UserRepo dbService;
 		private readonly AppConfiguration configuration;
+		private readonly ILogger logger;
 		private CancellationTokenSource cancelToken = new CancellationTokenSource();
 
-		public Monitor(NotificationService notificationService, UserRepo dbService, AppConfiguration config)
+		public Monitor(NotificationService notificationService, UserRepo dbService, AppConfiguration config, ILogger logger)
 		{
 			this.notificationService = notificationService;
 			this.dbService = dbService;
 			this.configuration = config;
+			this.logger = logger;
 		}
 
 		public void Start()
@@ -35,7 +38,7 @@ namespace Shacknews_Push_Notifications
 			if (this.timerEnabled) return;
 			this.timerEnabled = true;
 			this.mainTimer = new System.Threading.Timer(TimerCallback, null, 0, System.Threading.Timeout.Infinite);
-			ConsoleLog.LogMessage("Notification monitor started.");
+			this.logger.Verbose("Notification monitor started.");
 		}
 
 		public void Stop()
@@ -47,12 +50,12 @@ namespace Shacknews_Push_Notifications
 				this.mainTimer.Dispose();
 				this.mainTimer = null;
 			}
-			ConsoleLog.LogMessage("Notification monitor stopped.");
+			this.logger.Verbose("Notification monitor stopped.");
 		}
 
 		async private void TimerCallback(object state)
 		{
-			ConsoleLog.LogMessage("Waiting for next monitor event...");
+			this.logger.Verbose("Waiting for next monitor event...");
 			try
 			{
 				//var collection = dbService.GetCollection();
@@ -96,13 +99,13 @@ namespace Shacknews_Push_Notifications
 								}
 								else
 								{
-									ConsoleLog.LogMessage($"No alert on reply to {parentAuthor}");
+									this.logger.Verbose("No alert on reply to {parentAuthor}", parentAuthor);
 								}
 #if !DEBUG
 								}
 								else
 								{
-									ConsoleLog.LogMessage($"No alert on self-reply to {parentAuthor}");
+									this.logger.Verbose("No alert on self-reply to {parentAuthor}", parentAuthor);
 								}
 #endif
 								var users = await this.dbService.GetAllUserNames();
@@ -114,7 +117,8 @@ namespace Shacknews_Push_Notifications
 										var u1 = await this.dbService.FindUser(parentAuthor);
 										if (u1 != null)
 										{
-											ConsoleLog.LogMessage($"Notifying {user} of mention by {latestReplyAuthor}");
+											this.logger.Information("Notifying {user} of mention by {latestReplyAuthor}",
+												user, latestReplyAuthor);
 											this.NotifyUser(u1, latestPostId, $"Mentioned by {latestReplyAuthor}", postBody);
 										}
 									}
@@ -122,7 +126,7 @@ namespace Shacknews_Push_Notifications
 							}
 							else
 							{
-								ConsoleLog.LogMessage($"Event type {e["eventType"].ToString()} not handled.");
+								this.logger.Verbose("Event type {eventType} not handled.", e["eventType"].ToString());
 							}
 						}
 					}
@@ -146,13 +150,13 @@ namespace Shacknews_Push_Notifications
 				{
 					//This is expected, we'll still slow down our polling of winchatty if the chatty's not busy but won't print a full stack.
 					//Don't reset the event ID though, since nothing happened.  Don't want to miss events.
-					ConsoleLog.LogMessage("Timed out waiting for winchatty.");
+					this.logger.Verbose("Timed out waiting for winchatty.");
 				}
 				else
 				{
 					//If there was an error, reset the event ID to 0 so we get the latest, otherwise we might get stuck in a loop where the API won't return us events because there are too many.
 					lastEventId = 0;
-					ConsoleLog.LogError($"!!!!!Exception in {nameof(TimerCallback)}: {ex.ToString()}");
+					this.logger.Error(ex, $"Exception in {nameof(TimerCallback)}");
 				}
 			}
 			finally
@@ -182,7 +186,7 @@ namespace Shacknews_Push_Notifications
 				}
 				else
 				{
-					ConsoleLog.LogMessage($"No notification on reply to {user.UserName} because thread is expired.");
+					this.logger.Information("No notification on reply to {userName} because thread is expired.", user.UserName);
 				}
 			}
 		}

@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json.Linq;
+using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Net.Http;
@@ -11,12 +12,15 @@ namespace Shacknews_Push_Notifications.Common
 	{
 		private string accessToken = string.Empty;
 		private AppConfiguration configuration;
+		private ILogger logger;
 		SemaphoreSlim locker = new SemaphoreSlim(1);
 
-		public AccessTokenManager(AppConfiguration config)
+		public AccessTokenManager(AppConfiguration config, ILogger logger)
 		{
 			this.configuration = config;
+			this.logger = logger;
 		}
+	
 		public async Task<string> GetAccessToken()
 		{
 			try
@@ -25,7 +29,7 @@ namespace Shacknews_Push_Notifications.Common
 				await this.locker.WaitAsync();
 				if (string.IsNullOrWhiteSpace(this.accessToken))
 				{
-					ConsoleLog.LogMessage("Getting access token.");
+					this.logger.Information("Getting access token.");
 					using (var client = new HttpClient())
 					{
 						var data = new FormUrlEncodedContent(new Dictionary<string, string> {
@@ -42,7 +46,7 @@ namespace Shacknews_Push_Notifications.Common
 								if (responseJson["access_token"] != null)
 								{
 									this.accessToken = responseJson["access_token"].Value<string>();
-									ConsoleLog.LogMessage($"Got access token.");
+									this.logger.Information("Got access token.");
 								}
 							}
 						}

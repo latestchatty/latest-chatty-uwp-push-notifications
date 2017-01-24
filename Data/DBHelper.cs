@@ -24,7 +24,6 @@ namespace Shacknews_Push_Notifications.Data
 					{
 						db_file = config.DBLocation;
 					}
-					ConsoleLog.LogMessage($"Using database location {db_file}");
 				}
 				return db_file;
 			}
