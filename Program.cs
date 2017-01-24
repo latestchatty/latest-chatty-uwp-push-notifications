@@ -15,7 +15,6 @@ namespace Shacknews_Push_Notifications
 				var config = container.Resolve<AppConfiguration>();
 				monitor.Start();
 
-				Console.WriteLine("Hello World!");
 				var host = new WebHostBuilder()
 					.UseUrls(config.HostUrl)
 					.UseContentRoot(Directory.GetCurrentDirectory())
