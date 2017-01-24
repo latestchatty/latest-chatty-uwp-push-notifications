@@ -163,6 +163,7 @@ namespace Shacknews_Push_Notifications
 			{
 				if (this.timerEnabled)
 				{
+					this.logger.Verbose("Delaying next monitor for {monitorDelay}ms", this.timeDelay * 1000);
 					mainTimer.Change((int)(this.timeDelay * 1000), Timeout.Infinite);
 				}
 			}
