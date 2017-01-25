@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Hosting;
 using System;
 using System.IO;
+using Serilog;
 
 namespace Shacknews_Push_Notifications
 {
@@ -11,23 +12,31 @@ namespace Shacknews_Push_Notifications
 		{
 			using (var container = AppModuleBuilder.Container)
 			{
-				var monitor = container.Resolve<Monitor>();
-				var config = container.Resolve<AppConfiguration>();
-				//This is ghetto as fffffff but just get a connection so we can make sure the DB is upgraded beofre anyone else uses it and before anything else is running.
-				using (var con = UserRepo.GetConnection()) { }
+				var logger = container.Resolve<ILogger>();
+				try
+				{
+					var monitor = container.Resolve<Monitor>();
+					var config = container.Resolve<AppConfiguration>();
+					//This is ghetto as fffffff but just get a connection so we can make sure the DB is upgraded beofre anyone else uses it and before anything else is running.
+					using (var con = UserRepo.GetConnection()) { }
 
-				monitor.Start();
+					monitor.Start();
 
-				var host = new WebHostBuilder()
-					.UseUrls(config.HostUrl)
-					.UseContentRoot(Directory.GetCurrentDirectory())
-					.UseKestrel()
-					.UseStartup<Startup>()
-					.Build();
+					var host = new WebHostBuilder()
+						.UseUrls(config.HostUrl)
+						.UseContentRoot(Directory.GetCurrentDirectory())
+						.UseKestrel()
+						.UseStartup<Startup>()
+						.Build();
 
-				host.Run();
+					host.Run();
 
-				monitor.Stop();
+					monitor.Stop();
+				}
+				catch (Exception ex)
+				{
+					logger.Error(ex, "Unhandled exception in app.");
+				}
 			}
 		}
 	}
