@@ -1,12 +1,10 @@
-﻿using MongoDB.Driver;
-using Newtonsoft.Json.Linq;
+﻿using Newtonsoft.Json.Linq;
+using Serilog;
 using Shacknews_Push_Notifications.Common;
+using Shacknews_Push_Notifications.Model;
 using System;
-using System.Collections.Generic;
-using System.Configuration;
 using System.Linq;
 using System.Net.Http;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
@@ -22,13 +20,17 @@ namespace Shacknews_Push_Notifications
 		bool timerEnabled = false;
 		int lastEventId = 0;
 		private readonly NotificationService notificationService;
-		private readonly DatabaseService dbService;
+		private readonly UserRepo dbService;
+		private readonly AppConfiguration configuration;
+		private readonly ILogger logger;
 		private CancellationTokenSource cancelToken = new CancellationTokenSource();
 
-		public Monitor(NotificationService notificationService, DatabaseService dbService)
+		public Monitor(NotificationService notificationService, UserRepo dbService, AppConfiguration config, ILogger logger)
 		{
 			this.notificationService = notificationService;
 			this.dbService = dbService;
+			this.configuration = config;
+			this.logger = logger;
 		}
 
 		public void Start()
@@ -36,7 +38,7 @@ namespace Shacknews_Push_Notifications
 			if (this.timerEnabled) return;
 			this.timerEnabled = true;
 			this.mainTimer = new System.Threading.Timer(TimerCallback, null, 0, System.Threading.Timeout.Infinite);
-			ConsoleLog.LogMessage("Notification monitor started.");
+			this.logger.Verbose("Notification monitor started.");
 		}
 
 		public void Stop()
@@ -48,22 +50,21 @@ namespace Shacknews_Push_Notifications
 				this.mainTimer.Dispose();
 				this.mainTimer = null;
 			}
-			ConsoleLog.LogMessage("Notification monitor stopped.");
+			this.logger.Verbose("Notification monitor stopped.");
 		}
 
 		async private void TimerCallback(object state)
 		{
-			ConsoleLog.LogMessage("Waiting for next monitor event...");
+			this.logger.Verbose("Waiting for next monitor event...");
 			try
 			{
-				var collection = dbService.GetCollection();
+				//var collection = dbService.GetCollection();
 
 				using (var client = new HttpClient())
 				{
-
 					if (this.lastEventId == 0)
 					{
-						using (var res = await client.GetAsync($"{ConfigurationManager.AppSettings["winchattyApiBase"]}getNewestEventId", this.cancelToken.Token))
+						using (var res = await client.GetAsync($"{this.configuration.WinchattyAPIBase}getNewestEventId", this.cancelToken.Token))
 						{
 							var json = JToken.Parse(await res.Content.ReadAsStringAsync());
 							this.lastEventId = (int)json["eventId"];
@@ -71,7 +72,7 @@ namespace Shacknews_Push_Notifications
 					}
 
 					JToken jEvent;
-					using (var resEvent = await client.GetAsync($"{ConfigurationManager.AppSettings["winchattyApiBase"]}waitForEvent?lastEventId={this.lastEventId}&includeParentAuthor=1", this.cancelToken.Token))
+					using (var resEvent = await client.GetAsync($"{this.configuration.WinchattyAPIBase}waitForEvent?lastEventId={this.lastEventId}&includeParentAuthor=1", this.cancelToken.Token))
 					{
 						jEvent = JToken.Parse(await resEvent.Content.ReadAsStringAsync());
 					}
@@ -79,7 +80,7 @@ namespace Shacknews_Push_Notifications
 					{
 						foreach (var e in jEvent["events"]) //PERF: Could probably Parallel.ForEach this.
 						{
-							if (e["eventType"].ToString().Equals("newPost", StringComparison.InvariantCultureIgnoreCase))
+							if (e["eventType"].ToString().Equals("newPost", StringComparison.OrdinalIgnoreCase))
 							{
 								var jEventData = e["eventData"];
 								var parentAuthor = jEventData["parentAuthor"].Value<string>();
@@ -88,39 +89,44 @@ namespace Shacknews_Push_Notifications
 								var postBody = HtmlRemoval.StripTagsRegexCompiled(System.Net.WebUtility.HtmlDecode(jEventData["post"]["body"].Value<string>()).Replace("<br />", " ").Replace(char.ConvertFromUtf32(8232), " "));
 #if !DEBUG
 								//Don't notify if self-reply.
-								if (!parentAuthor.Equals(latestReplyAuthor, StringComparison.InvariantCultureIgnoreCase))
+								if (!parentAuthor.Equals(latestReplyAuthor, StringComparison.OrdinalIgnoreCase))
 								{
 #endif
-									var usr = await collection.Find(u => u.UserName.Equals(parentAuthor.ToLower())).FirstOrDefaultAsync();
-									if (usr != null)
-									{
-										this.NotifyUser(usr, latestPostId, collection, $"Reply from {latestReplyAuthor}", postBody);
-									}
-									else
-									{
-										ConsoleLog.LogMessage($"No alert on reply to {parentAuthor}");
-									}
+								var usr = await this.dbService.FindUser(parentAuthor);
+								if (usr != null)
+								{
+									this.NotifyUser(usr, latestPostId, $"Reply from {latestReplyAuthor}", postBody);
+								}
+								else
+								{
+									this.logger.Verbose("No alert on reply to {parentAuthor}", parentAuthor);
+								}
 #if !DEBUG
 								}
 								else
 								{
-									ConsoleLog.LogMessage($"No alert on self-reply to {parentAuthor}");
+									this.logger.Verbose("No alert on self-reply to {parentAuthor}", parentAuthor);
 								}
 #endif
-								var users = await collection.Find(new MongoDB.Bson.BsonDocument()).ToListAsync();
+								var users = await this.dbService.GetAllUserNames();
 								foreach (var user in users)
 								{
 									//Pad with spaces so we don't match a partial username.
-									if ((" " + postBody.ToLower() + " ").Contains(" " + user.UserName.ToLower() + " "))
+									if ((" " + postBody.ToLower() + " ").Contains(" " + user.ToLower() + " "))
 									{
-										ConsoleLog.LogMessage($"Notifying {user.UserName} of mention by {latestReplyAuthor}");
-										this.NotifyUser(user, latestPostId, collection, $"Mentioned by {latestReplyAuthor}", postBody);
+										var u1 = await this.dbService.FindUser(parentAuthor);
+										if (u1 != null)
+										{
+											this.logger.Information("Notifying {user} of mention by {latestReplyAuthor}",
+												user, latestReplyAuthor);
+											this.NotifyUser(u1, latestPostId, $"Mentioned by {latestReplyAuthor}", postBody);
+										}
 									}
 								}
 							}
 							else
 							{
-								ConsoleLog.LogMessage($"Event type {e["eventType"].ToString()} not handled.");
+								this.logger.Verbose("Event type {eventType} not handled.", e["eventType"].ToString());
 							}
 						}
 					}
@@ -144,27 +150,29 @@ namespace Shacknews_Push_Notifications
 				{
 					//This is expected, we'll still slow down our polling of winchatty if the chatty's not busy but won't print a full stack.
 					//Don't reset the event ID though, since nothing happened.  Don't want to miss events.
-					ConsoleLog.LogMessage("Timed out waiting for winchatty.");
+					this.logger.Verbose("Timed out waiting for winchatty.");
 				}
 				else
 				{
 					//If there was an error, reset the event ID to 0 so we get the latest, otherwise we might get stuck in a loop where the API won't return us events because there are too many.
 					lastEventId = 0;
-					ConsoleLog.LogError($"!!!!!Exception in {nameof(TimerCallback)}: {ex.ToString()}");
+					this.logger.Error(ex, $"Exception in {nameof(TimerCallback)}");
 				}
 			}
 			finally
 			{
 				if (this.timerEnabled)
 				{
+					this.logger.Verbose("Delaying next monitor for {monitorDelay}ms", this.timeDelay * 1000);
 					mainTimer.Change((int)(this.timeDelay * 1000), Timeout.Infinite);
 				}
 			}
 		}
 
-		private void NotifyUser(NotificationUser user, int latestPostId, IMongoCollection<NotificationUser> collection, string title, string message)
+		private async void NotifyUser(NotificationUser user, int latestPostId, string title, string message)
 		{
-			if (user.NotificationInfos != null && user.NotificationInfos.Count > 0)
+			var deviceInfos = await this.dbService.GetUserDeviceInfos(user);
+			if (deviceInfos != null && deviceInfos.Count() > 0)
 			{
 				TimeSpan ttl = new TimeSpan(48, 0, 0);
 
@@ -172,42 +180,39 @@ namespace Shacknews_Push_Notifications
 
 				if (expireDate > DateTime.UtcNow)
 				{
-					foreach (var info in user.NotificationInfos)
+					foreach (var info in deviceInfos)
 					{
 						this.SendNotifications(info, title, message, latestPostId, (int)ttl.TotalSeconds);
 					}
 				}
 				else
 				{
-					ConsoleLog.LogMessage($"No notification on reply to {user.UserName} because thread is expired.");
+					this.logger.Information("No notification on reply to {userName} because thread is expired.", user.UserName);
 				}
 			}
 		}
 
-		private void SendNotifications(NotificationInfo info, string title, string message, int postId, int ttl)
+		private void SendNotifications(DeviceInfo info, string title, string message, int postId, int ttl)
 		{
-			var badgeDoc = new XDocument(new XElement("badge", new XAttribute("value", 0)));
-			this.notificationService.QueueNotificationData(NotificationType.Badge, info.NotificationUri, badgeDoc);
-
 			var toastDoc = new XDocument(
-				new XElement("toast", new XAttribute("launch", $"goToPost?postId={postId}"),
-					new XElement("visual",
-						new XElement("binding", new XAttribute("template", "ToastText02"),
-							new XElement("text", new XAttribute("id", "1"), title),
-							new XElement("text", new XAttribute("id", "2"), message)
-						)
-					),
-					new XElement("actions",
-							new XElement("input", new XAttribute("id", "message"),
-								new XAttribute("type", "text"),
-								new XAttribute("placeHolderContent", "reply")),
-							new XElement("action", new XAttribute("activationType", "background"),
-								new XAttribute("content", "reply"),
-								new XAttribute("arguments", $"reply={postId}")/*,
+				 new XElement("toast", new XAttribute("launch", $"goToPost?postId={postId}"),
+					  new XElement("visual",
+							new XElement("binding", new XAttribute("template", "ToastText02"),
+								 new XElement("text", new XAttribute("id", "1"), title),
+								 new XElement("text", new XAttribute("id", "2"), message)
+							)
+					  ),
+					  new XElement("actions",
+								 new XElement("input", new XAttribute("id", "message"),
+									  new XAttribute("type", "text"),
+									  new XAttribute("placeHolderContent", "reply")),
+								 new XElement("action", new XAttribute("activationType", "background"),
+									  new XAttribute("content", "reply"),
+									  new XAttribute("arguments", $"reply={postId}")/*,
 								new XAttribute("imageUri", "Assets/success.png"),
 								new XAttribute("hint-inputId", "message")*/)
-					)
-				)
+					  )
+				 )
 			);
 			this.notificationService.QueueNotificationData(NotificationType.Toast, info.NotificationUri, toastDoc, NotificationGroups.ReplyToUser, postId.ToString(), ttl);
 
@@ -223,11 +228,11 @@ namespace Shacknews_Push_Notifications
 			{
 				if (disposing)
 				{
-					if(this.mainTimer != null)
+					if (this.mainTimer != null)
 					{
 						this.mainTimer.Dispose();
 					}
-					if(this.cancelToken != null)
+					if (this.cancelToken != null)
 					{
 						this.cancelToken.Dispose();
 					}

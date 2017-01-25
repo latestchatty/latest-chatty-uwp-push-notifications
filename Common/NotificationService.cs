@@ -1,10 +1,8 @@
-﻿using MongoDB.Driver;
+﻿using Serilog;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net.Http;
-using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
@@ -14,7 +12,8 @@ namespace Shacknews_Push_Notifications.Common
 	public class NotificationService
 	{
 		private readonly AccessTokenManager accessTokenManager;
-		private readonly DatabaseService dbService;
+		private readonly UserRepo dbService;
+		private readonly ILogger logger;
 		private ConcurrentQueue<QueuedNotificationItem> queuedItems = new ConcurrentQueue<QueuedNotificationItem>();
 		private int nextProcessDelay = 3000;
 
@@ -46,17 +45,18 @@ namespace Shacknews_Push_Notifications.Common
 		}
 
 		private Dictionary<NotificationType, string> notificationTypeMapping = new Dictionary<NotificationType, string>
-		{
-			{ NotificationType.Badge, "wns/badge" },
-			{ NotificationType.Tile, "wns/tile" },
-			{ NotificationType.Toast, "wns/toast" }
-		};
+		  {
+				{ NotificationType.Badge, "wns/badge" },
+				{ NotificationType.Tile, "wns/tile" },
+				{ NotificationType.Toast, "wns/toast" }
+		  };
 		private bool processingNotificationQueue;
 
-		public NotificationService(AccessTokenManager accessTokenManager, DatabaseService dbService)
+		public NotificationService(AccessTokenManager accessTokenManager, UserRepo dbService, ILogger logger)
 		{
 			this.accessTokenManager = accessTokenManager;
 			this.dbService = dbService;
+			this.logger = logger;
 		}
 
 		public void QueueNotificationData(NotificationType type, string notificationUri, XDocument content = null, NotificationGroups group = NotificationGroups.None, string tag = null, int ttl = 0)
@@ -73,32 +73,6 @@ namespace Shacknews_Push_Notifications.Common
 			this.StartQueueProcess();
 		}
 
-		async public Task QueueNotificationToUser(NotificationType type, XDocument content, string userName, NotificationGroups group = NotificationGroups.None, string tag = null)
-		{
-			var collection = dbService.GetCollection();
-			var user = await collection.Find(u => u.UserName.Equals(userName.ToLower())).FirstOrDefaultAsync();
-			if (user != null)
-			{
-				foreach (var info in user.NotificationInfos)
-				{
-					this.QueueNotificationData(type, info.NotificationUri, content, group, tag);
-				}
-			}
-		}
-
-		async public Task RemoveToastsForUser(string userName, NotificationGroups group = NotificationGroups.None, string tag = null)
-		{
-			var collection = dbService.GetCollection();
-			var user = await collection.Find(u => u.UserName.Equals(userName.ToLower())).FirstOrDefaultAsync();
-			if (user != null)
-			{
-				foreach (var info in user.NotificationInfos)
-				{
-					this.QueueNotificationData(NotificationType.RemoveToasts, info.NotificationUri, null, group, tag);
-				}
-			}
-		}
-
 		private HttpClient CreateClient(string token)
 		{
 			var client = new HttpClient();
@@ -107,11 +81,15 @@ namespace Shacknews_Push_Notifications.Common
 			return client;
 		}
 
-		[MethodImpl(MethodImplOptions.Synchronized)]
+		Object locker = new Object();
+		// [MethodImpl(MethodImplOptions.Synchronized)]
 		private void StartQueueProcess()
 		{
-			if (this.processingNotificationQueue) return;
-			this.processingNotificationQueue = true;
+			lock (this.locker)
+			{
+				if (this.processingNotificationQueue) return;
+				this.processingNotificationQueue = true;
+			}
 			Task.Run(ProcessNotificationQueue);
 		}
 
@@ -122,13 +100,15 @@ namespace Shacknews_Push_Notifications.Common
 				QueuedNotificationItem notification = null;
 				while (this.queuedItems.TryDequeue(out notification))
 				{
-					ConsoleLog.LogMessage("Processing notification queue.");
+					this.logger.Verbose("Processing notification queue.");
 					try
 					{
 						var token = await this.accessTokenManager.GetAccessToken();
 						using (var client = this.CreateClient(token))
 						{
-							ConsoleLog.LogMessage($"Sending notification {notification.Type} with content { notification.Content?.ToString(SaveOptions.None) }");
+							this.logger.Information(
+								"Sending notification {notificationType} with content {contentType}",
+								notification.Type, notification.Content?.ToString(SaveOptions.None));
 							var waitTime = 0;
 							ResponseResult result;
 							do
@@ -200,7 +180,7 @@ namespace Shacknews_Push_Notifications.Common
 					}
 					catch (Exception ex)
 					{
-						ConsoleLog.LogError($"!!!!!!Exception in {nameof(ProcessNotificationQueue)} : {ex.ToString()}");
+						this.logger.Error(ex, $"Exception in {nameof(ProcessNotificationQueue)}");
 						this.nextProcessDelay = (int)Math.Pow(this.nextProcessDelay, 1.1);
 					}
 					finally
@@ -220,7 +200,7 @@ namespace Shacknews_Push_Notifications.Common
 		{
 			//By default, we'll just let it die if we don't know specifically that we can try again.
 			ResponseResult result = ResponseResult.FailDoNotTryAgain;
-			ConsoleLog.LogMessage($"Notification Response Code: {response.StatusCode}");
+			this.logger.Verbose("Notification Response Code: {responseStatusCode}", response.StatusCode);
 			switch (response.StatusCode)
 			{
 				case System.Net.HttpStatusCode.OK:
@@ -229,24 +209,7 @@ namespace Shacknews_Push_Notifications.Common
 				case System.Net.HttpStatusCode.NotFound:
 				case System.Net.HttpStatusCode.Gone:
 				case System.Net.HttpStatusCode.Forbidden:
-					//Invalid Uri or expired, remove it from the DB
-					var collection = this.dbService.GetCollection();
-					var user = await collection.Find(u => u.NotificationInfos.Any(ni => ni.NotificationUri.Equals(uri))).FirstOrDefaultAsync();
-					if (user != null)
-					{
-						var infos = user.NotificationInfos;
-						var infoToRemove = infos.SingleOrDefault(x => x.NotificationUri.Equals(uri));
-						if (infoToRemove != null)
-						{
-							infos.Remove(infoToRemove);
-
-							var filter = Builders<NotificationUser>.Filter.Eq("_id", user._id);
-							var update = Builders<NotificationUser>.Update
-								.CurrentDate(x => x.DateUpdated)
-								.Set(x => x.NotificationInfos, infos);
-							await collection.UpdateOneAsync(filter, update);
-						}
-					}
+					await this.dbService.DeleteDeviceByUri(uri);
 					break;
 				case System.Net.HttpStatusCode.NotAcceptable:
 					result = ResponseResult.FailTryAgain;

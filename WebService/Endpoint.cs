@@ -1,14 +1,15 @@
-﻿using MongoDB.Driver;
+﻿using Autofac;
+using Microsoft.Extensions.Caching.Memory;
 using Nancy;
 using Nancy.ModelBinding;
 using Newtonsoft.Json.Linq;
+using Serilog;
 using Shacknews_Push_Notifications.Common;
+using Shacknews_Push_Notifications.Model;
 using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.Linq;
 using System.Net.Http;
-using System.Runtime.Caching;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 
@@ -16,21 +17,31 @@ namespace Shacknews_Push_Notifications
 {
 	public class Endpoint : NancyModule
 	{
-		private readonly NotificationService notificationService;
-		private readonly DatabaseService dbService;
+		private readonly MemoryCache cache;
+		private readonly UserRepo userRepo;
+		private readonly AppConfiguration configuration;
+		private readonly ILogger logger;
 
-		public Endpoint(NotificationService notificationService, DatabaseService dbService)
+		public Endpoint()
 		{
-			this.notificationService = notificationService;
-			this.dbService = dbService;
-			Post["/register"] = this.RegisterDevice;
-			Post["/deregister"] = this.DeregisterDevice;
-			Post["/resetcount"] = this.ResetCount;
-			Post["/replyToNotification"] = this.ReplyToNotification;
-			Post["/removeNotification"] = this.RemoveNotification;
-			Get["/openReplyNotifications"] = this.GetOpenReplyNotifications;
-			Get["/test"] = x => new { status = "ok" };
-			Get["tileContent"] = this.GetTileContent;
+			Post("/register", this.RegisterDevice);
+			Post("/deregister", this.DeregisterDevice);
+			Post("/replyToNotification", this.ReplyToNotification);
+			Get("/test", x => new { status = "ok" });
+			Get("tileContent", this.GetTileContent);
+
+			#region Deprecated Routes 
+			//Remove these in a future update, once the app has been updated to not call them.
+			//For now, just return default results.
+			Post("/resetcount", x => new { status = "success" });
+			Post("/removeNotification", x => new { status = "success" });
+			Get("/openReplyNotifications", x => new { data = new List<int>() });
+			#endregion
+
+			this.cache = AppModuleBuilder.Container.Resolve<MemoryCache>();
+			this.userRepo = AppModuleBuilder.Container.Resolve<UserRepo>();
+			this.configuration = AppModuleBuilder.Container.Resolve<AppConfiguration>();
+			this.logger = AppModuleBuilder.Container.Resolve<ILogger>();
 		}
 
 		#region Event Bind Classes
@@ -46,11 +57,6 @@ namespace Shacknews_Push_Notifications
 			public string DeviceId { get; set; }
 		}
 
-		private class UserNameArgs
-		{
-			public string UserName { get; set; }
-		}
-
 		private class ReplyToNotificationArgs
 		{
 			public string UserName { get; set; }
@@ -58,25 +64,26 @@ namespace Shacknews_Push_Notifications
 			public string ParentId { get; set; }
 			public string Text { get; set; }
 		}
-
-		private class RemoveNotificationArgs
-		{
-			public string UserName { get; set; }
-			public string Group { get; set; }
-			public string Tag { get; set; }
-		}
 		#endregion
 
-		private dynamic GetTileContent(dynamic arg)
+		async private Task<dynamic> GetTileContent(dynamic arg)
 		{
 			try
 			{
-				var cache = MemoryCache.Default;
-				var tileContent = cache.Get("tileContent") as string;
+				var tileContent = this.cache.Get("tileContent") as string;
 				if (string.IsNullOrWhiteSpace(tileContent))
 				{
-					ConsoleLog.LogMessage("Retrieving tile content.");
-					var xDoc = XDocument.Load("http://www.shacknews.com/rss?recent_articles=1");
+					this.logger.Information("Retrieving tile content.");
+
+					XDocument xDoc;
+					using (var client = new HttpClient())
+					{
+						using (var fileStream = await client.GetStreamAsync("http://www.shacknews.com/rss?recent_articles=1"))
+						{
+							xDoc = XDocument.Load(fileStream);
+						}
+					}
+
 					var items = xDoc.Descendants("item");
 					var itemsObj = items.Select(i => new
 					{
@@ -109,46 +116,37 @@ namespace Shacknews_Push_Notifications
 						new XElement("text", new XAttribute("id", "6"), itemsObj.ElementAt(2).Title)));
 					var doc = new XDocument(tileElement);
 					tileContent = doc.ToString(SaveOptions.DisableFormatting);
-					cache.Add("tileContent", tileContent, DateTimeOffset.UtcNow.AddMinutes(5));
+					this.cache.Set("tileContent", tileContent, DateTimeOffset.UtcNow.AddMinutes(5));
 				}
 				else
 				{
-					ConsoleLog.LogMessage("Retrieved cached tile content.");
+					this.logger.Information("Retrieved cached tile content.");
 				}
 				return tileContent;
 			}
 			catch (Exception ex)
 			{
-				ConsoleLog.LogMessage($"Excepiton retrieving tile content : {ex}");
+				this.logger.Error(ex, "Excepiton retrieving tile content.");
 			}
 			return string.Empty;
 		}
 
-		private dynamic GetOpenReplyNotifications(dynamic arg)
-		{
-			return new { data = new List<int>() };
-		}
-
-		private dynamic RemoveNotification(dynamic arg)
-		{
-			return new { status = "success" };
-		}
 
 		async private Task<dynamic> ReplyToNotification(dynamic arg)
 		{
 			try
 			{
-				ConsoleLog.LogMessage("Replying to notification.");
+				this.logger.Information("Replying to notification.");
 				var e = this.Bind<ReplyToNotificationArgs>();
 
 				using (var request = new HttpClient())
 				{
 					var data = new Dictionary<string, string> {
-						{ "text", e.Text },
-						{ "parentId", e.ParentId },
-						{ "username", e.UserName },
-						{ "password", e.Password }
-					};
+				 		{ "text", e.Text },
+				 		{ "parentId", e.ParentId },
+				 		{ "username", e.UserName },
+				 		{ "password", e.Password }
+				 	};
 
 					//Winchatty seems to crap itself if the Expect: 100-continue header is there.
 					request.DefaultRequestHeaders.ExpectContinue = false;
@@ -156,7 +154,7 @@ namespace Shacknews_Push_Notifications
 
 					using (var formContent = new FormUrlEncodedContent(data))
 					{
-						using (var response = await request.PostAsync($"{ConfigurationManager.AppSettings["winChattyApiBase"]}postComment", formContent))
+						using (var response = await request.PostAsync($"{this.configuration.WinchattyAPIBase}postComment", formContent))
 						{
 							parsedResponse = JToken.Parse(await response.Content.ReadAsStringAsync());
 						}
@@ -164,14 +162,6 @@ namespace Shacknews_Push_Notifications
 					var success = parsedResponse["result"]?.ToString().Equals("success");
 					if (success.HasValue && success.Value)
 					{
-						var collection = this.dbService.GetCollection();
-
-						var user = await collection.Find(u => u.UserName.Equals(e.UserName.ToLower())).FirstOrDefaultAsync();
-						if (user == null)
-						{
-							ConsoleLog.LogMessage($"User {e.UserName} not found when replying.");
-							return new { status = "error", message = "User not found." };
-						}
 						return new { status = "success" };
 					}
 					else
@@ -183,7 +173,7 @@ namespace Shacknews_Push_Notifications
 			catch (Exception ex)
 			{
 				//TODO: Log exception
-				ConsoleLog.LogError($"!!!!Exception in {nameof(ReplyToNotification)}: {ex.ToString()}");
+				this.logger.Error(ex, $"Exception in {nameof(ReplyToNotification)}");
 				return new { status = "error" };
 			}
 		}
@@ -192,34 +182,15 @@ namespace Shacknews_Push_Notifications
 		{
 			try
 			{
-				ConsoleLog.LogMessage("Deregister device.");
+				this.logger.Information("Deregister device.");
 				var e = this.Bind<DeregisterArgs>();
 
-				var collection = this.dbService.GetCollection();
-
-				var userName = arg.userName.ToString().ToLower() as string;
-				var user = await collection.Find(u => u.NotificationInfos.Any(ni => ni.DeviceId.Equals(e.DeviceId))).FirstOrDefaultAsync();
-				if (user != null)
-				{
-					var infos = user.NotificationInfos;
-					var infoToRemove = infos.SingleOrDefault(x => x.DeviceId.Equals(e.DeviceId));
-					if (infoToRemove != null)
-					{
-						infos.Remove(infoToRemove);
-
-						var filter = Builders<NotificationUser>.Filter.Eq("_id", user._id);
-						var update = Builders<NotificationUser>.Update
-							.CurrentDate(x => x.DateUpdated)
-							.Set(x => x.NotificationInfos, infos);
-						await collection.UpdateOneAsync(filter, update);
-					}
-				}
+				await this.userRepo.DeleteDevice(e.DeviceId);
 				return new { status = "success" };
 			}
 			catch (Exception ex)
 			{
-				//TODO: Log exception
-				ConsoleLog.LogError($"!!!!Exception in {nameof(DeregisterDevice)}: {ex.ToString()}");
+				this.logger.Error(ex, $"Exception in {nameof(DeregisterDevice)}");
 				return new { status = "error" };
 			}
 		}
@@ -228,65 +199,27 @@ namespace Shacknews_Push_Notifications
 		{
 			try
 			{
-				ConsoleLog.LogMessage("Register device.");
+				this.logger.Information("Register device.");
 				var e = this.Bind<RegisterArgs>();
-				var collection = this.dbService.GetCollection();
 
-				var user = await collection.Find(u => u.UserName.Equals(e.UserName.ToLower())).FirstOrDefaultAsync();
-				if (user != null)
+				var user = await this.userRepo.FindUser(e.UserName);
+				if (user == null)
 				{
-					//Update user
-					var infos = user.NotificationInfos;
-					var info = infos.SingleOrDefault(x => x.DeviceId.Equals(e.DeviceId));
-					if (info != null)
+					user = await this.userRepo.AddUser(new NotificationUser
 					{
-						info.NotificationUri = e.ChannelUri;
-					}
-					else
-					{
-						infos.Add(new NotificationInfo()
-						{
-							DeviceId = e.DeviceId,
-							NotificationUri = e.ChannelUri
-						});
-					}
-					var filter = Builders<NotificationUser>.Filter.Eq("_id", user._id);
-					var update = Builders<NotificationUser>.Update
-						.CurrentDate(x => x.DateUpdated)
-						.Set(x => x.NotificationInfos, infos);
-					await collection.UpdateOneAsync(filter, update);
+						UserName = e.UserName,
+						DateAdded = DateTime.UtcNow
+					});
 				}
-				else
-				{
-					//Insert user
-					user = new NotificationUser()
-					{
-						UserName = e.UserName.ToLower(),
-						DateUpdated = DateTime.UtcNow,
-						NotificationInfos = new List<NotificationInfo>(new[]
-						{
-							new NotificationInfo()
-							{
-								DeviceId = e.DeviceId,
-								NotificationUri = e.ChannelUri
-							}
-						})
-					};
-					await collection.InsertOneAsync(user);
-				}
+
+				await this.userRepo.AddOrUpdateDevice(user, new DeviceInfo { DeviceId = e.DeviceId, NotificationUri = e.ChannelUri });
 				return new { status = "success" };
 			}
 			catch (Exception ex)
 			{
-				//TODO: Log exception
-				ConsoleLog.LogError($"!!!!Exception in {nameof(RegisterDevice)}: {ex.ToString()}");
+				this.logger.Error(ex, $"Exception in {nameof(RegisterDevice)}");
 				return new { status = "error" };
 			}
-		}
-
-		private dynamic ResetCount(dynamic arg)
-		{
-			return new { status = "success" };
 		}
 	}
 }

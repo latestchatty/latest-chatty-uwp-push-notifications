@@ -20,3 +20,7 @@ ApplicationInsights.config
 Local.config
 /.vs/restore.dg
 /Shacknews Push Notifications - Core/ConsoleApp1/project.lock.json
+project.lock.json
+*.db
+database/*
+log/*

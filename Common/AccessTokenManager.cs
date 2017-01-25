@@ -1,7 +1,7 @@
 ﻿using Newtonsoft.Json.Linq;
+using Serilog;
 using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,9 +11,16 @@ namespace Shacknews_Push_Notifications.Common
 	public class AccessTokenManager : IDisposable
 	{
 		private string accessToken = string.Empty;
-
+		private AppConfiguration configuration;
+		private ILogger logger;
 		SemaphoreSlim locker = new SemaphoreSlim(1);
 
+		public AccessTokenManager(AppConfiguration config, ILogger logger)
+		{
+			this.configuration = config;
+			this.logger = logger;
+		}
+	
 		public async Task<string> GetAccessToken()
 		{
 			try
@@ -22,13 +29,13 @@ namespace Shacknews_Push_Notifications.Common
 				await this.locker.WaitAsync();
 				if (string.IsNullOrWhiteSpace(this.accessToken))
 				{
-					ConsoleLog.LogMessage("Getting access token.");
+					this.logger.Information("Getting access token.");
 					using (var client = new HttpClient())
 					{
 						var data = new FormUrlEncodedContent(new Dictionary<string, string> {
 							{ "grant_type", "client_credentials" },
-							{ "client_id", ConfigurationManager.AppSettings["notificationSID"] },
-							{ "client_secret", ConfigurationManager.AppSettings["clientSecret"] },
+							{ "client_id", configuration.NotificationSID },
+							{ "client_secret", configuration.ClientSecret },
 							{ "scope", "notify.windows.com" },
 						});
 						using (var response = await client.PostAsync("https://login.live.com/accesstoken.srf", data))
@@ -39,7 +46,7 @@ namespace Shacknews_Push_Notifications.Common
 								if (responseJson["access_token"] != null)
 								{
 									this.accessToken = responseJson["access_token"].Value<string>();
-									ConsoleLog.LogMessage($"Got access token.");
+									this.logger.Information("Got access token.");
 								}
 							}
 						}
