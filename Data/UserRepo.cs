@@ -23,11 +23,11 @@ namespace Shacknews_Push_Notifications
 			}
 		}
 
-		public async Task<List<string>> GetAllUserNames()
+		public async Task<List<string>> GetAllUserNamesForNotification()
 		{
 			using (var con = GetConnection())
 			{
-				return (await con.QueryAsync<string>(@"SELECT UserName FROM User")).ToList();
+				return (await con.QueryAsync<string>(@"SELECT UserName FROM User WHERE NotifyOnUserName=1")).ToList();
 			}
 		}
 

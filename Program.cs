@@ -13,6 +13,9 @@ namespace Shacknews_Push_Notifications
 			{
 				var monitor = container.Resolve<Monitor>();
 				var config = container.Resolve<AppConfiguration>();
+				//This is ghetto as fffffff but just get a connection so we can make sure the DB is upgraded beofre anyone else uses it and before anything else is running.
+				using (var con = UserRepo.GetConnection()) { }
+
 				monitor.Start();
 
 				var host = new WebHostBuilder()

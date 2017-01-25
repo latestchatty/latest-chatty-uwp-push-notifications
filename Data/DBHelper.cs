@@ -3,11 +3,16 @@ using Microsoft.Data.Sqlite;
 using System.IO;
 using Autofac;
 using Shacknews_Push_Notifications.Common;
+using System;
+using System.Data;
 
 namespace Shacknews_Push_Notifications.Data
 {
 	public class DBHelper
 	{
+		private static readonly long CURRENT_VERSION = 1;
+		private static bool initialized = false;
+		private static Object locker = new Object();
 		private static string db_file;
 		private static string DB_FILE
 		{
@@ -31,12 +36,18 @@ namespace Shacknews_Push_Notifications.Data
 
 		public static SqliteConnection GetConnection()
 		{
-
-			if (!File.Exists(DB_FILE))
+			lock (locker)
 			{
-				CreateDatabase(DB_FILE);
+				if (!File.Exists(DB_FILE))
+				{
+					CreateDatabase(DB_FILE);
+				}
+				if (!initialized)
+				{
+					UpgradeDatabase();
+				}
+				return GetConnectionInternal(DB_FILE);
 			}
-			return GetConnectionInternal(DB_FILE);
 		}
 
 		private static SqliteConnection GetConnectionInternal(string fileLocation)
@@ -58,7 +69,8 @@ namespace Shacknews_Push_Notifications.Data
 							Id INTEGER PRIMARY KEY AUTOINCREMENT,
 							UserName VARCHAR(100) NOT NULL,
 							DateAdded INTEGER NOT NULL DEFAULT(datetime('now')),
-							NotificationsSent INTEGER NOT NULL DEFAULT 0
+							NotificationsSent INTEGER NOT NULL DEFAULT 0,
+							NotifyOnUserName INTEGER DEFAULT(1)
 						);
 						CREATE INDEX UserUserName ON User(UserName);
 						CREATE TABLE Device
@@ -71,9 +83,40 @@ namespace Shacknews_Push_Notifications.Data
 						CREATE INDEX DeviceUserId ON Device(UserId);
 						CREATE INDEX DeviceId ON Device(Id);
 						CREATE INDEX DeviceNotificationUri ON Device(NotificationUri);
-						");
+						PRAGMA user_version=" + CURRENT_VERSION + ";", transaction: tx);
 					tx.Commit();
 				}
+			}
+		}
+
+		private static void UpgradeDatabase()
+		{
+			using (var con = GetConnectionInternal(DB_FILE))
+			{
+				con.Open();
+				var dbVersion = con.QuerySingle<long>(@"PRAGMA user_version");
+				if (dbVersion < CURRENT_VERSION)
+				{
+					using (var tx = con.BeginTransaction())
+					{
+						for (long i = dbVersion; i <= CURRENT_VERSION; i++)
+						{
+							UpgradeDatabase(i, con, tx);
+						}
+						con.Execute($"PRAGMA user_version={CURRENT_VERSION};", transaction: tx);
+						tx.Commit();
+					}
+				}
+			}
+		}
+
+		private static void UpgradeDatabase(long dbVersion, SqliteConnection con, IDbTransaction tx)
+		{
+			switch (dbVersion)
+			{
+				case 1:
+					con.Execute(@"ALTER TABLE User ADD COLUMN NotifyOnUserName INTEGER DEFAULT(1)", transaction: tx);
+					break;
 			}
 		}
 	}

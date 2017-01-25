@@ -108,7 +108,7 @@ namespace Shacknews_Push_Notifications
 									this.logger.Verbose("No alert on self-reply to {parentAuthor}", parentAuthor);
 								}
 #endif
-								var users = await this.dbService.GetAllUserNames();
+								var users = await this.dbService.GetAllUserNamesForNotification();
 								foreach (var user in users)
 								{
 									//Pad with spaces so we don't match a partial username.
