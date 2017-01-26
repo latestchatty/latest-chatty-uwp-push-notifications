@@ -31,7 +31,18 @@ namespace Shacknews_Push_Notifications
 			}
 		}
 
-
+		public async Task<NotificationUser> UpdateUser(NotificationUser user)
+		{
+			using (var con = GetConnection())
+			{
+				user.Id = await con.QuerySingleAsync<long>(@"
+					UPDATE User SET
+						NotifyOnUserName=@NotifyOnUserName
+					WHERE Id=@Id;
+					", new { user.Id, user.NotifyOnUserName });
+				return user;
+			}
+		}
 
 		public async Task<NotificationUser> AddUser(NotificationUser user)
 		{
@@ -39,10 +50,10 @@ namespace Shacknews_Push_Notifications
 			{
 				user.Id = await con.QuerySingleAsync<long>(@"
 					INSERT INTO User
-					(UserName, DateAdded)
-					VALUES(@UserName, @DateAdded);
+					(UserName, DateAdded, NotifyOnUserName)
+					VALUES(@UserName, @DateAdded, @NotifyOnUserName);
 					select last_insert_rowid();
-					", new { user.UserName, user.DateAdded });
+					", new { user.UserName, user.DateAdded, user.NotifyOnUserName });
 				return user;
 			}
 		}

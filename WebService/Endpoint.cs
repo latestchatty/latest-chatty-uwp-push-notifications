@@ -29,6 +29,8 @@ namespace Shacknews_Push_Notifications
 			Post("/replyToNotification", this.ReplyToNotification);
 			Get("/test", x => new { status = "ok" });
 			Get("tileContent", this.GetTileContent);
+			Post("/user", this.PostUser);
+			Get("/user", this.GetUser);
 
 			#region Deprecated Routes 
 			//Remove these in a future update, once the app has been updated to not call them.
@@ -52,6 +54,17 @@ namespace Shacknews_Push_Notifications
 			public string ChannelUri { get; set; }
 		}
 
+		private class PostUserArgs
+		{
+			public string UserName { get; set; }
+			public long NotifyOnUserName { get; set; }
+		}
+
+		private class GetUserArgs
+		{
+			public string UserName { get; set; }
+		}
+
 		private class DeregisterArgs
 		{
 			public string DeviceId { get; set; }
@@ -65,6 +78,58 @@ namespace Shacknews_Push_Notifications
 			public string Text { get; set; }
 		}
 		#endregion
+
+		async private Task<dynamic> PostUser(dynamic arg)
+		{
+			try
+			{
+				var e = this.Bind<PostUserArgs>();
+				this.logger.Information("Updating user {userName}.", e.UserName);
+				var user = await this.userRepo.FindUser(e.UserName);
+				if (user == null)
+				{
+					await this.userRepo.AddUser(new NotificationUser
+					{
+						UserName = e.UserName,
+						DateAdded = DateTime.UtcNow,
+						NotifyOnUserName = e.NotifyOnUserName
+					});
+				}
+				else
+				{
+					user.NotifyOnUserName = e.NotifyOnUserName;
+					await this.userRepo.UpdateUser(user);
+				}
+
+				return new { status = "success" };
+			}
+			catch (Exception ex)
+			{
+				this.logger.Error(ex, $"Error in {nameof(PostUser)}");
+			}
+
+			return new { status = "error" };
+		}
+
+		async private Task<dynamic> GetUser(dynamic arg)
+		{
+			try
+			{
+				var e = this.Bind<GetUserArgs>();
+				this.logger.Information("Getting user {userName}.", e.UserName);
+				var user = await this.userRepo.FindUser(e.UserName);
+				if (user != null)
+				{
+					return user;
+				}
+			}
+			catch (Exception ex)
+			{
+				this.logger.Error(ex, $"Error in {nameof(GetUser)}");
+			}
+
+			return new { status = "error" };
+		}
 
 		async private Task<dynamic> GetTileContent(dynamic arg)
 		{
@@ -208,7 +273,8 @@ namespace Shacknews_Push_Notifications
 					user = await this.userRepo.AddUser(new NotificationUser
 					{
 						UserName = e.UserName,
-						DateAdded = DateTime.UtcNow
+						DateAdded = DateTime.UtcNow,
+						NotifyOnUserName = 1
 					});
 				}
 
