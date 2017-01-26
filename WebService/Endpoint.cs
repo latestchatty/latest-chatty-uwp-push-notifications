@@ -81,211 +81,160 @@ namespace Shacknews_Push_Notifications
 
 		async private Task<dynamic> PostUser(dynamic arg)
 		{
-			try
+			var e = this.Bind<PostUserArgs>();
+			this.logger.Information("Updating user {userName}.", e.UserName);
+			var user = await this.userRepo.FindUser(e.UserName);
+			if (user == null)
 			{
-				var e = this.Bind<PostUserArgs>();
-				this.logger.Information("Updating user {userName}.", e.UserName);
-				var user = await this.userRepo.FindUser(e.UserName);
-				if (user == null)
+				await this.userRepo.AddUser(new NotificationUser
 				{
-					await this.userRepo.AddUser(new NotificationUser
-					{
-						UserName = e.UserName,
-						DateAdded = DateTime.UtcNow,
-						NotifyOnUserName = e.NotifyOnUserName
-					});
-				}
-				else
-				{
-					user.NotifyOnUserName = e.NotifyOnUserName;
-					await this.userRepo.UpdateUser(user);
-				}
-
-				return new { status = "success" };
+					UserName = e.UserName,
+					DateAdded = DateTime.UtcNow,
+					NotifyOnUserName = e.NotifyOnUserName
+				});
 			}
-			catch (Exception ex)
+			else
 			{
-				this.logger.Error(ex, $"Error in {nameof(PostUser)}");
+				user.NotifyOnUserName = e.NotifyOnUserName;
+				await this.userRepo.UpdateUser(user);
 			}
 
-			return new { status = "error" };
+			return new { status = "success" };
 		}
 
 		async private Task<dynamic> GetUser(dynamic arg)
 		{
-			try
+			var e = this.Bind<GetUserArgs>();
+			this.logger.Information("Getting user {userName}.", e.UserName);
+			var user = await this.userRepo.FindUser(e.UserName);
+			if (user != null)
 			{
-				var e = this.Bind<GetUserArgs>();
-				this.logger.Information("Getting user {userName}.", e.UserName);
-				var user = await this.userRepo.FindUser(e.UserName);
-				if (user != null)
-				{
-					return user;
-				}
+				return user;
 			}
-			catch (Exception ex)
-			{
-				this.logger.Error(ex, $"Error in {nameof(GetUser)}");
-			}
-
-			return new { status = "error" };
+			throw new Exception("User not found.");
 		}
 
 		async private Task<dynamic> GetTileContent(dynamic arg)
 		{
-			try
+			var tileContent = this.cache.Get("tileContent") as string;
+			if (string.IsNullOrWhiteSpace(tileContent))
 			{
-				var tileContent = this.cache.Get("tileContent") as string;
-				if (string.IsNullOrWhiteSpace(tileContent))
-				{
-					this.logger.Information("Retrieving tile content.");
+				this.logger.Information("Retrieving tile content.");
 
-					XDocument xDoc;
-					using (var client = new HttpClient())
+				XDocument xDoc;
+				using (var client = new HttpClient())
+				{
+					using (var fileStream = await client.GetStreamAsync("http://www.shacknews.com/rss?recent_articles=1"))
 					{
-						using (var fileStream = await client.GetStreamAsync("http://www.shacknews.com/rss?recent_articles=1"))
-						{
-							xDoc = XDocument.Load(fileStream);
-						}
+						xDoc = XDocument.Load(fileStream);
 					}
-
-					var items = xDoc.Descendants("item");
-					var itemsObj = items.Select(i => new
-					{
-						Title = i.Element("title").Value,
-						PublishDate = DateTime.Parse(i.Element("pubDate").Value.Replace("PDT", "").Replace("PST", "").Trim()),
-						Author = i.Element("author").Value
-					}).OrderByDescending(i => i.PublishDate).Take(3);
-
-					var item = itemsObj.FirstOrDefault();
-
-					if (item == null) return string.Empty;
-
-					var visualElement = new XElement("visual", new XAttribute("version", "2"));
-					var tileElement = new XElement("tile", visualElement);
-
-					visualElement.Add(new XElement("binding", new XAttribute("template", "TileWide310x150Text09"), new XAttribute("fallback", "TileWideText09"),
-						new XElement("text", new XAttribute("id", "1"), $"{item.Author} posted"),
-						new XElement("text", new XAttribute("id", "2"), item.Title)));
-
-					visualElement.Add(new XElement("binding", new XAttribute("template", "TileSquare150x150Text02"), new XAttribute("fallback", "TileSquareText02"),
-						new XElement("text", new XAttribute("id", "1"), $"{item.Author} posted"),
-						new XElement("text", new XAttribute("id", "2"), item.Title)));
-
-					visualElement.Add(new XElement("binding", new XAttribute("template", "TileSquare310x310TextList03"),
-						new XElement("text", new XAttribute("id", "1"), $"{item.Author} posted"),
-						new XElement("text", new XAttribute("id", "2"), item.Title),
-						new XElement("text", new XAttribute("id", "3"), $"{ itemsObj.ElementAt(1).Author} posted"),
-						new XElement("text", new XAttribute("id", "4"), itemsObj.ElementAt(1).Title),
-						new XElement("text", new XAttribute("id", "5"), $"{itemsObj.ElementAt(2).Author} posted"),
-						new XElement("text", new XAttribute("id", "6"), itemsObj.ElementAt(2).Title)));
-					var doc = new XDocument(tileElement);
-					tileContent = doc.ToString(SaveOptions.DisableFormatting);
-					this.cache.Set("tileContent", tileContent, DateTimeOffset.UtcNow.AddMinutes(5));
 				}
-				else
+
+				var items = xDoc.Descendants("item");
+				var itemsObj = items.Select(i => new
 				{
-					this.logger.Information("Retrieved cached tile content.");
-				}
-				return tileContent;
-			}
-			catch (Exception ex)
-			{
-				this.logger.Error(ex, "Excepiton retrieving tile content.");
-			}
-			return string.Empty;
-		}
+					Title = i.Element("title").Value,
+					PublishDate = DateTime.Parse(i.Element("pubDate").Value.Replace("PDT", "").Replace("PST", "").Trim()),
+					Author = i.Element("author").Value
+				}).OrderByDescending(i => i.PublishDate).Take(3);
 
+				var item = itemsObj.FirstOrDefault();
+
+				if (item == null) return string.Empty;
+
+				var visualElement = new XElement("visual", new XAttribute("version", "2"));
+				var tileElement = new XElement("tile", visualElement);
+
+				visualElement.Add(new XElement("binding", new XAttribute("template", "TileWide310x150Text09"), new XAttribute("fallback", "TileWideText09"),
+					new XElement("text", new XAttribute("id", "1"), $"{item.Author} posted"),
+					new XElement("text", new XAttribute("id", "2"), item.Title)));
+
+				visualElement.Add(new XElement("binding", new XAttribute("template", "TileSquare150x150Text02"), new XAttribute("fallback", "TileSquareText02"),
+					new XElement("text", new XAttribute("id", "1"), $"{item.Author} posted"),
+					new XElement("text", new XAttribute("id", "2"), item.Title)));
+
+				visualElement.Add(new XElement("binding", new XAttribute("template", "TileSquare310x310TextList03"),
+					new XElement("text", new XAttribute("id", "1"), $"{item.Author} posted"),
+					new XElement("text", new XAttribute("id", "2"), item.Title),
+					new XElement("text", new XAttribute("id", "3"), $"{ itemsObj.ElementAt(1).Author} posted"),
+					new XElement("text", new XAttribute("id", "4"), itemsObj.ElementAt(1).Title),
+					new XElement("text", new XAttribute("id", "5"), $"{itemsObj.ElementAt(2).Author} posted"),
+					new XElement("text", new XAttribute("id", "6"), itemsObj.ElementAt(2).Title)));
+				var doc = new XDocument(tileElement);
+				tileContent = doc.ToString(SaveOptions.DisableFormatting);
+				this.cache.Set("tileContent", tileContent, DateTimeOffset.UtcNow.AddMinutes(5));
+			}
+			else
+			{
+				this.logger.Information("Retrieved cached tile content.");
+			}
+			return tileContent;
+		}
 
 		async private Task<dynamic> ReplyToNotification(dynamic arg)
 		{
-			try
-			{
-				this.logger.Information("Replying to notification.");
-				var e = this.Bind<ReplyToNotificationArgs>();
+			this.logger.Information("Replying to notification.");
+			var e = this.Bind<ReplyToNotificationArgs>();
 
-				using (var request = new HttpClient())
-				{
-					var data = new Dictionary<string, string> {
+			using (var request = new HttpClient())
+			{
+				var data = new Dictionary<string, string> {
 				 		{ "text", e.Text },
 				 		{ "parentId", e.ParentId },
 				 		{ "username", e.UserName },
 				 		{ "password", e.Password }
 				 	};
 
-					//Winchatty seems to crap itself if the Expect: 100-continue header is there.
-					request.DefaultRequestHeaders.ExpectContinue = false;
-					JToken parsedResponse = null;
+				//Winchatty seems to crap itself if the Expect: 100-continue header is there.
+				request.DefaultRequestHeaders.ExpectContinue = false;
+				JToken parsedResponse = null;
 
-					using (var formContent = new FormUrlEncodedContent(data))
+				using (var formContent = new FormUrlEncodedContent(data))
+				{
+					using (var response = await request.PostAsync($"{this.configuration.WinchattyAPIBase}postComment", formContent))
 					{
-						using (var response = await request.PostAsync($"{this.configuration.WinchattyAPIBase}postComment", formContent))
-						{
-							parsedResponse = JToken.Parse(await response.Content.ReadAsStringAsync());
-						}
-					}
-					var success = parsedResponse["result"]?.ToString().Equals("success");
-					if (success.HasValue && success.Value)
-					{
-						return new { status = "success" };
-					}
-					else
-					{
-						return new { status = "error" };
+						parsedResponse = JToken.Parse(await response.Content.ReadAsStringAsync());
 					}
 				}
-			}
-			catch (Exception ex)
-			{
-				//TODO: Log exception
-				this.logger.Error(ex, $"Exception in {nameof(ReplyToNotification)}");
-				return new { status = "error" };
+				var success = parsedResponse["result"]?.ToString().Equals("success");
+				if (success.HasValue && success.Value)
+				{
+					return new { status = "success" };
+				}
+				else
+				{
+					return new { status = "error" };
+				}
 			}
 		}
 
 		async private Task<dynamic> DeregisterDevice(dynamic arg)
 		{
-			try
-			{
-				this.logger.Information("Deregister device.");
-				var e = this.Bind<DeregisterArgs>();
+			this.logger.Information("Deregister device.");
+			var e = this.Bind<DeregisterArgs>();
 
-				await this.userRepo.DeleteDevice(e.DeviceId);
-				return new { status = "success" };
-			}
-			catch (Exception ex)
-			{
-				this.logger.Error(ex, $"Exception in {nameof(DeregisterDevice)}");
-				return new { status = "error" };
-			}
+			await this.userRepo.DeleteDevice(e.DeviceId);
+			return new { status = "success" };
 		}
 
 		async private Task<dynamic> RegisterDevice(dynamic arg)
 		{
-			try
-			{
-				this.logger.Information("Register device.");
-				var e = this.Bind<RegisterArgs>();
+			this.logger.Information("Register device.");
+			var e = this.Bind<RegisterArgs>();
 
-				var user = await this.userRepo.FindUser(e.UserName);
-				if (user == null)
+			var user = await this.userRepo.FindUser(e.UserName);
+			if (user == null)
+			{
+				user = await this.userRepo.AddUser(new NotificationUser
 				{
-					user = await this.userRepo.AddUser(new NotificationUser
-					{
-						UserName = e.UserName,
-						DateAdded = DateTime.UtcNow,
-						NotifyOnUserName = 1
-					});
-				}
+					UserName = e.UserName,
+					DateAdded = DateTime.UtcNow,
+					NotifyOnUserName = 1
+				});
+			}
 
-				await this.userRepo.AddOrUpdateDevice(user, new DeviceInfo { DeviceId = e.DeviceId, NotificationUri = e.ChannelUri });
-				return new { status = "success" };
-			}
-			catch (Exception ex)
-			{
-				this.logger.Error(ex, $"Exception in {nameof(RegisterDevice)}");
-				return new { status = "error" };
-			}
+			await this.userRepo.AddOrUpdateDevice(user, new DeviceInfo { DeviceId = e.DeviceId, NotificationUri = e.ChannelUri });
+			return new { status = "success" };
 		}
 	}
 }
