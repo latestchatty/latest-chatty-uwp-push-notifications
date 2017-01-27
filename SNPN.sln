@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
 VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Shacknews-Push-Notifications", "Shacknews-Push-Notifications.xproj", "{88EF6559-D6A4-404F-92D8-23D05F3297E5}"
+Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "SNPN", "SNPN.xproj", "{88EF6559-D6A4-404F-92D8-23D05F3297E5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
