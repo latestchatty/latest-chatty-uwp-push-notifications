@@ -109,7 +109,7 @@ namespace Shacknews_Push_Notifications
 			var user = await this.userRepo.FindUser(e.UserName);
 			if (user != null)
 			{
-				return user;
+				return new { user.UserName, NotifyOnUserName = user.NotifyOnUserName == 0 };
 			}
 			throw new Exception("User not found.");
 		}

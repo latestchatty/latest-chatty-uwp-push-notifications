@@ -31,16 +31,15 @@ namespace Shacknews_Push_Notifications
 			}
 		}
 
-		public async Task<NotificationUser> UpdateUser(NotificationUser user)
+		public async Task UpdateUser(NotificationUser user)
 		{
 			using (var con = GetConnection())
 			{
-				user.Id = await con.QuerySingleAsync<long>(@"
+				await con.ExecuteAsync(@"
 					UPDATE User SET
 						NotifyOnUserName=@NotifyOnUserName
 					WHERE Id=@Id;
 					", new { user.Id, user.NotifyOnUserName });
-				return user;
 			}
 		}
 

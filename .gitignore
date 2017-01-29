@@ -24,3 +24,7 @@ project.lock.json
 *.db
 database/*
 log/*
+*.un~
+/appsettings.docker.json
+*.json~
+/Dockerfile~
