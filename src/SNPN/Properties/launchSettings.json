@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "SNPN": {
+      "commandName": "Project",
+      "workingDirectory": "..\\..\\"
+    }
+  }
+}

@@ -6,7 +6,7 @@
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
-            "program": "${workspaceRoot}\\bin\\Debug\\netcoreapp1.0\\dotnetapp.dll",
+            "program": "${workspaceRoot}\\src\\SNPN\\bin\\Debug\\netcoreapp1.0\\SNPN.dll",
             "args": [],
             "cwd": "${workspaceRoot}",
             "externalConsole": false,
