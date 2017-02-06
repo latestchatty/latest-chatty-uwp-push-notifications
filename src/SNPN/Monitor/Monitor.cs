@@ -90,7 +90,7 @@ namespace Shacknews_Push_Notifications
 								var postBody = HtmlRemoval.StripTagsRegexCompiled(System.Net.WebUtility.HtmlDecode(parsedNewPost.Post.Body).Replace("<br />", " ").Replace(char.ConvertFromUtf32(8232), " "));
 #if !DEBUG
 								//Don't notify if self-reply.
-								if (!parentAuthor.Equals(latestReplyAuthor, StringComparison.OrdinalIgnoreCase))
+								if (!parsedNewPost.ParentAuthor.Equals(parsedNewPost.Post.Author, StringComparison.OrdinalIgnoreCase))
 								{
 #endif
 								var usr = await this.dbService.FindUser(parsedNewPost.ParentAuthor);
@@ -106,7 +106,7 @@ namespace Shacknews_Push_Notifications
 								}
 								else
 								{
-									this.logger.Verbose("No alert on self-reply to {parentAuthor}", parentAuthor);
+									this.logger.Verbose("No alert on self-reply to {parentAuthor}", parsedNewPost.ParentAuthor);
 								}
 #endif
 								var users = await this.dbService.GetAllUserNamesForNotification();
