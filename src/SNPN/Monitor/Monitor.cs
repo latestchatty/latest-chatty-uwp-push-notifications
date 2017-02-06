@@ -1,7 +1,9 @@
-﻿using Newtonsoft.Json.Linq;
+﻿using Model;
+using Newtonsoft.Json.Linq;
 using Serilog;
 using Shacknews_Push_Notifications.Common;
 using Shacknews_Push_Notifications.Model;
+using SNPN.Common;
 using System;
 using System.Linq;
 using System.Net.Http;
@@ -55,6 +57,7 @@ namespace Shacknews_Push_Notifications
 
 		async private void TimerCallback(object state)
 		{
+			var parser = new EventParser();
 			this.logger.Verbose("Waiting for next monitor event...");
 			try
 			{
@@ -80,26 +83,24 @@ namespace Shacknews_Push_Notifications
 					{
 						foreach (var e in jEvent["events"]) //PERF: Could probably Parallel.ForEach this.
 						{
-							if (e["eventType"].ToString().Equals("newPost", StringComparison.OrdinalIgnoreCase))
+							var eventType = parser.GetEventType(e);
+							if (eventType == EventType.NewPost)
 							{
-								var jEventData = e["eventData"];
-								var parentAuthor = jEventData["parentAuthor"].Value<string>();
-								var latestReplyAuthor = jEventData["post"]["author"].Value<string>();
-								var latestPostId = (int)jEventData["post"]["id"];
-								var postBody = HtmlRemoval.StripTagsRegexCompiled(System.Net.WebUtility.HtmlDecode(jEventData["post"]["body"].Value<string>()).Replace("<br />", " ").Replace(char.ConvertFromUtf32(8232), " "));
+								var parsedNewPost = parser.GetNewPostEvent(e);
+								var postBody = HtmlRemoval.StripTagsRegexCompiled(System.Net.WebUtility.HtmlDecode(parsedNewPost.Post.Body).Replace("<br />", " ").Replace(char.ConvertFromUtf32(8232), " "));
 #if !DEBUG
 								//Don't notify if self-reply.
 								if (!parentAuthor.Equals(latestReplyAuthor, StringComparison.OrdinalIgnoreCase))
 								{
 #endif
-								var usr = await this.dbService.FindUser(parentAuthor);
+								var usr = await this.dbService.FindUser(parsedNewPost.ParentAuthor);
 								if (usr != null)
 								{
-									this.NotifyUser(usr, latestPostId, $"Reply from {latestReplyAuthor}", postBody);
+									this.NotifyUser(usr, parsedNewPost.Post.Id, $"Reply from {parsedNewPost.Post.Author}", postBody);
 								}
 								else
 								{
-									this.logger.Verbose("No alert on reply to {parentAuthor}", parentAuthor);
+									this.logger.Verbose("No alert on reply to {parentAuthor}", parsedNewPost.ParentAuthor);
 								}
 #if !DEBUG
 								}
@@ -114,19 +115,19 @@ namespace Shacknews_Push_Notifications
 									//Pad with spaces so we don't match a partial username.
 									if ((" " + postBody.ToLower() + " ").Contains(" " + user.ToLower() + " "))
 									{
-										var u1 = await this.dbService.FindUser(parentAuthor);
+										var u1 = await this.dbService.FindUser(parsedNewPost.ParentAuthor);
 										if (u1 != null)
 										{
 											this.logger.Information("Notifying {user} of mention by {latestReplyAuthor}",
-												user, latestReplyAuthor);
-											this.NotifyUser(u1, latestPostId, $"Mentioned by {latestReplyAuthor}", postBody);
+												user, parsedNewPost.Post.Author);
+											this.NotifyUser(u1, parsedNewPost.Post.Id, $"Mentioned by {parsedNewPost.Post.Author}", postBody);
 										}
 									}
 								}
 							}
 							else
 							{
-								this.logger.Verbose("Event type {eventType} not handled.", e["eventType"].ToString());
+								this.logger.Verbose("Event type {eventType} not handled.", eventType);
 							}
 						}
 					}
