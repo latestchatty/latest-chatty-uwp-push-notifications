@@ -1,7 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 
-namespace Shacknews_Push_Notifications.Model
+namespace SNPN.Model
 {
 	public class NotificationUser
 	{

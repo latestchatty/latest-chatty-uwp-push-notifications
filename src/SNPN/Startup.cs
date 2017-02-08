@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Nancy.Owin;
 
-namespace Shacknews_Push_Notifications
+namespace SNPN
 {
 	public class Startup
 	{

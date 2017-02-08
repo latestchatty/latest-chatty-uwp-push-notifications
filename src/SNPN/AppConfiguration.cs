@@ -1,4 +1,4 @@
-namespace Shacknews_Push_Notifications
+namespace SNPN
 {
 	public class AppConfiguration
 	{

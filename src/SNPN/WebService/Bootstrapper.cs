@@ -5,7 +5,7 @@ using Nancy.TinyIoc;
 using Serilog;
 using System;
 
-namespace Shacknews_Push_Notifications
+namespace SNPN.WebService
 {
 	public class Bootstrapper : DefaultNancyBootstrapper
 	{

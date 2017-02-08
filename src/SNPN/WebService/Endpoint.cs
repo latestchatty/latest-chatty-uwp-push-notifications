@@ -4,8 +4,8 @@ using Nancy;
 using Nancy.ModelBinding;
 using Newtonsoft.Json.Linq;
 using Serilog;
-using Shacknews_Push_Notifications.Common;
-using Shacknews_Push_Notifications.Model;
+using SNPN.Data;
+using SNPN.Model;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,12 +13,12 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 
-namespace Shacknews_Push_Notifications
+namespace SNPN.WebService
 {
 	public class Endpoint : NancyModule
 	{
 		private readonly MemoryCache cache;
-		private readonly UserRepo userRepo;
+		private readonly IUserRepo userRepo;
 		private readonly AppConfiguration configuration;
 		private readonly ILogger logger;
 
@@ -41,7 +41,7 @@ namespace Shacknews_Push_Notifications
 			#endregion
 
 			this.cache = AppModuleBuilder.Container.Resolve<MemoryCache>();
-			this.userRepo = AppModuleBuilder.Container.Resolve<UserRepo>();
+			this.userRepo = AppModuleBuilder.Container.Resolve<IUserRepo>();
 			this.configuration = AppModuleBuilder.Container.Resolve<AppConfiguration>();
 			this.logger = AppModuleBuilder.Container.Resolve<ILogger>();
 		}

@@ -1,11 +1,8 @@
-﻿using Model;
-using Newtonsoft.Json.Linq;
+﻿using Newtonsoft.Json.Linq;
+using SNPN.Model;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
-namespace SNPN.Common
+namespace SNPN.Monitor
 {
 	public class EventParser
 	{

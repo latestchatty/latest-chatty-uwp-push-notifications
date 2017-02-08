@@ -1,14 +1,12 @@
-using System;
+using Dapper;
+using SNPN.Model;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Dapper;
-using Shacknews_Push_Notifications.Data;
-using Shacknews_Push_Notifications.Model;
 
-namespace Shacknews_Push_Notifications
+namespace SNPN.Data
 {
-	public class UserRepo : DBHelper
+	public class UserRepo : DBHelper, IUserRepo
 	{
 		public async Task<NotificationUser> FindUser(string userName)
 		{

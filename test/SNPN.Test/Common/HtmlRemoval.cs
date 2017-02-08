@@ -1,6 +1,6 @@
 using System;
 using Xunit;
-using Shacknews_Push_Notifications.Common;
+using SNPN.Common;
 
 namespace SNPN.Test.Common
 {

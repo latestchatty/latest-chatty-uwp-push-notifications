@@ -2,11 +2,13 @@ using Autofac;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Serilog;
-using Shacknews_Push_Notifications.Common;
+using SNPN.Common;
+using SNPN.Data;
+using SNPN.Monitor;
 using System;
 using System.IO;
 
-namespace Shacknews_Push_Notifications
+namespace SNPN
 {
 	public class AppModuleBuilder
 	{
@@ -15,9 +17,9 @@ namespace Shacknews_Push_Notifications
 		private static IContainer BuildContainer()
 		{
 			var builder = new ContainerBuilder();
-			builder.RegisterType<NotificationService>().SingleInstance();
+			builder.RegisterType<NotificationService>().As<INotificationService>().SingleInstance();
 			builder.RegisterType<AccessTokenManager>().SingleInstance();
-			builder.RegisterType<Monitor>().SingleInstance();
+			builder.RegisterType<Monitor.Monitor>().SingleInstance();
 			builder.Register(x =>
 			{
 				var configBuilder = new ConfigurationBuilder()
@@ -41,7 +43,13 @@ namespace Shacknews_Push_Notifications
 					.CreateLogger();
 			});
 			builder.Register(x => new MemoryCache(new MemoryCacheOptions())).SingleInstance();
-			builder.RegisterType<UserRepo>().InstancePerDependency();
+			builder.RegisterType<UserRepo>().As<IUserRepo>().InstancePerDependency();
+			builder.RegisterType<NewEventHandler>().InstancePerDependency();
+			builder.Register<Func<NewEventHandler>>(c =>
+			{
+				var ctx = c.Resolve<IComponentContext>();
+				return () => ctx.Resolve<NewEventHandler>();
+			});
 			return builder.Build();
 		}
 	}

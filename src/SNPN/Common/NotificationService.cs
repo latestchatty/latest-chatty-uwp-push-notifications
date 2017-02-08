@@ -1,4 +1,5 @@
 ﻿using Serilog;
+using SNPN.Data;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -7,12 +8,12 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 
-namespace Shacknews_Push_Notifications.Common
+namespace SNPN.Common
 {
-	public class NotificationService
+	public class NotificationService : INotificationService
 	{
 		private readonly AccessTokenManager accessTokenManager;
-		private readonly UserRepo dbService;
+		private readonly IUserRepo dbService;
 		private readonly ILogger logger;
 		private ConcurrentQueue<QueuedNotificationItem> queuedItems = new ConcurrentQueue<QueuedNotificationItem>();
 		private int nextProcessDelay = 3000;
@@ -52,7 +53,7 @@ namespace Shacknews_Push_Notifications.Common
 		  };
 		private bool processingNotificationQueue;
 
-		public NotificationService(AccessTokenManager accessTokenManager, UserRepo dbService, ILogger logger)
+		public NotificationService(AccessTokenManager accessTokenManager, IUserRepo dbService, ILogger logger)
 		{
 			this.accessTokenManager = accessTokenManager;
 			this.dbService = dbService;

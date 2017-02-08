@@ -2,11 +2,11 @@ using Dapper;
 using Microsoft.Data.Sqlite;
 using System.IO;
 using Autofac;
-using Shacknews_Push_Notifications.Common;
+using SNPN.Common;
 using System;
 using System.Data;
 
-namespace Shacknews_Push_Notifications.Data
+namespace SNPN.Data
 {
 	public class DBHelper
 	{

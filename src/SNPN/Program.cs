@@ -3,8 +3,9 @@ using Microsoft.AspNetCore.Hosting;
 using System;
 using System.IO;
 using Serilog;
+using SNPN.Data;
 
-namespace Shacknews_Push_Notifications
+namespace SNPN
 {
 	public class Program
 	{
@@ -15,7 +16,7 @@ namespace Shacknews_Push_Notifications
 				var logger = container.Resolve<ILogger>();
 				try
 				{
-					var monitor = container.Resolve<Monitor>();
+					var monitor = container.Resolve<Monitor.Monitor>();
 					var config = container.Resolve<AppConfiguration>();
 					//This is ghetto as fffffff but just get a connection so we can make sure the DB is upgraded beofre anyone else uses it and before anything else is running.
 					using (var con = UserRepo.GetConnection()) { }

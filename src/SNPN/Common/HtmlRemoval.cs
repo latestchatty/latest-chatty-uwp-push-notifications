@@ -1,6 +1,6 @@
 ﻿using System.Text.RegularExpressions;
 
-namespace Shacknews_Push_Notifications.Common
+namespace SNPN.Common
 {
 	public static class HtmlRemoval
 	{

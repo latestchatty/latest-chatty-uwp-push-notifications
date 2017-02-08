@@ -1,4 +1,4 @@
-﻿namespace Model
+﻿namespace SNPN.Model
 {
 	public enum EventType
 	{

@@ -1,4 +1,4 @@
-﻿namespace Shacknews_Push_Notifications.Common
+﻿namespace SNPN.Common
 {
 	public enum NotificationGroups
 	{

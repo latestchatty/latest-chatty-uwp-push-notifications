@@ -6,7 +6,7 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Shacknews_Push_Notifications.Common
+namespace SNPN.Common
 {
 	public class AccessTokenManager : IDisposable
 	{

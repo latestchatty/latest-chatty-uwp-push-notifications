@@ -1,10 +1,7 @@
-﻿using Model;
-using Newtonsoft.Json.Linq;
-using SNPN.Common;
+﻿using Newtonsoft.Json.Linq;
+using SNPN.Model;
+using SNPN.Monitor;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Xunit;
 
 namespace SNPN.Test.Common
