@@ -4,7 +4,7 @@ using SNPN.Monitor;
 using System;
 using Xunit;
 
-namespace SNPN.Test.Common
+namespace SNPN.Test.Monitor
 {
 	public class EventParserTests
 	{
