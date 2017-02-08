@@ -52,7 +52,7 @@ namespace SNPN.Monitor
 				//Pad with spaces so we don't match a partial username.
 				if ((" " + postBody.ToLower() + " ").Contains(" " + user.ToLower() + " "))
 				{
-					var u1 = await this.userRepo.FindUser(e.ParentAuthor);
+					var u1 = await this.userRepo.FindUser(user);
 					if (u1 != null)
 					{
 						this.logger.Information("Notifying {user} of mention by {latestReplyAuthor}",
