@@ -104,8 +104,8 @@ namespace SNPN.Monitor
 				{
 					timeDelay = BASE_TIME_DELAY;
 				}
-				//There was a problem, delay further.  To a maximum of 3 minutes.
-				timeDelay = Math.Max(Math.Pow(timeDelay, TIME_DELAY_FAIL_EXPONENT), 180);
+				//There was a problem, delay further.  To a maximum of 10 minutes.
+				timeDelay = Math.Min(Math.Pow(timeDelay, TIME_DELAY_FAIL_EXPONENT), 600);
 				if (ex is TaskCanceledException)
 				{
 					//This is expected, we'll still slow down our polling of winchatty if the chatty's not busy but won't print a full stack.
