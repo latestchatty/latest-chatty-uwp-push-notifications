@@ -14,6 +14,7 @@ namespace SNPN.Monitor
 		private readonly ILogger logger;
 		private readonly INotificationService notificationService;
 		private readonly IUserRepo userRepo;
+		private const int TTL = 172800; // 48 hours
 
 		public NewEventHandler(INotificationService notificationService, IUserRepo userRepo, ILogger logger)
 		{
@@ -25,11 +26,9 @@ namespace SNPN.Monitor
 		public async Task ProcessEvent(NewPostEvent e)
 		{
 			var postBody = HtmlRemoval.StripTagsRegexCompiled(System.Net.WebUtility.HtmlDecode(e.Post.Body).Replace("<br />", " ").Replace(char.ConvertFromUtf32(8232), " "));
-#if !DEBUG
 			//Don't notify if self-reply.
 			if (!e.ParentAuthor.Equals(e.Post.Author, StringComparison.OrdinalIgnoreCase))
 			{
-#endif
 				var usr = await this.userRepo.FindUser(e.ParentAuthor);
 				if (usr != null)
 				{
@@ -39,13 +38,12 @@ namespace SNPN.Monitor
 				{
 					this.logger.Verbose("No alert on reply to {parentAuthor}", e.ParentAuthor);
 				}
-#if !DEBUG
 			}
 			else
 			{
 				this.logger.Verbose("No alert on self-reply to {parentAuthor}", e.ParentAuthor);
 			}
-#endif
+
 			var users = await this.userRepo.GetAllUserNamesForNotification();
 			foreach (var user in users)
 			{
@@ -66,23 +64,11 @@ namespace SNPN.Monitor
 		private async void NotifyUser(NotificationUser user, int latestPostId, string title, string message)
 		{
 			var deviceInfos = await this.userRepo.GetUserDeviceInfos(user);
-			if (deviceInfos != null && deviceInfos.Count() > 0)
+			if (deviceInfos?.Count() == 0) return;
+
+			foreach (var info in deviceInfos)
 			{
-				TimeSpan ttl = new TimeSpan(48, 0, 0);
-
-				var expireDate = DateTime.UtcNow.Add(ttl);
-
-				if (expireDate > DateTime.UtcNow)
-				{
-					foreach (var info in deviceInfos)
-					{
-						this.SendNotifications(info, title, message, latestPostId, (int)ttl.TotalSeconds);
-					}
-				}
-				else
-				{
-					this.logger.Information("No notification on reply to {userName} because thread is expired.", user.UserName);
-				}
+				this.SendNotifications(info, title, message, latestPostId, TTL);
 			}
 		}
 
@@ -109,8 +95,6 @@ namespace SNPN.Monitor
 				 )
 			);
 			this.notificationService.QueueNotificationData(NotificationType.Toast, info.NotificationUri, toastDoc, NotificationGroups.ReplyToUser, postId.ToString(), ttl);
-
-			//this.notificationService.QueueReplyTileNotification(latestReplyAuthor, latestReplyText, info.NotificationUri);
 		}
 	}
 }
