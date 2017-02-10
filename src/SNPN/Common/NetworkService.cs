@@ -29,7 +29,7 @@ namespace SNPN.Common
 			}
 		}
 	
-		public async Task<JToken> WinChattyWaitForEventAsync(long latestEventId, CancellationToken ct)
+		public async Task<JToken> WinChattyWaitForEvent(long latestEventId, CancellationToken ct)
 		{
 			using (var resEvent = await httpClient.GetAsync($"{this.config.WinchattyAPIBase}waitForEvent?lastEventId={latestEventId}&includeParentAuthor=1", ct))
 			{

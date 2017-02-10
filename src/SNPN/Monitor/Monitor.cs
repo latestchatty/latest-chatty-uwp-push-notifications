@@ -64,7 +64,7 @@ namespace SNPN.Monitor
 						this.lastEventId = await this.networkService.WinChattyGetNewestEventId(this.cancelToken.Token);
 					}
 
-					var jEvents = await this.networkService.WinChattyWaitForEventAsync(this.lastEventId, this.cancelToken.Token);
+					var jEvents = await this.networkService.WinChattyWaitForEvent(this.lastEventId, this.cancelToken.Token);
 
 					var newPostEvents = parser.GetNewPostEvents(jEvents);
 					foreach (var newPost in newPostEvents)

@@ -11,6 +11,6 @@ namespace SNPN.Common
 	{
 		Task<int> WinChattyGetNewestEventId(CancellationToken ct);
 
-		Task<JToken> WinChattyWaitForEventAsync(long latestEventId, CancellationToken ct);
+		Task<JToken> WinChattyWaitForEvent(long latestEventId, CancellationToken ct);
 	}
 }
