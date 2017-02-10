@@ -1,7 +1,5 @@
-﻿using Newtonsoft.Json.Linq;
-using Serilog;
+﻿using Serilog;
 using SNPN.Common;
-using SNPN.Model;
 using System;
 using System.Net.Http;
 using System.Threading;
@@ -16,19 +14,21 @@ namespace SNPN.Monitor
 		Timer mainTimer;
 		double timeDelay = 0;
 		bool timerEnabled = false;
-		int lastEventId = 0;
+		long lastEventId = 0;
 		private readonly INotificationService notificationService;
 		private readonly AppConfiguration configuration;
 		private readonly ILogger logger;
 		private readonly Func<NewEventHandler> createHandlerFunc;
+		private readonly INetworkService networkService;
 		private CancellationTokenSource cancelToken = new CancellationTokenSource();
 
-		public Monitor(INotificationService notificationService, AppConfiguration config, ILogger logger, Func<NewEventHandler> createHandlerFunc)
+		public Monitor(INotificationService notificationService, AppConfiguration config, ILogger logger, Func<NewEventHandler> createHandlerFunc, INetworkService networkService)
 		{
 			this.notificationService = notificationService;
 			this.configuration = config;
 			this.logger = logger;
 			this.createHandlerFunc = createHandlerFunc;
+			this.networkService = networkService;
 		}
 
 		public void Start()
@@ -61,39 +61,19 @@ namespace SNPN.Monitor
 				{
 					if (this.lastEventId == 0)
 					{
-						using (var res = await client.GetAsync($"{this.configuration.WinchattyAPIBase}getNewestEventId", this.cancelToken.Token))
-						{
-							var json = JToken.Parse(await res.Content.ReadAsStringAsync());
-							this.lastEventId = (int)json["eventId"];
-						}
+						this.lastEventId = await this.networkService.WinChattyGetNewestEventId(this.cancelToken.Token);
 					}
 
-					JToken jEvent;
-					using (var resEvent = await client.GetAsync($"{this.configuration.WinchattyAPIBase}waitForEvent?lastEventId={this.lastEventId}&includeParentAuthor=1", this.cancelToken.Token))
+					var jEvents = await this.networkService.WinChattyWaitForEventAsync(this.lastEventId, this.cancelToken.Token);
+
+					var newPostEvents = parser.GetNewPostEvents(jEvents);
+					foreach (var newPost in newPostEvents)
 					{
-						jEvent = JToken.Parse(await resEvent.Content.ReadAsStringAsync());
+						var handler = this.createHandlerFunc();
+						await handler.ProcessEvent(newPost);
 					}
-					if (jEvent["events"] != null)
-					{
-						foreach (var e in jEvent["events"]) //PERF: Could probably Parallel.ForEach this.
-						{
-							var eventType = parser.GetEventType(e);
-							if (eventType == EventType.NewPost)
-							{
-								var parsedNewPost = parser.GetNewPostEvent(e);
-								var handler = this.createHandlerFunc();
-								await handler.ProcessEvent(parsedNewPost);
-							}
-							else
-							{
-								this.logger.Verbose("Event type {eventType} not handled.", eventType);
-							}
-						}
-					}
-					if (jEvent["lastEventId"] != null)
-					{
-						lastEventId = (int)jEvent["lastEventId"];
-					}
+
+					this.lastEventId = parser.GetLatestEventId(jEvents);
 				}
 
 				timeDelay = 0;

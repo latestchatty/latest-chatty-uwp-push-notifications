@@ -7,6 +7,7 @@ using SNPN.Data;
 using SNPN.Monitor;
 using System;
 using System.IO;
+using System.Net.Http;
 
 namespace SNPN
 {
@@ -50,6 +51,8 @@ namespace SNPN
 				var ctx = c.Resolve<IComponentContext>();
 				return () => ctx.Resolve<NewEventHandler>();
 			});
+			builder.RegisterType<HttpClientHandler>().SingleInstance();
+			builder.RegisterType<NetworkService>().As<INetworkService>().SingleInstance();
 			return builder.Build();
 		}
 	}

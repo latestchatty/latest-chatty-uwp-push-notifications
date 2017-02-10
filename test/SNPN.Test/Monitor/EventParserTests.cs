@@ -2,6 +2,7 @@
 using SNPN.Model;
 using SNPN.Monitor;
 using System;
+using System.Linq;
 using Xunit;
 
 namespace SNPN.Test.Monitor
@@ -36,6 +37,20 @@ namespace SNPN.Test.Monitor
 					)
 				)));
 			return e;
+		}
+
+		private JToken GenerateEvents()
+		{
+			return new JObject(
+					new JProperty("lastEventId", 99999),
+					new JProperty("events", 
+						new JArray(new[]
+						{
+							GenerateNewPostEvent(),
+							GenerateEvent("lolCountsUpdate"),
+							GenerateNewPostEvent()
+						})
+					));
 		}
 
 		[Fact]
@@ -165,6 +180,22 @@ namespace SNPN.Test.Monitor
 			var parser = new EventParser();
 			var postEvent = parser.GetNewPostEvent(GenerateNewPostEvent());
 			Assert.Equal(new DateTime(2013, 12, 02, 01, 39, 00), postEvent.Post.Date);
+		}
+
+		[Fact]
+		public void GetLatestEventId()
+		{
+			var parser = new EventParser();
+			var eventId = parser.GetLatestEventId(GenerateEvents());
+			Assert.Equal(99999, eventId);
+		}
+
+		[Fact]
+		public void GetNewPostEventsCount()
+		{
+			var parser = new EventParser();
+			var events = parser.GetNewPostEvents(GenerateEvents());
+			Assert.Equal(2, events.Count());
 		}
 	}
 }
