@@ -11,14 +11,16 @@ namespace SNPN.Common
 	public class AccessTokenManager : IDisposable
 	{
 		private string accessToken = string.Empty;
-		private AppConfiguration configuration;
-		private ILogger logger;
+		private readonly AppConfiguration configuration;
+		private readonly ILogger logger;
+		private readonly INetworkService networkService;
 		SemaphoreSlim locker = new SemaphoreSlim(1);
 
-		public AccessTokenManager(AppConfiguration config, ILogger logger)
+		AccessTokenManager(AppConfiguration config, ILogger logger, INetworkService networkService)
 		{
 			this.configuration = config;
 			this.logger = logger;
+			this.networkService = networkService;
 		}
 	
 		public async Task<string> GetAccessToken()
@@ -30,27 +32,7 @@ namespace SNPN.Common
 				if (string.IsNullOrWhiteSpace(this.accessToken))
 				{
 					this.logger.Information("Getting access token.");
-					using (var client = new HttpClient())
-					{
-						var data = new FormUrlEncodedContent(new Dictionary<string, string> {
-							{ "grant_type", "client_credentials" },
-							{ "client_id", configuration.NotificationSID },
-							{ "client_secret", configuration.ClientSecret },
-							{ "scope", "notify.windows.com" },
-						});
-						using (var response = await client.PostAsync("https://login.live.com/accesstoken.srf", data))
-						{
-							if (response.StatusCode == System.Net.HttpStatusCode.OK)
-							{
-								var responseJson = JToken.Parse(await response.Content.ReadAsStringAsync());
-								if (responseJson["access_token"] != null)
-								{
-									this.accessToken = responseJson["access_token"].Value<string>();
-									this.logger.Information("Got access token.");
-								}
-							}
-						}
-					}
+					this.accessToken = await this.networkService.GetNotificationToken();
 				}
 			}
 			finally

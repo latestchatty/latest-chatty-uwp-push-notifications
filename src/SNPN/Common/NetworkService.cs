@@ -1,23 +1,38 @@
 ﻿using Newtonsoft.Json.Linq;
 using Serilog;
+using SNPN.Data;
 using System;
+using System.Collections.Generic;
 using System.Net.Http;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 
 namespace SNPN.Common
 {
 	public class NetworkService : INetworkService, IDisposable
 	{
-		private AppConfiguration config;
-		private HttpClient httpClient;
-		private ILogger logger;
+		private readonly AppConfiguration config;
+		private readonly HttpClient httpClient;
+		private readonly ILogger logger;
 
-		public NetworkService(AppConfiguration configuration, ILogger logger, HttpClientHandler httpHandler)
+		private Dictionary<NotificationType, string> notificationTypeMapping = new Dictionary<NotificationType, string>
+		  {
+				{ NotificationType.Badge, "wns/badge" },
+				{ NotificationType.Tile, "wns/tile" },
+				{ NotificationType.Toast, "wns/toast" }
+		  };
+
+		public NetworkService(AppConfiguration configuration, ILogger logger, HttpMessageHandler httpHandler)
 		{
 			this.config = configuration;
 			this.logger = logger;
 			this.httpClient = new HttpClient(httpHandler);
+
+			//Winchatty seems to crap itself if the Expect: 100-continue header is there.
+			// Should be safe to leave this for every request we make.
+			this.httpClient.DefaultRequestHeaders.ExpectContinue = false;
 		}
 
 		public async Task<int> WinChattyGetNewestEventId(CancellationToken ct)
@@ -28,13 +43,136 @@ namespace SNPN.Common
 				return json["eventId"].ToObject<int>();
 			}
 		}
-	
+
 		public async Task<JToken> WinChattyWaitForEvent(long latestEventId, CancellationToken ct)
 		{
 			using (var resEvent = await httpClient.GetAsync($"{this.config.WinchattyAPIBase}waitForEvent?lastEventId={latestEventId}&includeParentAuthor=1", ct))
 			{
 				return JToken.Parse(await resEvent.Content.ReadAsStringAsync());
 			}
+		}
+
+		public async Task<XDocument> GetTileContent()
+		{
+			using (var fileStream = await this.httpClient.GetStreamAsync("http://www.shacknews.com/rss?recent_articles=1"))
+			{
+				return XDocument.Load(fileStream);
+			}
+		}
+
+		public async Task<bool> ReplyToNotification(string replyText, string parentId, string userName, string password)
+		{
+			if (string.IsNullOrWhiteSpace(parentId)) { throw new ArgumentNullException(nameof(parentId)); }
+			if (string.IsNullOrWhiteSpace(userName)) { throw new ArgumentNullException(nameof(userName)); }
+			if (string.IsNullOrWhiteSpace(password)) { throw new ArgumentNullException(nameof(password)); }
+
+			var data = new Dictionary<string, string> {
+				 		{ "text", replyText },
+				 		{ "parentId", parentId },
+				 		{ "username", userName },
+				 		{ "password", password }
+				 	};
+
+			JToken parsedResponse = null;
+
+			using (var formContent = new FormUrlEncodedContent(data))
+			{
+				using (var response = await this.httpClient.PostAsync($"{this.config.WinchattyAPIBase}postComment", formContent))
+				{
+					parsedResponse = JToken.Parse(await response.Content.ReadAsStringAsync());
+				}
+			}
+
+
+			var success = parsedResponse["result"]?.ToString().Equals("success");
+
+			return success.HasValue && success.Value;
+		}
+
+		public async Task<ResponseResult> SendNotification(QueuedNotificationItem notification, string token)
+		{
+			var request = new HttpRequestMessage()
+			{
+				RequestUri = new Uri(notification.Uri),
+				Method = HttpMethod.Post
+			};
+			
+			request.Headers.Add("Authorization", $"Bearer {token}");
+
+			request.Headers.Add("X-WNS-Type", this.notificationTypeMapping[notification.Type]);
+
+			if (notification.Group != NotificationGroups.None)
+			{
+				request.Headers.Add("X-WNS-Group", Uri.EscapeUriString(Enum.GetName(typeof(NotificationGroups), notification.Group)));
+			}
+			if (!string.IsNullOrWhiteSpace(notification.Tag))
+			{
+				request.Headers.Add("X-WNS-Tag", Uri.EscapeUriString(notification.Tag));
+			}
+			if (notification.TTL > 0)
+			{
+				request.Headers.Add("X-WNS-TTL", notification.TTL.ToString());
+			}
+
+			using (var stringContent = new StringContent(notification.Content.ToString(SaveOptions.DisableFormatting), Encoding.UTF8, "text/xml"))
+			{
+				using (var response = await this.httpClient.SendAsync(request))
+				{
+					return this.ProcessResponse(response, notification.Uri);
+				}
+			}
+		}
+
+		public async Task<string> GetNotificationToken()
+		{
+			var data = new FormUrlEncodedContent(new Dictionary<string, string> {
+							{ "grant_type", "client_credentials" },
+							{ "client_id", this.config.NotificationSID },
+							{ "client_secret", this.config.ClientSecret },
+							{ "scope", "notify.windows.com" },
+						});
+			using (var response = await this.httpClient.PostAsync("https://login.live.com/accesstoken.srf", data))
+			{
+				if (response.StatusCode == System.Net.HttpStatusCode.OK)
+				{
+					var responseJson = JToken.Parse(await response.Content.ReadAsStringAsync());
+					if (responseJson["access_token"] != null)
+					{
+						this.logger.Information("Got access token.");
+						return responseJson["access_token"].Value<string>();
+					}
+				}
+			}
+			return null;
+		}
+
+		private ResponseResult ProcessResponse(HttpResponseMessage response, string uri)
+		{
+			//By default, we'll just let it die if we don't know specifically that we can try again.
+			ResponseResult result = ResponseResult.FailDoNotTryAgain;
+			this.logger.Verbose("Notification Response Code: {responseStatusCode}", response.StatusCode);
+			switch (response.StatusCode)
+			{
+				case System.Net.HttpStatusCode.OK:
+					result = ResponseResult.Success;
+					break;
+				case System.Net.HttpStatusCode.NotFound:
+				case System.Net.HttpStatusCode.Gone:
+				case System.Net.HttpStatusCode.Forbidden:
+					result |= ResponseResult.RemoveUser;					
+					break;
+				case System.Net.HttpStatusCode.NotAcceptable:
+					result = ResponseResult.FailTryAgain;
+					break;
+				case System.Net.HttpStatusCode.Unauthorized:
+					//Need to refresh the token, so invalidate it and we'll pick up a new one on retry.
+					result = ResponseResult.FailTryAgain;
+					result |= ResponseResult.InvalidateToken;
+					break;
+				default:
+					break;
+			}
+			return result;
 		}
 
 		#region IDisposable Support

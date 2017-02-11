@@ -57,24 +57,21 @@ namespace SNPN.Monitor
 			this.logger.Verbose("Waiting for next monitor event...");
 			try
 			{
-				using (var client = new HttpClient())
+				if (this.lastEventId == 0)
 				{
-					if (this.lastEventId == 0)
-					{
-						this.lastEventId = await this.networkService.WinChattyGetNewestEventId(this.cancelToken.Token);
-					}
-
-					var jEvents = await this.networkService.WinChattyWaitForEvent(this.lastEventId, this.cancelToken.Token);
-
-					var newPostEvents = parser.GetNewPostEvents(jEvents);
-					foreach (var newPost in newPostEvents)
-					{
-						var handler = this.createHandlerFunc();
-						await handler.ProcessEvent(newPost);
-					}
-
-					this.lastEventId = parser.GetLatestEventId(jEvents);
+					this.lastEventId = await this.networkService.WinChattyGetNewestEventId(this.cancelToken.Token);
 				}
+
+				var jEvents = await this.networkService.WinChattyWaitForEvent(this.lastEventId, this.cancelToken.Token);
+
+				var newPostEvents = parser.GetNewPostEvents(jEvents);
+				foreach (var newPost in newPostEvents)
+				{
+					var handler = this.createHandlerFunc();
+					await handler.ProcessEvent(newPost);
+				}
+
+				this.lastEventId = parser.GetLatestEventId(jEvents);
 
 				timeDelay = 0;
 			}
@@ -109,7 +106,7 @@ namespace SNPN.Monitor
 			}
 		}
 
-		
+
 
 		#region IDisposable Support
 		private bool disposedValue = false; // To detect redundant calls

@@ -4,6 +4,7 @@ using Nancy;
 using Nancy.ModelBinding;
 using Newtonsoft.Json.Linq;
 using Serilog;
+using SNPN.Common;
 using SNPN.Data;
 using SNPN.Model;
 using System;
@@ -21,6 +22,7 @@ namespace SNPN.WebService
 		private readonly IUserRepo userRepo;
 		private readonly AppConfiguration configuration;
 		private readonly ILogger logger;
+		private readonly INetworkService networkService;
 
 		public Endpoint()
 		{
@@ -44,6 +46,7 @@ namespace SNPN.WebService
 			this.userRepo = AppModuleBuilder.Container.Resolve<IUserRepo>();
 			this.configuration = AppModuleBuilder.Container.Resolve<AppConfiguration>();
 			this.logger = AppModuleBuilder.Container.Resolve<ILogger>();
+			this.networkService = AppModuleBuilder.Container.Resolve<INetworkService>();
 		}
 
 		#region Event Bind Classes
@@ -121,15 +124,8 @@ namespace SNPN.WebService
 			{
 				this.logger.Information("Retrieving tile content.");
 
-				XDocument xDoc;
-				using (var client = new HttpClient())
-				{
-					using (var fileStream = await client.GetStreamAsync("http://www.shacknews.com/rss?recent_articles=1"))
-					{
-						xDoc = XDocument.Load(fileStream);
-					}
-				}
-
+				var xDoc = await this.networkService.GetTileContent();
+				
 				var items = xDoc.Descendants("item");
 				var itemsObj = items.Select(i => new
 				{
@@ -176,36 +172,8 @@ namespace SNPN.WebService
 			this.logger.Information("Replying to notification.");
 			var e = this.Bind<ReplyToNotificationArgs>();
 
-			using (var request = new HttpClient())
-			{
-				var data = new Dictionary<string, string> {
-				 		{ "text", e.Text },
-				 		{ "parentId", e.ParentId },
-				 		{ "username", e.UserName },
-				 		{ "password", e.Password }
-				 	};
-
-				//Winchatty seems to crap itself if the Expect: 100-continue header is there.
-				request.DefaultRequestHeaders.ExpectContinue = false;
-				JToken parsedResponse = null;
-
-				using (var formContent = new FormUrlEncodedContent(data))
-				{
-					using (var response = await request.PostAsync($"{this.configuration.WinchattyAPIBase}postComment", formContent))
-					{
-						parsedResponse = JToken.Parse(await response.Content.ReadAsStringAsync());
-					}
-				}
-				var success = parsedResponse["result"]?.ToString().Equals("success");
-				if (success.HasValue && success.Value)
-				{
-					return new { status = "success" };
-				}
-				else
-				{
-					return new { status = "error" };
-				}
-			}
+			var success = await this.networkService.ReplyToNotification(e.Text, e.ParentId, e.UserName, e.Password);
+			return new { status = success ? "success" : "error" };
 		}
 
 		async private Task<dynamic> DeregisterDevice(dynamic arg)
