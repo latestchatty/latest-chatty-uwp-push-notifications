@@ -1,6 +1,5 @@
-using System;
-using Xunit;
 using SNPN.Common;
+using Xunit;
 
 namespace SNPN.Test.Common
 {

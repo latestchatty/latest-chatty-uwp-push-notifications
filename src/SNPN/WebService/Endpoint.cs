@@ -2,7 +2,6 @@
 using Microsoft.Extensions.Caching.Memory;
 using Nancy;
 using Nancy.ModelBinding;
-using Newtonsoft.Json.Linq;
 using Serilog;
 using SNPN.Common;
 using SNPN.Data;
@@ -10,17 +9,15 @@ using SNPN.Model;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 
 namespace SNPN.WebService
 {
-	public class Endpoint : NancyModule
+	public sealed class Endpoint : NancyModule
 	{
 		private readonly MemoryCache cache;
 		private readonly IUserRepo userRepo;
-		private readonly AppConfiguration configuration;
 		private readonly ILogger logger;
 		private readonly INetworkService networkService;
 
@@ -44,45 +41,60 @@ namespace SNPN.WebService
 
 			this.cache = AppModuleBuilder.Container.Resolve<MemoryCache>();
 			this.userRepo = AppModuleBuilder.Container.Resolve<IUserRepo>();
-			this.configuration = AppModuleBuilder.Container.Resolve<AppConfiguration>();
 			this.logger = AppModuleBuilder.Container.Resolve<ILogger>();
 			this.networkService = AppModuleBuilder.Container.Resolve<INetworkService>();
 		}
 
 		#region Event Bind Classes
+		// ReSharper disable once ClassNeverInstantiated.Local
 		private class RegisterArgs
 		{
+			// ReSharper disable once UnusedAutoPropertyAccessor.Local
 			public string UserName { get; set; }
+			// ReSharper disable once UnusedAutoPropertyAccessor.Local
 			public string DeviceId { get; set; }
+			// ReSharper disable once UnusedAutoPropertyAccessor.Local
 			public string ChannelUri { get; set; }
 		}
 
+		// ReSharper disable once ClassNeverInstantiated.Local
 		private class PostUserArgs
 		{
+			// ReSharper disable once UnusedAutoPropertyAccessor.Local
 			public string UserName { get; set; }
+			// ReSharper disable once UnusedAutoPropertyAccessor.Local
 			public long NotifyOnUserName { get; set; }
 		}
 
+		// ReSharper disable once ClassNeverInstantiated.Local
 		private class GetUserArgs
 		{
+			// ReSharper disable once UnusedAutoPropertyAccessor.Local
 			public string UserName { get; set; }
 		}
 
+		// ReSharper disable once ClassNeverInstantiated.Local
 		private class DeregisterArgs
 		{
+			// ReSharper disable once UnusedAutoPropertyAccessor.Local
 			public string DeviceId { get; set; }
 		}
 
+		// ReSharper disable once ClassNeverInstantiated.Local
 		private class ReplyToNotificationArgs
 		{
+			// ReSharper disable once UnusedAutoPropertyAccessor.Local
 			public string UserName { get; set; }
+			// ReSharper disable once UnusedAutoPropertyAccessor.Local
 			public string Password { get; set; }
+			// ReSharper disable once UnusedAutoPropertyAccessor.Local
 			public string ParentId { get; set; }
+			// ReSharper disable once UnusedAutoPropertyAccessor.Local
 			public string Text { get; set; }
 		}
 		#endregion
 
-		async private Task<dynamic> PostUser(dynamic arg)
+		private async Task<dynamic> PostUser(dynamic arg)
 		{
 			var e = this.Bind<PostUserArgs>();
 			this.logger.Information("Updating user {userName}.", e.UserName);
@@ -105,7 +117,7 @@ namespace SNPN.WebService
 			return new { status = "success" };
 		}
 
-		async private Task<dynamic> GetUser(dynamic arg)
+		private async Task<dynamic> GetUser(dynamic arg)
 		{
 			var e = this.Bind<GetUserArgs>();
 			this.logger.Information("Getting user {userName}.", e.UserName);
@@ -117,7 +129,7 @@ namespace SNPN.WebService
 			throw new Exception("User not found.");
 		}
 
-		async private Task<dynamic> GetTileContent(dynamic arg)
+		private async Task<dynamic> GetTileContent(dynamic arg)
 		{
 			var tileContent = this.cache.Get("tileContent") as string;
 			if (string.IsNullOrWhiteSpace(tileContent))
@@ -132,7 +144,7 @@ namespace SNPN.WebService
 					Title = i.Element("title").Value,
 					PublishDate = DateTime.Parse(i.Element("pubDate").Value.Replace("PDT", "").Replace("PST", "").Trim()),
 					Author = i.Element("author").Value
-				}).OrderByDescending(i => i.PublishDate).Take(3);
+				}).OrderByDescending(i => i.PublishDate).Take(3).ToList();
 
 				var item = itemsObj.FirstOrDefault();
 
@@ -167,7 +179,7 @@ namespace SNPN.WebService
 			return tileContent;
 		}
 
-		async private Task<dynamic> ReplyToNotification(dynamic arg)
+		private async Task<dynamic> ReplyToNotification(dynamic arg)
 		{
 			this.logger.Information("Replying to notification.");
 			var e = this.Bind<ReplyToNotificationArgs>();
@@ -176,7 +188,7 @@ namespace SNPN.WebService
 			return new { status = success ? "success" : "error" };
 		}
 
-		async private Task<dynamic> DeregisterDevice(dynamic arg)
+		private async Task<dynamic> DeregisterDevice(dynamic arg)
 		{
 			this.logger.Information("Deregister device.");
 			var e = this.Bind<DeregisterArgs>();
@@ -185,21 +197,17 @@ namespace SNPN.WebService
 			return new { status = "success" };
 		}
 
-		async private Task<dynamic> RegisterDevice(dynamic arg)
+		private async Task<dynamic> RegisterDevice(dynamic arg)
 		{
 			this.logger.Information("Register device.");
 			var e = this.Bind<RegisterArgs>();
 
-			var user = await this.userRepo.FindUser(e.UserName);
-			if (user == null)
+			var user = await this.userRepo.FindUser(e.UserName) ?? await this.userRepo.AddUser(new NotificationUser
 			{
-				user = await this.userRepo.AddUser(new NotificationUser
-				{
-					UserName = e.UserName,
-					DateAdded = DateTime.UtcNow,
-					NotifyOnUserName = 1
-				});
-			}
+				UserName = e.UserName,
+				DateAdded = DateTime.UtcNow,
+				NotifyOnUserName = 1
+			});
 
 			await this.userRepo.AddOrUpdateDevice(user, new DeviceInfo { DeviceId = e.DeviceId, NotificationUri = e.ChannelUri });
 			return new { status = "success" };

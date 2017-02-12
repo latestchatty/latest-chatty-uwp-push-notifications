@@ -1,31 +1,26 @@
-﻿using Serilog;
-using SNPN.Common;
-using System;
-using System.Net.Http;
+﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Serilog;
+using SNPN.Common;
 
 namespace SNPN.Monitor
 {
 	class Monitor : IDisposable
 	{
-		const int BASE_TIME_DELAY = 2;
-		const double TIME_DELAY_FAIL_EXPONENT = 1.5;
+		private const int BASE_TIME_DELAY = 2;
+		private const double TIME_DELAY_FAIL_EXPONENT = 1.5;
 		Timer mainTimer;
-		double timeDelay = 0;
-		bool timerEnabled = false;
-		long lastEventId = 0;
-		private readonly INotificationService notificationService;
-		private readonly AppConfiguration configuration;
+		double timeDelay;
+		bool timerEnabled;
+		long lastEventId;
 		private readonly ILogger logger;
 		private readonly Func<NewEventHandler> createHandlerFunc;
 		private readonly INetworkService networkService;
-		private CancellationTokenSource cancelToken = new CancellationTokenSource();
+		private readonly CancellationTokenSource cancelToken = new CancellationTokenSource();
 
-		public Monitor(INotificationService notificationService, AppConfiguration config, ILogger logger, Func<NewEventHandler> createHandlerFunc, INetworkService networkService)
+		public Monitor(ILogger logger, Func<NewEventHandler> createHandlerFunc, INetworkService networkService)
 		{
-			this.notificationService = notificationService;
-			this.configuration = config;
 			this.logger = logger;
 			this.createHandlerFunc = createHandlerFunc;
 			this.networkService = networkService;
@@ -35,7 +30,7 @@ namespace SNPN.Monitor
 		{
 			if (this.timerEnabled) return;
 			this.timerEnabled = true;
-			this.mainTimer = new System.Threading.Timer(TimerCallback, null, 0, System.Threading.Timeout.Infinite);
+			this.mainTimer = new Timer(TimerCallback, null, 0, Timeout.Infinite);
 			this.logger.Verbose("Notification monitor started.");
 		}
 
@@ -51,7 +46,7 @@ namespace SNPN.Monitor
 			this.logger.Verbose("Notification monitor stopped.");
 		}
 
-		async private void TimerCallback(object state)
+		private async void TimerCallback(object state)
 		{
 			var parser = new EventParser();
 			this.logger.Verbose("Waiting for next monitor event...");
@@ -77,7 +72,7 @@ namespace SNPN.Monitor
 			}
 			catch (Exception ex)
 			{
-				if (timeDelay == 0)
+				if ((int)timeDelay == 0)
 				{
 					timeDelay = BASE_TIME_DELAY;
 				}
@@ -109,7 +104,7 @@ namespace SNPN.Monitor
 
 
 		#region IDisposable Support
-		private bool disposedValue = false; // To detect redundant calls
+		private bool disposedValue; // To detect redundant calls
 
 		protected virtual void Dispose(bool disposing)
 		{

@@ -1,13 +1,13 @@
-﻿using Newtonsoft.Json.Linq;
-using Serilog;
-using SNPN.Data;
-using System;
+﻿using System;
 using System.Collections.Generic;
+using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using Newtonsoft.Json.Linq;
+using Serilog;
 
 namespace SNPN.Common
 {
@@ -37,7 +37,7 @@ namespace SNPN.Common
 
 		public async Task<int> WinChattyGetNewestEventId(CancellationToken ct)
 		{
-			using (var res = await this.httpClient.GetAsync($"{this.config.WinchattyAPIBase}getNewestEventId", ct))
+			using (var res = await this.httpClient.GetAsync($"{this.config.WinchattyApiBase}getNewestEventId", ct))
 			{
 				var json = JToken.Parse(await res.Content.ReadAsStringAsync());
 				return json["eventId"].ToObject<int>();
@@ -46,7 +46,7 @@ namespace SNPN.Common
 
 		public async Task<JToken> WinChattyWaitForEvent(long latestEventId, CancellationToken ct)
 		{
-			using (var resEvent = await httpClient.GetAsync($"{this.config.WinchattyAPIBase}waitForEvent?lastEventId={latestEventId}&includeParentAuthor=1", ct))
+			using (var resEvent = await httpClient.GetAsync($"{this.config.WinchattyApiBase}waitForEvent?lastEventId={latestEventId}&includeParentAuthor=1", ct))
 			{
 				return JToken.Parse(await resEvent.Content.ReadAsStringAsync());
 			}
@@ -73,11 +73,11 @@ namespace SNPN.Common
 				 		{ "password", password }
 				 	};
 
-			JToken parsedResponse = null;
+			JToken parsedResponse;
 
 			using (var formContent = new FormUrlEncodedContent(data))
 			{
-				using (var response = await this.httpClient.PostAsync($"{this.config.WinchattyAPIBase}postComment", formContent))
+				using (var response = await this.httpClient.PostAsync($"{this.config.WinchattyApiBase}postComment", formContent))
 				{
 					parsedResponse = JToken.Parse(await response.Content.ReadAsStringAsync());
 				}
@@ -91,7 +91,7 @@ namespace SNPN.Common
 
 		public async Task<ResponseResult> SendNotification(QueuedNotificationItem notification, string token)
 		{
-			var request = new HttpRequestMessage()
+			var request = new HttpRequestMessage
 			{
 				RequestUri = new Uri(notification.Uri),
 				Method = HttpMethod.Post
@@ -109,16 +109,17 @@ namespace SNPN.Common
 			{
 				request.Headers.Add("X-WNS-Tag", Uri.EscapeUriString(notification.Tag));
 			}
-			if (notification.TTL > 0)
+			if (notification.Ttl > 0)
 			{
-				request.Headers.Add("X-WNS-TTL", notification.TTL.ToString());
+				request.Headers.Add("X-WNS-TTL", notification.Ttl.ToString());
 			}
 
 			using (var stringContent = new StringContent(notification.Content.ToString(SaveOptions.DisableFormatting), Encoding.UTF8, "text/xml"))
 			{
+				request.Content = stringContent;
 				using (var response = await this.httpClient.SendAsync(request))
 				{
-					return this.ProcessResponse(response, notification.Uri);
+					return this.ProcessResponse(response);
 				}
 			}
 		}
@@ -127,13 +128,13 @@ namespace SNPN.Common
 		{
 			var data = new FormUrlEncodedContent(new Dictionary<string, string> {
 							{ "grant_type", "client_credentials" },
-							{ "client_id", this.config.NotificationSID },
+							{ "client_id", this.config.NotificationSid },
 							{ "client_secret", this.config.ClientSecret },
-							{ "scope", "notify.windows.com" },
+							{ "scope", "notify.windows.com" }
 						});
 			using (var response = await this.httpClient.PostAsync("https://login.live.com/accesstoken.srf", data))
 			{
-				if (response.StatusCode == System.Net.HttpStatusCode.OK)
+				if (response.StatusCode == HttpStatusCode.OK)
 				{
 					var responseJson = JToken.Parse(await response.Content.ReadAsStringAsync());
 					if (responseJson["access_token"] != null)
@@ -146,37 +147,35 @@ namespace SNPN.Common
 			return null;
 		}
 
-		private ResponseResult ProcessResponse(HttpResponseMessage response, string uri)
+		private ResponseResult ProcessResponse(HttpResponseMessage response)
 		{
 			//By default, we'll just let it die if we don't know specifically that we can try again.
-			ResponseResult result = ResponseResult.FailDoNotTryAgain;
+			var result = ResponseResult.FailDoNotTryAgain;
 			this.logger.Verbose("Notification Response Code: {responseStatusCode}", response.StatusCode);
 			switch (response.StatusCode)
 			{
-				case System.Net.HttpStatusCode.OK:
+				case HttpStatusCode.OK:
 					result = ResponseResult.Success;
 					break;
-				case System.Net.HttpStatusCode.NotFound:
-				case System.Net.HttpStatusCode.Gone:
-				case System.Net.HttpStatusCode.Forbidden:
+				case HttpStatusCode.NotFound:
+				case HttpStatusCode.Gone:
+				case HttpStatusCode.Forbidden:
 					result |= ResponseResult.RemoveUser;					
 					break;
-				case System.Net.HttpStatusCode.NotAcceptable:
+				case HttpStatusCode.NotAcceptable:
 					result = ResponseResult.FailTryAgain;
 					break;
-				case System.Net.HttpStatusCode.Unauthorized:
+				case HttpStatusCode.Unauthorized:
 					//Need to refresh the token, so invalidate it and we'll pick up a new one on retry.
 					result = ResponseResult.FailTryAgain;
 					result |= ResponseResult.InvalidateToken;
-					break;
-				default:
 					break;
 			}
 			return result;
 		}
 
 		#region IDisposable Support
-		private bool disposedValue = false; // To detect redundant calls
+		private bool disposedValue; // To detect redundant calls
 
 		protected virtual void Dispose(bool disposing)
 		{

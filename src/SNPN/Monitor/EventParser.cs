@@ -21,8 +21,6 @@ namespace SNPN.Monitor
 					return EventType.NewPost;
 				case "servermessage":
 					return EventType.ServerMessage;
-				default:
-					break;
 			}
 			return EventType.Uknown;
 		}

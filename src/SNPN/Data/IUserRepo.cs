@@ -12,7 +12,7 @@ namespace SNPN.Data
 		Task DeleteDeviceByUri(string uri);
 		Task<NotificationUser> FindUser(string userName);
 		Task<List<string>> GetAllUserNamesForNotification();
-		Task<IEnumerable<DeviceInfo>> GetUserDeviceInfos(NotificationUser user);
+		Task<List<DeviceInfo>> GetUserDeviceInfos(NotificationUser user);
 		Task UpdateUser(NotificationUser user);
 	}
 }

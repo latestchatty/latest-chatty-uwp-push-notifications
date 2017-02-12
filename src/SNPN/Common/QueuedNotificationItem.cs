@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using System.Xml.Linq;
+﻿using System.Xml.Linq;
 
 namespace SNPN.Common
 {
@@ -15,7 +11,7 @@ namespace SNPN.Common
 			this.Uri = uri;
 			this.Group = group;
 			this.Tag = tag;
-			this.TTL = ttl;
+			this.Ttl = ttl;
 		}
 
 		public XDocument Content { get; private set; }
@@ -23,6 +19,6 @@ namespace SNPN.Common
 		public string Uri { get; private set; }
 		public NotificationGroups Group { get; private set; }
 		public string Tag { get; private set; }
-		public int TTL { get; private set; }
+		public int Ttl { get; private set; }
 	}
 }

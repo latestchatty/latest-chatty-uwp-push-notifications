@@ -4,7 +4,6 @@ using SNPN.Data;
 using SNPN.Monitor;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using Xunit;
 using Serilog;
@@ -26,7 +25,7 @@ namespace SNPN.Test.Monitor
 			};
 		}
 
-		private IEnumerable<DeviceInfo> GetDeviceInfo()
+		private List<DeviceInfo> GetDeviceInfo()
 		{
 			return new List<DeviceInfo>
 				{
@@ -35,10 +34,10 @@ namespace SNPN.Test.Monitor
 						DeviceId = "asdf",
 						NotificationUri = "http://thisis.fake"
 					}
-				}.AsEnumerable();
+				};
 		}
 
-		private IEnumerable<DeviceInfo> GetDeviceInfos()
+		private List<DeviceInfo> GetDeviceInfos()
 		{
 			return new List<DeviceInfo>
 				{
@@ -52,7 +51,7 @@ namespace SNPN.Test.Monitor
 						DeviceId = "asdf1",
 						NotificationUri = "http://thisis.fake"
 					}
-				}.AsEnumerable();
+				};
 		}
 
 		private NewPostEvent GetPostEvent()
@@ -141,7 +140,7 @@ namespace SNPN.Test.Monitor
 				.Returns(Task.FromResult(this.GetNotificationUser()));
 
 			repo.Setup(r => r.GetUserDeviceInfos(It.IsAny<NotificationUser>()))
-				.Returns(Task.FromResult<IEnumerable<DeviceInfo>>(null));
+				.Returns(Task.FromResult<List<DeviceInfo>>(null));
 
 			notificationMoq.Setup(n => n.QueueNotificationData(NotificationType.Toast, It.IsAny<string>(), It.IsAny<XDocument>(), NotificationGroups.ReplyToUser, It.IsAny<string>(), It.IsAny<int>()))
 				.Callback(() => countNotificationsAdded++);

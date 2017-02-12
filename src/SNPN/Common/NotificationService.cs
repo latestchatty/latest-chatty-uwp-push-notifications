@@ -2,10 +2,6 @@
 using SNPN.Data;
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 
@@ -60,15 +56,14 @@ namespace SNPN.Common
 		{
 			try
 			{
-				QueuedNotificationItem notification = null;
+				QueuedNotificationItem notification;
 				while (this.queuedItems.TryDequeue(out notification))
 				{
 					this.logger.Verbose("Processing notification queue.");
 					try
 					{
 						var token = await this.accessTokenManager.GetAccessToken();
-						var headers = new Dictionary<string, string>();
-
+						
 						this.logger.Information(
 							"Sending notification {notificationType} with content {contentType}",
 							notification.Type, notification.Content?.ToString(SaveOptions.None));

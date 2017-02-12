@@ -2,35 +2,33 @@ using Dapper;
 using Microsoft.Data.Sqlite;
 using System.IO;
 using Autofac;
-using SNPN.Common;
-using System;
 using System.Data;
 
 namespace SNPN.Data
 {
-	public class DBHelper
+	public class DbHelper
 	{
 		private static readonly long CURRENT_VERSION = 1;
-		private static bool initialized = false;
-		private static Object locker = new Object();
-		private static string db_file;
-		private static string DB_FILE
+		private static bool initialized;
+		private static readonly object locker = new object();
+		private static string dbFile;
+		private static string DbFile
 		{
 			get
 			{
-				if (db_file == null)
+				if (dbFile == null)
 				{
 					var config = AppModuleBuilder.Container.Resolve<AppConfiguration>();
-					if (string.IsNullOrWhiteSpace(config.DBLocation))
+					if (string.IsNullOrWhiteSpace(config.DbLocation))
 					{
-						db_file = Path.Combine(Directory.GetCurrentDirectory(), "Notifications.db");
+						dbFile = Path.Combine(Directory.GetCurrentDirectory(), "Notifications.db");
 					}
 					else
 					{
-						db_file = config.DBLocation;
+						dbFile = config.DbLocation;
 					}
 				}
-				return db_file;
+				return dbFile;
 			}
 		}
 
@@ -38,15 +36,16 @@ namespace SNPN.Data
 		{
 			lock (locker)
 			{
-				if (!File.Exists(DB_FILE))
+				if (!File.Exists(DbFile))
 				{
-					CreateDatabase(DB_FILE);
+					CreateDatabase(DbFile);
 				}
 				if (!initialized)
 				{
 					UpgradeDatabase();
+					initialized = true;
 				}
-				return GetConnectionInternal(DB_FILE);
+				return GetConnectionInternal(DbFile);
 			}
 		}
 
@@ -91,7 +90,7 @@ namespace SNPN.Data
 
 		private static void UpgradeDatabase()
 		{
-			using (var con = GetConnectionInternal(DB_FILE))
+			using (var con = GetConnectionInternal(DbFile))
 			{
 				con.Open();
 				var dbVersion = con.QuerySingle<long>(@"PRAGMA user_version");

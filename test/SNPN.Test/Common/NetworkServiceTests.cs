@@ -1,7 +1,6 @@
 ﻿using Moq;
 using Moq.Protected;
 using SNPN.Common;
-using SNPN.Data;
 using System;
 using System.Net.Http;
 using System.Threading;
@@ -29,7 +28,7 @@ namespace SNPN.Test.Common
 			var xDoc = await service.GetTileContent();
 
 			Assert.NotNull(xDoc);
-			Assert.Equal("xml", xDoc.Root.Name.LocalName.ToString());
+			Assert.Equal("xml", xDoc.Root.Name.LocalName);
 		}
 
 		[Fact]
@@ -80,7 +79,7 @@ namespace SNPN.Test.Common
 		private AppConfiguration GetAppConfig()
 		{
 			var config = new AppConfiguration();
-			config.WinchattyAPIBase = "http://testApi/";
+			config.WinchattyApiBase = "http://testApi/";
 			return config;
 		}
 

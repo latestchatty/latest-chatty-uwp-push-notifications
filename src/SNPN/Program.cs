@@ -19,7 +19,8 @@ namespace SNPN
 					var monitor = container.Resolve<Monitor.Monitor>();
 					var config = container.Resolve<AppConfiguration>();
 					//This is ghetto as fffffff but just get a connection so we can make sure the DB is upgraded beofre anyone else uses it and before anything else is running.
-					using (var con = UserRepo.GetConnection()) { }
+					using (DbHelper.GetConnection())
+					{ }
 
 					monitor.Start();
 

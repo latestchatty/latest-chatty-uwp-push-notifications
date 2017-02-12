@@ -1,16 +1,15 @@
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.Configuration;
+//using Microsoft.AspNetCore.Hosting;
 using Nancy.Owin;
 
 namespace SNPN
 {
 	public class Startup
 	{
-		public IConfiguration Configuration { get; set; }
+		//public IConfiguration Configuration { get; set; }
 
-		public Startup(IHostingEnvironment env)
-		{ }
+		//public Startup(IHostingEnvironment env)
+		//{ }
 
 		public void Configure(IApplicationBuilder app)
 		{

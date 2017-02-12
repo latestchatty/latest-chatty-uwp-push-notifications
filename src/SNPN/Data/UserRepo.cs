@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace SNPN.Data
 {
-	public class UserRepo : DBHelper, IUserRepo
+	public class UserRepo : DbHelper, IUserRepo
 	{
 		public async Task<NotificationUser> FindUser(string userName)
 		{
@@ -79,11 +79,11 @@ namespace SNPN.Data
 			}
 		}
 
-		public async Task<IEnumerable<DeviceInfo>> GetUserDeviceInfos(NotificationUser user)
+		public async Task<List<DeviceInfo>> GetUserDeviceInfos(NotificationUser user)
 		{
 			using (var con = GetConnection())
 			{
-				return await con.QueryAsync<DeviceInfo>("SELECT * FROM Device WHERE UserId=@Id", new { user.Id });
+				return (await con.QueryAsync<DeviceInfo>("SELECT * FROM Device WHERE UserId=@Id", new { user.Id })).ToList();
 			}
 		}
 

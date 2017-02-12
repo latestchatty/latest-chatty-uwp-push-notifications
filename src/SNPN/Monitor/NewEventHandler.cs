@@ -13,7 +13,7 @@ namespace SNPN.Monitor
 		private readonly ILogger logger;
 		private readonly INotificationService notificationService;
 		private readonly IUserRepo userRepo;
-		private const int TTL = 172800; // 48 hours
+		private const int Ttl = 172800; // 48 hours
 
 		public NewEventHandler(INotificationService notificationService, IUserRepo userRepo, ILogger logger)
 		{
@@ -74,7 +74,7 @@ namespace SNPN.Monitor
 					toastDoc, 
 					NotificationGroups.ReplyToUser, 
 					latestPostId.ToString(), 
-					TTL);
+					Ttl);
 			}
 		}
 	}

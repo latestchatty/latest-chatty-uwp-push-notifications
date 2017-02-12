@@ -44,12 +44,7 @@ namespace SNPN.Test.Monitor
 			return new JObject(
 					new JProperty("lastEventId", 99999),
 					new JProperty("events", 
-						new JArray(new[]
-						{
-							GenerateNewPostEvent(),
-							GenerateEvent("lolCountsUpdate"),
-							GenerateNewPostEvent()
-						})
+						new JArray(GenerateNewPostEvent(), GenerateEvent("lolCountsUpdate"), GenerateNewPostEvent())
 					));
 		}
 

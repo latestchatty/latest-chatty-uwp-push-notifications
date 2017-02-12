@@ -1,8 +1,5 @@
-﻿using Newtonsoft.Json.Linq;
-using Serilog;
+﻿using Serilog;
 using System;
-using System.Collections.Generic;
-using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -11,14 +8,12 @@ namespace SNPN.Common
 	public class AccessTokenManager : IDisposable
 	{
 		private string accessToken = string.Empty;
-		private readonly AppConfiguration configuration;
 		private readonly ILogger logger;
 		private readonly INetworkService networkService;
 		SemaphoreSlim locker = new SemaphoreSlim(1);
 
-		AccessTokenManager(AppConfiguration config, ILogger logger, INetworkService networkService)
+		AccessTokenManager(ILogger logger, INetworkService networkService)
 		{
-			this.configuration = config;
 			this.logger = logger;
 			this.networkService = networkService;
 		}
@@ -54,7 +49,7 @@ namespace SNPN.Common
 		}
 
 		#region IDisposable Support
-		private bool disposedValue = false; // To detect redundant calls
+		private bool disposedValue; // To detect redundant calls
 
 		protected virtual void Dispose(bool disposing)
 		{
