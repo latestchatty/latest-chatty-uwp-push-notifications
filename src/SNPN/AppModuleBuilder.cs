@@ -1,3 +1,6 @@
+using System;
+using System.IO;
+using System.Net.Http;
 using Autofac;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
@@ -5,16 +8,14 @@ using Serilog;
 using SNPN.Common;
 using SNPN.Data;
 using SNPN.Monitor;
-using System;
-using System.IO;
-using System.Net.Http;
 
 namespace SNPN
 {
-	public class AppModuleBuilder
+	public static class AppModuleBuilder
 	{
-		private static Lazy<IContainer> container = new Lazy<IContainer>(() => BuildContainer());
-		public static IContainer Container { get { return container.Value; } }
+		private static readonly Lazy<IContainer> container = new Lazy<IContainer>(BuildContainer);
+		public static IContainer Container => container.Value;
+
 		private static IContainer BuildContainer()
 		{
 			var builder = new ContainerBuilder();
@@ -33,7 +34,7 @@ namespace SNPN
 			{
 				var config = x.Resolve<IConfigurationRoot>();
 				var appConfig = new AppConfiguration();
-				ConfigurationBinder.Bind(config, appConfig);
+				config.Bind(appConfig);
 				return appConfig;
 			}).SingleInstance();
 			builder.Register<ILogger>(x =>
@@ -51,7 +52,7 @@ namespace SNPN
 				var ctx = c.Resolve<IComponentContext>();
 				return () => ctx.Resolve<NewEventHandler>();
 			});
-			builder.RegisterType<HttpClientHandler>().SingleInstance();
+			builder.RegisterType<HttpClientHandler>().As<HttpMessageHandler>().SingleInstance();
 			builder.RegisterType<NetworkService>().As<INetworkService>().SingleInstance();
 			return builder.Build();
 		}

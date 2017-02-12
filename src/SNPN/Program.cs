@@ -1,6 +1,7 @@
 ﻿using Autofac;
 using Microsoft.AspNetCore.Hosting;
 using System;
+using System.Diagnostics;
 using System.IO;
 using Serilog;
 using SNPN.Data;
@@ -38,6 +39,7 @@ namespace SNPN
 				catch (Exception ex)
 				{
 					logger.Error(ex, "Unhandled exception in app.");
+					if (Debugger.IsAttached) { Console.ReadKey(); }
 				}
 			}
 		}

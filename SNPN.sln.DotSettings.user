@@ -1,7 +1,7 @@
 ﻿<wpf:ResourceDictionary xml:space="preserve" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:s="clr-namespace:System;assembly=mscorlib" xmlns:ss="urn:shemas-jetbrains-com:settings-storage-xaml" xmlns:wpf="http://schemas.microsoft.com/winfx/2006/xaml/presentation">
 	<s:String x:Key="/Default/CodeInspection/Highlighting/AnalysisEnabled/@EntryValue">SOLUTION</s:String>
 	<s:Boolean x:Key="/Default/CoverageSessionsPersistenceManagerSettings/SessionPersistentData/=10139048CB444687A7946E2BC2D9EF2E/@KeyIndexDefined">True</s:Boolean>
-	<s:String x:Key="/Default/CoverageSessionsPersistenceManagerSettings/SessionPersistentData/=10139048CB444687A7946E2BC2D9EF2E/SnapshotLocation/@EntryValue">C:\Users\wzutz\AppData\Local\Temp\ssm.Carivej.tmp</s:String>
+	<s:String x:Key="/Default/CoverageSessionsPersistenceManagerSettings/SessionPersistentData/=10139048CB444687A7946E2BC2D9EF2E/SnapshotLocation/@EntryValue">C:\Users\wzutz\AppData\Local\Temp\ssm.Xirewap.tmp</s:String>
 	<s:String x:Key="/Default/CoverageSessionsPersistenceManagerSettings/SessionPersistentData/=10139048CB444687A7946E2BC2D9EF2E/ProductVersion/@EntryValue">2016.3.2</s:String>
 	<s:String x:Key="/Default/Environment/ContinuousTesting/PersistentDataLocation/@EntryValue">C:\Users\wzutz\AppData\Local\Temp\JetBrains\ContinuousTesting\0cd5dfd7-9f18-4823-aaf0-399b7df2ce5e</s:String>
 	<s:String x:Key="/Default/Environment/ContinuousTesting/Strategy/@EntryValue">RunTests</s:String>

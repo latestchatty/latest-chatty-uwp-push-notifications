@@ -63,7 +63,6 @@ namespace SNPN.Monitor
 		private async void NotifyUser(NotificationUser user, int latestPostId, string title, string message)
 		{
 			var deviceInfos = await this.userRepo.GetUserDeviceInfos(user);
-			if (!deviceInfos.Any()) return;
 
 			foreach (var info in deviceInfos)
 			{

@@ -27,11 +27,12 @@ namespace SNPN.Monitor
 
 		public long GetLatestEventId(JToken eventsJson)
 		{
+			long eventId = 0;
 			if (eventsJson["lastEventId"] != null)
 			{
-				return (long)eventsJson["lastEventId"];
+				eventId = (long)eventsJson["lastEventId"];
 			}
-			return 0;
+			return eventId;
 		}
 
 		public NewPostEvent GetNewPostEvent(JToken eventJson)

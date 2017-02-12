@@ -1,3 +1,4 @@
+using Autofac;
 using SNPN.Common;
 using Xunit;
 
