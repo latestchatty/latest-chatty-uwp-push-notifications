@@ -1,7 +1,7 @@
 {
 	"version": "1.0.0-*",
 	"buildOptions": {
-		"debugType": "portable"
+		"debugType": "full"
 	},
 	"dependencies": {
 		"System.Runtime.Serialization.Primitives": "4.3.0",
@@ -11,7 +11,9 @@
          "target": "project"
       },
       "Moq": "4.6.38-alpha",
-      "Serilog": "2.4.0"
+      "Serilog": "2.4.0",
+      "OpenCover": "4.6.519",
+      "ReportGenerator": "2.5.2"
 	},
 	"testRunner": "xunit",
 	"frameworks": {

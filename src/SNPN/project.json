@@ -2,7 +2,7 @@
 	"name": "SNPN",
 	"version": "1.0.0-*",
 	"buildOptions": {
-		"debugType": "portable",
+		"debugType": "full",
 		"emitEntryPoint": true
 	},
 	"dependencies": {
