@@ -137,11 +137,9 @@ namespace SNPN.Common
 				if (response.StatusCode == HttpStatusCode.OK)
 				{
 					var responseJson = JToken.Parse(await response.Content.ReadAsStringAsync());
-					if (responseJson["access_token"] != null)
-					{
-						this.logger.Information("Got access token.");
-						return responseJson["access_token"].Value<string>();
-					}
+
+					this.logger.Information("Got access token.");
+					return responseJson["access_token"].Value<string>();
 				}
 			}
 			return null;

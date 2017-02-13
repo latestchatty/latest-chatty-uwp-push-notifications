@@ -6,6 +6,7 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
+using System.Net;
 
 namespace SNPN.Test.Common
 {
@@ -18,6 +19,16 @@ namespace SNPN.Test.Common
 			var result = await service.WinChattyGetNewestEventId(new CancellationToken());
 
 			Assert.Equal(12345, result);
+		}
+
+		[Fact]
+		async Task WinChattyWaitForEvent()
+		{
+			var service = this.GetMockedNetworkService("{ \"eventId\": \"12345\" }");
+			var result = await service.WinChattyWaitForEvent(1234, new CancellationToken());
+
+			Assert.NotNull(result);
+			Assert.Equal("12345", result["eventId"].ToString());
 		}
 
 		[Fact]
@@ -75,6 +86,38 @@ namespace SNPN.Test.Common
 			Assert.Equal(false, result);
 		}
 
+		[Fact]
+		async void GetNotificationToken()
+		{
+			var tokenValue = "EgAcAQMAAAAALYAAY/c+Huwi3Fv4Ck10UrKNmtxRO6Njk2MgA=";
+			var service = this.GetMockedNetworkService(@"{
+				""access_token"":""" + tokenValue + @""", 
+				""token_type"":""bearer""
+			}");
+			var result = await service.GetNotificationToken();
+
+			Assert.Equal(tokenValue, result);
+		}
+
+		[Fact]
+		async void GetNotificationTokenBadRequest()
+		{
+			var service = this.GetMockedNetworkService(string.Empty, HttpStatusCode.BadRequest);
+			var result = await service.GetNotificationToken();
+
+			Assert.Null(result);
+		}
+
+		[Fact]
+		async void SendNotification()
+		{
+			var service = this.GetMockedNetworkService(string.Empty);
+			var doc = NotificationBuilder.BuildReplyDoc(1, "Hello", "World");
+			var result = await service.SendNotification(new QueuedNotificationItem(NotificationType.Toast, doc, "http://test.url", NotificationGroups.ReplyToUser), "token");
+
+			Assert.Equal(ResponseResult.Success, result);
+		}
+
 		#region Setup Helpers
 		private AppConfiguration GetAppConfig()
 		{
@@ -83,7 +126,7 @@ namespace SNPN.Test.Common
 			return config;
 		}
 
-		private Mock<HttpMessageHandler> GetMessageHandlerMock(string returnContent)
+		private Mock<HttpMessageHandler> GetMessageHandlerMock(string returnContent, HttpStatusCode statusCode)
 		{
 			var handler = new Mock<HttpMessageHandler>();
 			handler.Protected()
@@ -94,16 +137,17 @@ namespace SNPN.Test.Common
 					var contentBuffer = new StringContent(content);
 					var message = new HttpResponseMessage();
 					message.Content = contentBuffer;
+					message.StatusCode = statusCode;
 					return Task.FromResult(message);
 				});
 			return handler;
 		}
 
-		private NetworkService GetMockedNetworkService(string callReturn)
+		private NetworkService GetMockedNetworkService(string callReturn, HttpStatusCode statusCode = HttpStatusCode.OK)
 		{
 			var logger = new Mock<Serilog.ILogger>();
 			var config = this.GetAppConfig();
-			var handler = GetMessageHandlerMock(callReturn);
+			var handler = GetMessageHandlerMock(callReturn, statusCode);
 
 			var service = new NetworkService(config, logger.Object, handler.Object);
 			return service;
