@@ -1,0 +1,32 @@
+.idea/*
+.DS_Store
+subscribedUsers
+logs
+node_modules
+*.sublime-workspace
+.notificationConfig
+
+# git ignore file
+*bin/
+*obj/
+packages/
+AppPackages/
+*ReSharper*/
+
+ApplicationInsights.config
+*.ncrunch*
+*.suo
+*.csproj.user
+Local.config
+/.vs/restore.dg
+/Shacknews Push Notifications - Core/ConsoleApp1/project.lock.json
+project.lock.json
+*.db
+database/*
+log/*
+*.un~
+/appsettings.docker.json
+*.json~
+/Dockerfile~
+coverage.xml
+coverage-report/*
