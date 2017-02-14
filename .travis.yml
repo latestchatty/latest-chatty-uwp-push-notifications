@@ -6,7 +6,8 @@ dotnet: 1.0.0-preview2-1-003177
 install:
   - export DOTNET_CLI_TELEMETRY_OPTOUT=1
 before_script:
-  - find . -type f -name "project.json" -exec sed -i 's/\"debugType\"[[:space:]]*:[[:space:]]*\"full\"/\"debugType\": \"portable\"/g' {} +
+  - chmod a+x ./setdebugtype.sh
   - chmod a+x ./build.sh
+  - ./setdebugtype.sh
 script:
   - ./build.sh --quiet verify
