@@ -6,8 +6,8 @@ dotnet: 1.0.0-preview2-1-003177
 install:
   - export DOTNET_CLI_TELEMETRY_OPTOUT=1
 before_script:
-  - chmod a+x ./setdebugtype.sh
-  - chmod a+x ./build.sh
+  - chmod a+x ./tools/setdebugtype.sh
+  - chmod a+x ./tools/build.sh
   - ./setdebugtype.sh
 script:
-  - ./build.sh --quiet verify
+  - ./tools/build.sh --quiet verify
