@@ -1,4 +1,4 @@
-.idea/*
+*.idea/*
 .DS_Store
 subscribedUsers
 logs
@@ -12,6 +12,7 @@ node_modules
 packages/
 AppPackages/
 *ReSharper*/
+*.DotSettings.user 
 
 ApplicationInsights.config
 *.ncrunch*
