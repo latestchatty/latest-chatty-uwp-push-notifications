@@ -10,7 +10,7 @@ Documentatation for the WinChatty v2 API is available [here](http://winchatty.co
 How to build
 ------
  - Clone the repo
- - Ensure .NET Core 1.1.0 is installed and in your path.
+ - Ensure [.NET Core](https://www.microsoft.com/net/core) 1.1.0 or later is installed and in your path.
  - `dotnet restore`
  - `dotnet build`
 
