@@ -3,5 +3,9 @@ dist: trusty
 sudo: required
 mono: none
 dotnet: 1.0.0-preview2-1-003177
+install:
+  - export DOTNET_CLI_TELEMETRY_OPTOUT=1
+before_script:
+  - chmod a+x ./build.sh
 script:
   - ./build.sh --quiet verify
