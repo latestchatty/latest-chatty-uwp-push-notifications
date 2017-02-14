@@ -8,6 +8,6 @@ install:
 before_script:
   - chmod a+x ./tools/setdebugtype.sh
   - chmod a+x ./tools/build.sh
-  - ./setdebugtype.sh
+  - ./tools/setdebugtype.sh
 script:
   - ./tools/build.sh --quiet verify
