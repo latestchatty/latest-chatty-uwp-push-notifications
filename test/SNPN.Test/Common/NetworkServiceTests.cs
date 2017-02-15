@@ -7,10 +7,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 using System.Net;
+using System.Linq;
 
 namespace SNPN.Test.Common
 {
-	public class NetworkServiceTests
+	public class NetworkServiceTests: NetworkServiceTestsBase
 	{
 		[Fact]
 		async Task WinChattyGetNewestEventId()
@@ -107,111 +108,5 @@ namespace SNPN.Test.Common
 
 			Assert.Null(result);
 		}
-
-		[Fact]
-		async void SendNotification()
-		{
-			var service = this.GetMockedNetworkService(string.Empty);
-			var doc = NotificationBuilder.BuildReplyDoc(1, "Hello", "World");
-			var result = await service.SendNotification(new QueuedNotificationItem(NotificationType.Toast, doc, "http://test.url", NotificationGroups.ReplyToUser), "token");
-
-			Assert.Equal(ResponseResult.Success, result);
-		}
-
-		[Fact]
-		async void SendNotificationNotFound()
-		{
-			var service = this.GetMockedNetworkService(string.Empty, HttpStatusCode.NotFound);
-			var doc = NotificationBuilder.BuildReplyDoc(1, "Hello", "World");
-			var result = await service.SendNotification(new QueuedNotificationItem(NotificationType.Toast, doc, "http://test.url", NotificationGroups.ReplyToUser), "token");
-
-			Assert.Equal(ResponseResult.RemoveUser | ResponseResult.FailDoNotTryAgain, result);
-		}
-
-		[Fact]
-		async void SendNotificationGone()
-		{
-			var service = this.GetMockedNetworkService(string.Empty, HttpStatusCode.Gone);
-			var doc = NotificationBuilder.BuildReplyDoc(1, "Hello", "World");
-			var result = await service.SendNotification(new QueuedNotificationItem(NotificationType.Toast, doc, "http://test.url", NotificationGroups.ReplyToUser), "token");
-
-			Assert.Equal(ResponseResult.RemoveUser | ResponseResult.FailDoNotTryAgain, result);
-		}
-
-		[Fact]
-		async void SendNotificationForbidden()
-		{
-			var service = this.GetMockedNetworkService(string.Empty, HttpStatusCode.Forbidden);
-			var doc = NotificationBuilder.BuildReplyDoc(1, "Hello", "World");
-			var result = await service.SendNotification(new QueuedNotificationItem(NotificationType.Toast, doc, "http://test.url", NotificationGroups.ReplyToUser), "token");
-
-			Assert.Equal(ResponseResult.RemoveUser | ResponseResult.FailDoNotTryAgain, result);
-		}
-
-		[Fact]
-		async void SendNotificationNotAcceptible()
-		{
-			var service = this.GetMockedNetworkService(string.Empty, HttpStatusCode.NotAcceptable);
-			var doc = NotificationBuilder.BuildReplyDoc(1, "Hello", "World");
-			var result = await service.SendNotification(new QueuedNotificationItem(NotificationType.Toast, doc, "http://test.url", NotificationGroups.ReplyToUser), "token");
-
-			Assert.Equal(ResponseResult.FailTryAgain, result);
-		}
-		
-		[Fact]
-		async void SendNotificationUnauthorized()
-		{
-			var service = this.GetMockedNetworkService(string.Empty, HttpStatusCode.Unauthorized);
-			var doc = NotificationBuilder.BuildReplyDoc(1, "Hello", "World");
-			var result = await service.SendNotification(new QueuedNotificationItem(NotificationType.Toast, doc, "http://test.url", NotificationGroups.ReplyToUser), "token");
-
-			Assert.Equal(ResponseResult.InvalidateToken | ResponseResult.FailTryAgain, result);
-		}
-		
-		[Fact]
-		async void SendNotificationUnhandledCode()
-		{
-			var service = this.GetMockedNetworkService(string.Empty, HttpStatusCode.ProxyAuthenticationRequired);
-			var doc = NotificationBuilder.BuildReplyDoc(1, "Hello", "World");
-			var result = await service.SendNotification(new QueuedNotificationItem(NotificationType.Toast, doc, "http://test.url", NotificationGroups.ReplyToUser), "token");
-
-			Assert.Equal(ResponseResult.FailDoNotTryAgain, result);
-		}
-
-		#region Setup Helpers
-		private AppConfiguration GetAppConfig()
-		{
-			var config = new AppConfiguration();
-			config.WinchattyApiBase = "http://testApi/";
-			return config;
-		}
-
-		private Mock<HttpMessageHandler> GetMessageHandlerMock(string returnContent, HttpStatusCode statusCode)
-		{
-			var handler = new Mock<HttpMessageHandler>();
-			handler.Protected()
-				.Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
-				.Returns(() =>
-				{
-					var content = returnContent;
-					var contentBuffer = new StringContent(content);
-					var message = new HttpResponseMessage();
-					message.Content = contentBuffer;
-					message.StatusCode = statusCode;
-					return Task.FromResult(message);
-				});
-			return handler;
-		}
-
-		private NetworkService GetMockedNetworkService(string callReturn, HttpStatusCode statusCode = HttpStatusCode.OK)
-		{
-			var logger = new Mock<Serilog.ILogger>();
-			var config = this.GetAppConfig();
-			var handler = GetMessageHandlerMock(callReturn, statusCode);
-
-			var service = new NetworkService(config, logger.Object, handler.Object);
-			return service;
-		}
-		#endregion
 	}
 }
