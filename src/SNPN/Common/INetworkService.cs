@@ -5,7 +5,7 @@ using System.Xml.Linq;
 
 namespace SNPN.Common
 {
-	interface INetworkService
+	public interface INetworkService
 	{
 		Task<int> WinChattyGetNewestEventId(CancellationToken ct);
 

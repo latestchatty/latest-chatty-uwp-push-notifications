@@ -8,6 +8,7 @@ using Serilog;
 using SNPN.Common;
 using SNPN.Data;
 using SNPN.Monitor;
+using SNPN.WebService;
 
 namespace SNPN
 {
@@ -54,6 +55,7 @@ namespace SNPN
 			});
 			builder.RegisterType<HttpClientHandler>().As<HttpMessageHandler>().SingleInstance();
 			builder.RegisterType<NetworkService>().As<INetworkService>().SingleInstance();
+			builder.RegisterType<TileContentRepo>().InstancePerDependency();
 			return builder.Build();
 		}
 	}
