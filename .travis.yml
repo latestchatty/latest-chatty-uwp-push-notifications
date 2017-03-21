@@ -10,4 +10,4 @@ before_script:
   - chmod a+x ./tools/build.sh
   - ./tools/setdebugtype.sh
 script:
-  - ./tools/build.sh --quiet verify
+  - ./tools/build.sh
