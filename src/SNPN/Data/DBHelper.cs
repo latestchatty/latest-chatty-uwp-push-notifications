@@ -51,6 +51,10 @@ namespace SNPN.Data
 
 		private static SqliteConnection GetConnectionInternal(string fileLocation)
 		{
+            if (!File.Exists(fileLocation))
+            {
+                throw new FileNotFoundException("Database file doesn't exist", fileLocation);
+            }
 			return new SqliteConnection("Data Source=" + fileLocation);
 		}
 
