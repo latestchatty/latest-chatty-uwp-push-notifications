@@ -1,5 +1,5 @@
 # Shacknews Push Notifications
-[![Build Status](https://travis-ci.org/boarder2/Shacknews-Push-Notifications.svg?branch=master)](https://travis-ci.org/boarder2/Shacknews-Push-Notifications)
+[![Build status](https://ci.appveyor.com/api/projects/status/lec194l9si2nq86x/branch/master?svg=true)](https://ci.appveyor.com/project/boarder2/shacknews-push-notifications/branch/master)
 
 Push notification service for [Latest Chatty UWP](https://github.com/boarder2/Latest-Chatty-8)
 
