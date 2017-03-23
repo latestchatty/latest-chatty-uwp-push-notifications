@@ -12,7 +12,7 @@ namespace SNPN.Common
 		private readonly INetworkService networkService;
 		SemaphoreSlim locker = new SemaphoreSlim(1);
 
-		AccessTokenManager(ILogger logger, INetworkService networkService)
+		public AccessTokenManager(ILogger logger, INetworkService networkService)
 		{
 			this.logger = logger;
 			this.networkService = networkService;

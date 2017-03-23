@@ -31,3 +31,6 @@ log/*
 /Dockerfile~
 coverage.xml
 coverage-report/*
+*.pfx
+*.cer
+*.pvk

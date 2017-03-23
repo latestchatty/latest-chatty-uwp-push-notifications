@@ -18,7 +18,7 @@ namespace SNPN.Common
 
 		private bool processingNotificationQueue;
 
-		NotificationService(AccessTokenManager accessTokenManager, IUserRepo userRepo, ILogger logger, INetworkService networkService)
+		public NotificationService(AccessTokenManager accessTokenManager, IUserRepo userRepo, ILogger logger, INetworkService networkService)
 		{
 			this.accessTokenManager = accessTokenManager;
 			this.userRepo = userRepo;
