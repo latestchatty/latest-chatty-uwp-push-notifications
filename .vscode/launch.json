@@ -8,8 +8,8 @@
             "preLaunchTask": "build",
             "program": "${workspaceRoot}\\src\\SNPN\\bin\\Debug\\netcoreapp1.0\\SNPN.dll",
             "args": [],
-            "cwd": "${workspaceRoot}",
-            "externalConsole": false,
+            "cwd": "${workspaceRoot}\\src\\SNPN",
+            "console": "internalConsole",
             "stopAtEntry": false,
             "internalConsoleOptions": "openOnSessionStart"
         },
@@ -17,7 +17,7 @@
             "name": ".NET Core Attach",
             "type": "coreclr",
             "request": "attach",
-            "processId": "${command.pickProcess}"
+            "processId": "${command:pickProcess}"
         }
     ]
 }
