@@ -1,0 +1,10 @@
+FROM microsoft/dotnet:sdk
+
+WORKDIR /dotnetapp
+
+COPY ./src .
+
+COPY appsettings.json ./appsettings.json
+
+#CMD "bash"
+CMD /usr/bin/dotnet run watch --project /dotnetapp/SNPN/SNPN.csproj
