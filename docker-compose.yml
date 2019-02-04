@@ -1,9 +1,15 @@
-version: '2.1'
+version: '2.2'
 services:
   web:
-    build: .
+    image: boarder2/latest-chatty-uwp-push-notifications
     ports:
      - "4000:4000"
+    #restart: always
     volumes:
      - ./database:/database
      - ./log:/log
+    mem_limit: 300000000
+    cpu_percent: 50
+    environment: 
+      - DBLOCATION=/database/db.db
+      

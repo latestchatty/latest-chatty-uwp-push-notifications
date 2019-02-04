@@ -49,18 +49,18 @@ namespace SNPN.Data
 			}
 		}
 
-		private static SqliteConnection GetConnectionInternal(string fileLocation)
+		private static SqliteConnection GetConnectionInternal(string fileLocation, bool ignoreMissingFile = false)
 		{
-            if (!File.Exists(fileLocation))
-            {
-                throw new FileNotFoundException("Database file doesn't exist", fileLocation);
-            }
+			if (!ignoreMissingFile && !File.Exists(fileLocation))
+			{
+				throw new FileNotFoundException("Database file doesn't exist", fileLocation);
+			}
 			return new SqliteConnection("Data Source=" + fileLocation);
 		}
 
 		private static void CreateDatabase(string fileLocation)
 		{
-			using (var connection = GetConnectionInternal(fileLocation))
+			using (var connection = GetConnectionInternal(fileLocation, true))
 			{
 				connection.Open();
 				using (var tx = connection.BeginTransaction())

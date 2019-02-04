@@ -26,7 +26,8 @@ namespace SNPN
 			builder.Register(x =>
 			{
 				var configBuilder = new ConfigurationBuilder()
-					.AddJsonFile("appsettings.json")
+					.AddJsonFile("appsettings.json", true)
+					.AddEnvironmentVariables()
 					.SetBasePath(Directory.GetCurrentDirectory());
 
 				return configBuilder.Build();
