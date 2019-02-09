@@ -2,6 +2,7 @@
 using SNPN.Data;
 using System;
 using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 
@@ -9,21 +10,21 @@ namespace SNPN.Common
 {
 	public class NotificationService : INotificationService
 	{
-		private readonly AccessTokenManager accessTokenManager;
-		private readonly IUserRepo userRepo;
-		private readonly ILogger logger;
-		private readonly INetworkService networkService;
-		private ConcurrentQueue<QueuedNotificationItem> queuedItems = new ConcurrentQueue<QueuedNotificationItem>();
-		private int nextProcessDelay = 3000;
+		private readonly AccessTokenManager _accessTokenManager;
+		private readonly IUserRepo _userRepo;
+		private readonly ILogger _logger;
+		private readonly INetworkService _networkService;
+		private readonly ConcurrentQueue<QueuedNotificationItem> _queuedItems = new ConcurrentQueue<QueuedNotificationItem>();
+		private int _nextProcessDelay = 3000;
 
-		private bool processingNotificationQueue;
+		private bool _processingNotificationQueue;
 
 		public NotificationService(AccessTokenManager accessTokenManager, IUserRepo userRepo, ILogger logger, INetworkService networkService)
 		{
-			this.accessTokenManager = accessTokenManager;
-			this.userRepo = userRepo;
-			this.logger = logger;
-			this.networkService = networkService;
+			_accessTokenManager = accessTokenManager;
+			_userRepo = userRepo;
+			_logger = logger;
+			_networkService = networkService;
 		}
 
 		public void QueueNotificationData(NotificationType type, string notificationUri, XDocument content = null, NotificationGroups group = NotificationGroups.None, string tag = null, int ttl = 0)
@@ -36,35 +37,30 @@ namespace SNPN.Common
 			}
 
 			var notificationItem = new QueuedNotificationItem(type, content, notificationUri, group, tag, ttl);
-			this.queuedItems.Enqueue(notificationItem);
-			this.StartQueueProcess();
+			_queuedItems.Enqueue(notificationItem);
+			StartQueueProcess();
 		}
 		
-		Object locker = new Object();
-		// [MethodImpl(MethodImplOptions.Synchronized)]
+		[MethodImpl(MethodImplOptions.Synchronized)]
 		private void StartQueueProcess()
 		{
-			lock (this.locker)
-			{
-				if (this.processingNotificationQueue) return;
-				this.processingNotificationQueue = true;
-			}
+			if (_processingNotificationQueue) return;
+			_processingNotificationQueue = true;
 			Task.Run(ProcessNotificationQueue);
 		}
 
-		async private Task ProcessNotificationQueue()
+		private async Task ProcessNotificationQueue()
 		{
 			try
 			{
-				QueuedNotificationItem notification;
-				while (this.queuedItems.TryDequeue(out notification))
+                while (_queuedItems.TryDequeue(out var notification))
 				{
-					this.logger.Verbose("Processing notification queue.");
+					_logger.Verbose("Processing notification queue.");
 					try
 					{
-						var token = await this.accessTokenManager.GetAccessToken();
+						var token = await _accessTokenManager.GetAccessToken();
 						
-						this.logger.Information(
+						_logger.Information(
 							"Sending notification {notificationType} with content {contentType}",
 							notification.Type, notification.Content?.ToString(SaveOptions.None));
 						var waitTime = 0;
@@ -77,36 +73,36 @@ namespace SNPN.Common
 								case NotificationType.Badge:
 								case NotificationType.Tile:
 								case NotificationType.Toast:
-									result = await this.networkService.SendNotification(notification, token);
+									result = await _networkService.SendNotification(notification, token);
 									break;
 							}
 							if(result.HasFlag(ResponseResult.RemoveUser))
 							{
-								await this.userRepo.DeleteDeviceByUri(notification.Uri);
+								await _userRepo.DeleteDeviceByUri(notification.Uri);
 							}
 							if (result.HasFlag(ResponseResult.InvalidateToken))
 							{
-								this.accessTokenManager.InvalidateToken();
+								_accessTokenManager.InvalidateToken();
 							}
 							waitTime = (int)Math.Pow(Math.Max(waitTime, 1000), 1.1); //If we need to keep retrying, do it slower until we eventually succeed or get to high.
 							if (waitTime > 10 * 60 * 1000) result = ResponseResult.FailDoNotTryAgain; //Give up after a while.
 						} while (result.HasFlag(ResponseResult.FailTryAgain));
-						this.nextProcessDelay = 0; //Reset on successful processing of a notification
+						_nextProcessDelay = 0; //Reset on successful processing of a notification
 					}
 					catch (Exception ex)
 					{
-						this.logger.Error(ex, $"Exception in {nameof(ProcessNotificationQueue)}");
-						this.nextProcessDelay = (int)Math.Pow(this.nextProcessDelay, 1.1);
+						_logger.Error(ex, $"Exception in {nameof(ProcessNotificationQueue)}");
+						_nextProcessDelay = (int)Math.Pow(_nextProcessDelay, 1.1);
 					}
 					finally
 					{
-						await Task.Delay(new TimeSpan(0, 0, 0, 0, this.nextProcessDelay));
+						await Task.Delay(new TimeSpan(0, 0, 0, 0, _nextProcessDelay));
 					}
 				}
 			}
 			finally
 			{
-				this.processingNotificationQueue = false;
+				_processingNotificationQueue = false;
 			}
 		}
 

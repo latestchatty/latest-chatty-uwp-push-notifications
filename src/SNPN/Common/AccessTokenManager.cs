@@ -7,15 +7,15 @@ namespace SNPN.Common
 {
 	public class AccessTokenManager : IDisposable
 	{
-		private string accessToken = string.Empty;
-		private readonly ILogger logger;
-		private readonly INetworkService networkService;
-		SemaphoreSlim locker = new SemaphoreSlim(1);
+		private string _accessToken = string.Empty;
+		private readonly ILogger _logger;
+		private readonly INetworkService _networkService;
+        private readonly SemaphoreSlim _locker = new SemaphoreSlim(1);
 
 		public AccessTokenManager(ILogger logger, INetworkService networkService)
 		{
-			this.logger = logger;
-			this.networkService = networkService;
+			_logger = logger;
+			_networkService = networkService;
 		}
 	
 		public async Task<string> GetAccessToken()
@@ -23,47 +23,47 @@ namespace SNPN.Common
 			try
 			{
 				//Make sure we don't try to get the token multiple times in a row
-				await this.locker.WaitAsync();
-				if (string.IsNullOrWhiteSpace(this.accessToken))
+				await _locker.WaitAsync();
+				if (string.IsNullOrWhiteSpace(_accessToken))
 				{
-					this.logger.Information("Getting access token.");
-					this.accessToken = await this.networkService.GetNotificationToken();
+					_logger.Information("Getting access token.");
+					_accessToken = await _networkService.GetNotificationToken();
 				}
 			}
 			finally
 			{
-				this.locker.Release();
+				_locker.Release();
 			}
-			return this.accessToken;
+			return _accessToken;
 		}
 
 		public async Task<string> RefreshAccessToken()
 		{
-			this.InvalidateToken();
-			return await this.GetAccessToken();
+			InvalidateToken();
+			return await GetAccessToken();
 		}
 
 		public void InvalidateToken()
 		{
-			this.accessToken = string.Empty;
+			_accessToken = string.Empty;
 		}
 
 		#region IDisposable Support
-		private bool disposedValue; // To detect redundant calls
+		private bool _disposedValue; // To detect redundant calls
 
 		protected virtual void Dispose(bool disposing)
 		{
-			if (!disposedValue)
+			if (!_disposedValue)
 			{
 				if (disposing)
 				{
-					this.locker.Dispose();
+					_locker.Dispose();
 				}
 
 				// TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
 				// TODO: set large fields to null.
 
-				disposedValue = true;
+				_disposedValue = true;
 			}
 		}
 

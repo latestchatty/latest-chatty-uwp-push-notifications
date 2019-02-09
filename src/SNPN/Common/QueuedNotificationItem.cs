@@ -6,12 +6,12 @@ namespace SNPN.Common
 	{
 		public QueuedNotificationItem(NotificationType type, XDocument content, string uri = null, NotificationGroups group = NotificationGroups.None, string tag = null, int ttl = 0)
 		{
-			this.Type = type;
-			this.Content = content;
-			this.Uri = uri;
-			this.Group = group;
-			this.Tag = tag;
-			this.Ttl = ttl;
+			Type = type;
+			Content = content;
+			Uri = uri;
+			Group = group;
+			Tag = tag;
+			Ttl = ttl;
 		}
 
 		public XDocument Content { get; private set; }

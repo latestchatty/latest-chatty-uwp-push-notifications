@@ -6,7 +6,7 @@
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
-            "program": "${workspaceRoot}\\src\\SNPN\\bin\\Debug\\netcoreapp1.0\\SNPN.dll",
+            "program": "${workspaceRoot}\\src\\SNPN\\bin\\Debug\\netcoreapp2.1\\SNPN.dll",
             "args": [],
             "cwd": "${workspaceRoot}\\src\\SNPN",
             "console": "internalConsole",
@@ -18,6 +18,25 @@
             "type": "coreclr",
             "request": "attach",
             "processId": "${command:pickProcess}"
+        },
+        {
+            "name": ".NET Core Remote Attach",
+            "type": "coreclr",
+            "request": "attach",
+            "processId": "${command:pickRemoteProcess}",
+            "pipeTransport": {
+                "pipeProgram": "docker",
+                "pipeCwd": "${workspaceRoot}",
+                "quoteArgs": false,
+                "debuggerPath": "/root/vsdbg/vsdbg",
+                "pipeArgs": [
+                    "exec -i latest-chatty-uwp-push-notifications-dev"
+                ]
+            },
+            "sourceFileMap": {
+                "/dotnetapp": "${workspaceRoot}/src"
+            },
+            "justMyCode": true
         }
     ]
 }

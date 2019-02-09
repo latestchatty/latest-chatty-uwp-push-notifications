@@ -3,64 +3,62 @@ using Microsoft.Data.Sqlite;
 using System.IO;
 using Autofac;
 using System.Data;
+using System.Runtime.CompilerServices;
 
 namespace SNPN.Data
 {
 	public class DbHelper
 	{
-		private static readonly long CURRENT_VERSION = 1;
-		private static bool initialized;
-		private static readonly object locker = new object();
-		private static string dbFile;
+		private static readonly long CurrentVersion = 1;
+		private static bool _initialized;
+		private static string _dbFile;
 		private static string DbFile
 		{
 			get
 			{
-				if (dbFile == null)
+				if (_dbFile == null)
 				{
 					var config = AppModuleBuilder.Container.Resolve<AppConfiguration>();
 					if (string.IsNullOrWhiteSpace(config.DbLocation))
 					{
-						dbFile = Path.Combine(Directory.GetCurrentDirectory(), "Notifications.db");
+						_dbFile = Path.Combine(Directory.GetCurrentDirectory(), "Notifications.db");
 					}
 					else
 					{
-						dbFile = config.DbLocation;
+						_dbFile = config.DbLocation;
 					}
 				}
-				return dbFile;
+				return _dbFile;
 			}
 		}
 
+        [MethodImpl(MethodImplOptions.Synchronized)]
 		public static SqliteConnection GetConnection()
 		{
-			lock (locker)
+			if (!File.Exists(DbFile))
 			{
-				if (!File.Exists(DbFile))
-				{
-					CreateDatabase(DbFile);
-				}
-				if (!initialized)
-				{
-					UpgradeDatabase();
-					initialized = true;
-				}
-				return GetConnectionInternal(DbFile);
+				CreateDatabase(DbFile);
 			}
+			if (!_initialized)
+			{
+				UpgradeDatabase();
+				_initialized = true;
+			}
+			return GetConnectionInternal(DbFile);
 		}
 
-		private static SqliteConnection GetConnectionInternal(string fileLocation)
+		private static SqliteConnection GetConnectionInternal(string fileLocation, bool ignoreMissingFile = false)
 		{
-            if (!File.Exists(fileLocation))
-            {
-                throw new FileNotFoundException("Database file doesn't exist", fileLocation);
-            }
+			if (!ignoreMissingFile && !File.Exists(fileLocation))
+			{
+				throw new FileNotFoundException("Database file doesn't exist", fileLocation);
+			}
 			return new SqliteConnection("Data Source=" + fileLocation);
 		}
 
 		private static void CreateDatabase(string fileLocation)
 		{
-			using (var connection = GetConnectionInternal(fileLocation))
+			using (var connection = GetConnectionInternal(fileLocation, true))
 			{
 				connection.Open();
 				using (var tx = connection.BeginTransaction())
@@ -86,7 +84,7 @@ namespace SNPN.Data
 						CREATE INDEX DeviceUserId ON Device(UserId);
 						CREATE INDEX DeviceId ON Device(Id);
 						CREATE INDEX DeviceNotificationUri ON Device(NotificationUri);
-						PRAGMA user_version=" + CURRENT_VERSION + ";", transaction: tx);
+						PRAGMA user_version=" + CurrentVersion + ";", transaction: tx);
 					tx.Commit();
 				}
 			}
@@ -98,15 +96,15 @@ namespace SNPN.Data
 			{
 				con.Open();
 				var dbVersion = con.QuerySingle<long>(@"PRAGMA user_version");
-				if (dbVersion < CURRENT_VERSION)
+				if (dbVersion < CurrentVersion)
 				{
 					using (var tx = con.BeginTransaction())
 					{
-						for (long i = dbVersion; i <= CURRENT_VERSION; i++)
+						for (long i = dbVersion; i <= CurrentVersion; i++)
 						{
 							UpgradeDatabase(i, con, tx);
 						}
-						con.Execute($"PRAGMA user_version={CURRENT_VERSION};", transaction: tx);
+						con.Execute($"PRAGMA user_version={CurrentVersion};", transaction: tx);
 						tx.Commit();
 					}
 				}

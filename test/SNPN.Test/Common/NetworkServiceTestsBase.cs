@@ -2,8 +2,6 @@
 using Moq.Protected;
 using SNPN.Common;
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
@@ -45,7 +43,7 @@ namespace SNPN.Test.Common
 		protected NetworkService GetMockedNetworkService(string callReturn, HttpStatusCode statusCode = HttpStatusCode.OK, Action<HttpRequestMessage, CancellationToken> onCalled = null)
 		{
 			var logger = new Mock<Serilog.ILogger>();
-			var config = this.GetAppConfig();
+			var config = GetAppConfig();
 			var handler = GetMessageHandlerMock(callReturn, statusCode, onCalled);
 
 			var service = new NetworkService(config, logger.Object, handler.Object);

@@ -1,9 +1,7 @@
 ﻿using SNPN.Common;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Net;
-using System.Threading.Tasks;
 using Xunit;
 
 namespace SNPN.Test.Common
@@ -13,7 +11,7 @@ namespace SNPN.Test.Common
 		[Fact]
 		async void SendNotification()
 		{
-			var service = this.GetMockedNetworkService(string.Empty);
+			var service = GetMockedNetworkService(string.Empty);
 			var doc = NotificationBuilder.BuildReplyDoc(1, "Hello", "World");
 			var result = await service.SendNotification(new QueuedNotificationItem(NotificationType.Toast, doc, "http://test.url", NotificationGroups.ReplyToUser), "token");
 
@@ -24,12 +22,12 @@ namespace SNPN.Test.Common
 		async void SendNotificationBadgeTypeToast()
 		{
 			var type = string.Empty;
-			var service = this.GetMockedNetworkService(string.Empty, HttpStatusCode.OK, (r, ct) =>
+			var service = GetMockedNetworkService(string.Empty, HttpStatusCode.OK, (r, ct) =>
 			{
 				type = r.Headers.GetValues("X-WNS-Type").Single();
 			});
 			var doc = NotificationBuilder.BuildReplyDoc(1, "Hello", "World");
-			var result = await service.SendNotification(new QueuedNotificationItem(NotificationType.Toast, doc, "http://test.url", NotificationGroups.None), "token");
+			var result = await service.SendNotification(new QueuedNotificationItem(NotificationType.Toast, doc, "http://test.url"), "token");
 
 			Assert.Equal("wns/toast", type);
 			Assert.Equal(ResponseResult.Success, result);
@@ -39,12 +37,12 @@ namespace SNPN.Test.Common
 		async void SendNotificationBadgeTypeTile()
 		{
 			var type = string.Empty;
-			var service = this.GetMockedNetworkService(string.Empty, HttpStatusCode.OK, (r, ct) =>
+			var service = GetMockedNetworkService(string.Empty, HttpStatusCode.OK, (r, ct) =>
 			{
 				type = r.Headers.GetValues("X-WNS-Type").Single();
 			});
 			var doc = NotificationBuilder.BuildReplyDoc(1, "Hello", "World");
-			var result = await service.SendNotification(new QueuedNotificationItem(NotificationType.Tile, doc, "http://test.url", NotificationGroups.None), "token");
+			var result = await service.SendNotification(new QueuedNotificationItem(NotificationType.Tile, doc, "http://test.url"), "token");
 
 			Assert.Equal("wns/tile", type);
 			Assert.Equal(ResponseResult.Success, result);
@@ -54,12 +52,12 @@ namespace SNPN.Test.Common
 		async void SendNotificationBadgeTypeBadge()
 		{
 			var type = string.Empty;
-			var service = this.GetMockedNetworkService(string.Empty, HttpStatusCode.OK, (r, ct) =>
+			var service = GetMockedNetworkService(string.Empty, HttpStatusCode.OK, (r, ct) =>
 			{
 				type = r.Headers.GetValues("X-WNS-Type").Single();
 			});
 			var doc = NotificationBuilder.BuildReplyDoc(1, "Hello", "World");
-			var result = await service.SendNotification(new QueuedNotificationItem(NotificationType.Badge, doc, "http://test.url", NotificationGroups.None), "token");
+			var result = await service.SendNotification(new QueuedNotificationItem(NotificationType.Badge, doc, "http://test.url"), "token");
 
 			Assert.Equal("wns/badge", type);
 			Assert.Equal(ResponseResult.Success, result);
@@ -69,12 +67,12 @@ namespace SNPN.Test.Common
 		async void SendNotificationWithNoGroup()
 		{
 			bool hasGroupHeader = false;
-			var service = this.GetMockedNetworkService(string.Empty, HttpStatusCode.OK, (r, ct) =>
+			var service = GetMockedNetworkService(string.Empty, HttpStatusCode.OK, (r, ct) =>
 			{
 				hasGroupHeader = r.Headers.Contains("X-WNS-Group");
 			});
 			var doc = NotificationBuilder.BuildReplyDoc(1, "Hello", "World");
-			var result = await service.SendNotification(new QueuedNotificationItem(NotificationType.Toast, doc, "http://test.url", NotificationGroups.None), "token");
+			var result = await service.SendNotification(new QueuedNotificationItem(NotificationType.Toast, doc, "http://test.url"), "token");
 
 			Assert.False(hasGroupHeader);
 			Assert.Equal(ResponseResult.Success, result);
@@ -86,7 +84,7 @@ namespace SNPN.Test.Common
 		{
 			var expected = Enum.GetName(typeof(NotificationGroups), NotificationGroups.ReplyToUser);
 			var actual = string.Empty;
-			var service = this.GetMockedNetworkService(string.Empty, HttpStatusCode.OK, (r, ct) =>
+			var service = GetMockedNetworkService(string.Empty, HttpStatusCode.OK, (r, ct) =>
 			{
 				actual = r.Headers.GetValues("X-WNS-Group").First();
 			});
@@ -101,7 +99,7 @@ namespace SNPN.Test.Common
 		async void SendNotificationWithNoTag()
 		{
 			var hasTagHeader = false;
-			var service = this.GetMockedNetworkService(string.Empty, HttpStatusCode.OK, (r, ct) =>
+			var service = GetMockedNetworkService(string.Empty, HttpStatusCode.OK, (r, ct) =>
 			{
 				hasTagHeader = r.Headers.Contains("X-WNS-Tag");
 			});
@@ -117,7 +115,7 @@ namespace SNPN.Test.Common
 		{
 			var expected = "token";
 			var actual = string.Empty;
-			var service = this.GetMockedNetworkService(string.Empty, HttpStatusCode.OK, (r, ct) =>
+			var service = GetMockedNetworkService(string.Empty, HttpStatusCode.OK, (r, ct) =>
 			{
 				actual = r.Headers.GetValues("X-WNS-Tag").First();
 			});
@@ -133,7 +131,7 @@ namespace SNPN.Test.Common
 		async void SendNotificationWithNoTtl()
 		{
 			var hasHeader = false;
-			var service = this.GetMockedNetworkService(string.Empty, HttpStatusCode.OK, (r, ct) =>
+			var service = GetMockedNetworkService(string.Empty, HttpStatusCode.OK, (r, ct) =>
 			{
 				hasHeader = r.Headers.Contains("X-WNS-TTL");
 			});
@@ -149,7 +147,7 @@ namespace SNPN.Test.Common
 		{
 			var expected = 100;
 			var actual = "0";
-			var service = this.GetMockedNetworkService(string.Empty, HttpStatusCode.OK, (r, ct) =>
+			var service = GetMockedNetworkService(string.Empty, HttpStatusCode.OK, (r, ct) =>
 			{
 				actual = r.Headers.GetValues("X-WNS-TTL").First();
 			});
@@ -163,7 +161,7 @@ namespace SNPN.Test.Common
 		[Fact]
 		async void SendNotificationNotFound()
 		{
-			var service = this.GetMockedNetworkService(string.Empty, HttpStatusCode.NotFound);
+			var service = GetMockedNetworkService(string.Empty, HttpStatusCode.NotFound);
 			var doc = NotificationBuilder.BuildReplyDoc(1, "Hello", "World");
 			var result = await service.SendNotification(new QueuedNotificationItem(NotificationType.Toast, doc, "http://test.url", NotificationGroups.ReplyToUser), "token");
 
@@ -173,7 +171,7 @@ namespace SNPN.Test.Common
 		[Fact]
 		async void SendNotificationGone()
 		{
-			var service = this.GetMockedNetworkService(string.Empty, HttpStatusCode.Gone);
+			var service = GetMockedNetworkService(string.Empty, HttpStatusCode.Gone);
 			var doc = NotificationBuilder.BuildReplyDoc(1, "Hello", "World");
 			var result = await service.SendNotification(new QueuedNotificationItem(NotificationType.Toast, doc, "http://test.url", NotificationGroups.ReplyToUser), "token");
 
@@ -183,7 +181,7 @@ namespace SNPN.Test.Common
 		[Fact]
 		async void SendNotificationForbidden()
 		{
-			var service = this.GetMockedNetworkService(string.Empty, HttpStatusCode.Forbidden);
+			var service = GetMockedNetworkService(string.Empty, HttpStatusCode.Forbidden);
 			var doc = NotificationBuilder.BuildReplyDoc(1, "Hello", "World");
 			var result = await service.SendNotification(new QueuedNotificationItem(NotificationType.Toast, doc, "http://test.url", NotificationGroups.ReplyToUser), "token");
 
@@ -193,7 +191,7 @@ namespace SNPN.Test.Common
 		[Fact]
 		async void SendNotificationNotAcceptible()
 		{
-			var service = this.GetMockedNetworkService(string.Empty, HttpStatusCode.NotAcceptable);
+			var service = GetMockedNetworkService(string.Empty, HttpStatusCode.NotAcceptable);
 			var doc = NotificationBuilder.BuildReplyDoc(1, "Hello", "World");
 			var result = await service.SendNotification(new QueuedNotificationItem(NotificationType.Toast, doc, "http://test.url", NotificationGroups.ReplyToUser), "token");
 
@@ -203,7 +201,7 @@ namespace SNPN.Test.Common
 		[Fact]
 		async void SendNotificationUnauthorized()
 		{
-			var service = this.GetMockedNetworkService(string.Empty, HttpStatusCode.Unauthorized);
+			var service = GetMockedNetworkService(string.Empty, HttpStatusCode.Unauthorized);
 			var doc = NotificationBuilder.BuildReplyDoc(1, "Hello", "World");
 			var result = await service.SendNotification(new QueuedNotificationItem(NotificationType.Toast, doc, "http://test.url", NotificationGroups.ReplyToUser), "token");
 
@@ -213,7 +211,7 @@ namespace SNPN.Test.Common
 		[Fact]
 		async void SendNotificationUnhandledCode()
 		{
-			var service = this.GetMockedNetworkService(string.Empty, HttpStatusCode.ProxyAuthenticationRequired);
+			var service = GetMockedNetworkService(string.Empty, HttpStatusCode.ProxyAuthenticationRequired);
 			var doc = NotificationBuilder.BuildReplyDoc(1, "Hello", "World");
 			var result = await service.SendNotification(new QueuedNotificationItem(NotificationType.Toast, doc, "http://test.url", NotificationGroups.ReplyToUser), "token");
 

@@ -13,11 +13,11 @@ namespace SNPN.Common
 {
 	public class NetworkService : INetworkService, IDisposable
 	{
-		private readonly AppConfiguration config;
-		private readonly HttpClient httpClient;
-		private readonly ILogger logger;
+		private readonly AppConfiguration _config;
+		private readonly HttpClient _httpClient;
+		private readonly ILogger _logger;
 
-		private Dictionary<NotificationType, string> notificationTypeMapping = new Dictionary<NotificationType, string>
+		private Dictionary<NotificationType, string> _notificationTypeMapping = new Dictionary<NotificationType, string>
 		  {
 				{ NotificationType.Badge, "wns/badge" },
 				{ NotificationType.Tile, "wns/tile" },
@@ -26,18 +26,18 @@ namespace SNPN.Common
 
 		public NetworkService(AppConfiguration configuration, ILogger logger, HttpMessageHandler httpHandler)
 		{
-			this.config = configuration;
-			this.logger = logger;
-			this.httpClient = new HttpClient(httpHandler);
+			_config = configuration;
+			_logger = logger;
+			_httpClient = new HttpClient(httpHandler);
 
 			//Winchatty seems to crap itself if the Expect: 100-continue header is there.
 			// Should be safe to leave this for every request we make.
-			this.httpClient.DefaultRequestHeaders.ExpectContinue = false;
+			_httpClient.DefaultRequestHeaders.ExpectContinue = false;
 		}
 
 		public async Task<int> WinChattyGetNewestEventId(CancellationToken ct)
 		{
-			using (var res = await this.httpClient.GetAsync($"{this.config.WinchattyApiBase}getNewestEventId", ct))
+			using (var res = await _httpClient.GetAsync($"{_config.WinchattyApiBase}getNewestEventId", ct))
 			{
 				var json = JToken.Parse(await res.Content.ReadAsStringAsync());
 				return json["eventId"].ToObject<int>();
@@ -46,7 +46,7 @@ namespace SNPN.Common
 
 		public async Task<JToken> WinChattyWaitForEvent(long latestEventId, CancellationToken ct)
 		{
-			using (var resEvent = await httpClient.GetAsync($"{this.config.WinchattyApiBase}waitForEvent?lastEventId={latestEventId}&includeParentAuthor=1", ct))
+			using (var resEvent = await _httpClient.GetAsync($"{_config.WinchattyApiBase}waitForEvent?lastEventId={latestEventId}&includeParentAuthor=1", ct))
 			{
 				return JToken.Parse(await resEvent.Content.ReadAsStringAsync());
 			}
@@ -54,7 +54,7 @@ namespace SNPN.Common
 
 		public async Task<XDocument> GetTileContent()
 		{
-			using (var fileStream = await this.httpClient.GetStreamAsync("http://www.shacknews.com/rss?recent_articles=1"))
+			using (var fileStream = await _httpClient.GetStreamAsync("http://www.shacknews.com/rss?recent_articles=1"))
 			{
 				return XDocument.Load(fileStream);
 			}
@@ -77,7 +77,7 @@ namespace SNPN.Common
 
 			using (var formContent = new FormUrlEncodedContent(data))
 			{
-				using (var response = await this.httpClient.PostAsync($"{this.config.WinchattyApiBase}postComment", formContent))
+				using (var response = await _httpClient.PostAsync($"{_config.WinchattyApiBase}postComment", formContent))
 				{
 					parsedResponse = JToken.Parse(await response.Content.ReadAsStringAsync());
 				}
@@ -91,65 +91,77 @@ namespace SNPN.Common
 
 		public async Task<ResponseResult> SendNotification(QueuedNotificationItem notification, string token)
 		{
-			var request = new HttpRequestMessage
-			{
-				RequestUri = new Uri(notification.Uri),
-				Method = HttpMethod.Post
-			};
-			
-			request.Headers.Add("Authorization", $"Bearer {token}");
+            using (var request = new HttpRequestMessage
+            {
+                RequestUri = new Uri(notification.Uri),
+                Method = HttpMethod.Post
+            })
+            {
 
-			request.Headers.Add("X-WNS-Type", this.notificationTypeMapping[notification.Type]);
+                request.Headers.Add("Authorization", $"Bearer {token}");
 
-			if (notification.Group != NotificationGroups.None)
-			{
-				request.Headers.Add("X-WNS-Group", Uri.EscapeUriString(Enum.GetName(typeof(NotificationGroups), notification.Group)));
-			}
-			if (!string.IsNullOrWhiteSpace(notification.Tag))
-			{
-				request.Headers.Add("X-WNS-Tag", Uri.EscapeUriString(notification.Tag));
-			}
-			if (notification.Ttl > 0)
-			{
-				request.Headers.Add("X-WNS-TTL", notification.Ttl.ToString());
-			}
+                request.Headers.Add("X-WNS-Type", _notificationTypeMapping[notification.Type]);
 
-			using (var stringContent = new StringContent(notification.Content.ToString(SaveOptions.DisableFormatting), Encoding.UTF8, "text/xml"))
-			{
-				request.Content = stringContent;
-				using (var response = await this.httpClient.SendAsync(request))
-				{
-					return this.ProcessResponse(response);
-				}
-			}
-		}
+                if (notification.Group != NotificationGroups.None)
+                {
+                    request.Headers.Add("X-WNS-Group",
+                        Uri.EscapeUriString(Enum.GetName(typeof(NotificationGroups), notification.Group)));
+                }
+
+                if (!string.IsNullOrWhiteSpace(notification.Tag))
+                {
+                    request.Headers.Add("X-WNS-Tag", Uri.EscapeUriString(notification.Tag));
+                }
+
+                if (notification.Ttl > 0)
+                {
+                    request.Headers.Add("X-WNS-TTL", notification.Ttl.ToString());
+                }
+
+                using (var stringContent =
+                    new StringContent(notification.Content.ToString(SaveOptions.DisableFormatting), Encoding.UTF8,
+                        "text/xml"))
+                {
+                    request.Content = stringContent;
+                    using (var response = await _httpClient.SendAsync(request))
+                    {
+                        return ProcessResponse(response);
+                    }
+                }
+            }
+        }
 
 		public async Task<string> GetNotificationToken()
 		{
-			var data = new FormUrlEncodedContent(new Dictionary<string, string> {
-							{ "grant_type", "client_credentials" },
-							{ "client_id", this.config.NotificationSid },
-							{ "client_secret", this.config.ClientSecret },
-							{ "scope", "notify.windows.com" }
-						});
-			using (var response = await this.httpClient.PostAsync("https://login.live.com/accesstoken.srf", data))
-			{
-				if (response.StatusCode == HttpStatusCode.OK)
-				{
-					var responseJson = JToken.Parse(await response.Content.ReadAsStringAsync());
+            using (var data = new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                {"grant_type", "client_credentials"},
+                {"client_id", _config.NotificationSid},
+                {"client_secret", _config.ClientSecret},
+                {"scope", "notify.windows.com"}
+            }))
+            {
 
-					this.logger.Information("Got access token.");
-					return responseJson["access_token"].Value<string>();
-				}
-			}
-			return null;
+                using (var response = await _httpClient.PostAsync("https://login.live.com/accesstoken.srf", data))
+                {
+                    if (response.StatusCode == HttpStatusCode.OK)
+                    {
+                        var responseJson = JToken.Parse(await response.Content.ReadAsStringAsync());
+
+                        _logger.Information("Got access token.");
+                        return responseJson["access_token"].Value<string>();
+                    }
+                }
+            }
+
+            return null;
 		}
 
 		private ResponseResult ProcessResponse(HttpResponseMessage response)
 		{
 			//By default, we'll just let it die if we don't know specifically that we can try again.
 			var result = ResponseResult.FailDoNotTryAgain;
-			this.logger.Verbose("Notification Response Code: {responseStatusCode}", response.StatusCode);
+			_logger.Verbose("Notification Response Code: {responseStatusCode}", response.StatusCode);
 			switch (response.StatusCode)
 			{
 				case HttpStatusCode.OK:
@@ -173,21 +185,21 @@ namespace SNPN.Common
 		}
 
 		#region IDisposable Support
-		private bool disposedValue; // To detect redundant calls
+		private bool _disposedValue; // To detect redundant calls
 
 		protected virtual void Dispose(bool disposing)
 		{
-			if (!disposedValue)
+			if (!_disposedValue)
 			{
 				if (disposing)
 				{
-					this.httpClient?.Dispose();
+					_httpClient?.Dispose();
 				}
 
 				// TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
 				// TODO: set large fields to null.
 
-				disposedValue = true;
+				_disposedValue = true;
 			}
 		}
 
