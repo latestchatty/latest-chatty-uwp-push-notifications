@@ -10,32 +10,32 @@ namespace SNPN.WebService
 {
 	public class TileContentRepo
 	{
-		private readonly INetworkService networkService;
-		private readonly MemoryCache cache;
-		private readonly ILogger logger;
+		private readonly INetworkService _networkService;
+		private readonly MemoryCache _cache;
+		private readonly ILogger _logger;
 
 		public TileContentRepo(INetworkService networkService, ILogger logger, MemoryCache cache)
 		{
-			this.networkService = networkService;
-			this.logger = logger;
-			this.cache = cache;
+			_networkService = networkService;
+			_logger = logger;
+			_cache = cache;
 		}
 
 		public async Task<string> GetTileContent()
 		{
-			var tileContent = this.cache.Get("tileContent") as string;
+			var tileContent = _cache.Get("tileContent") as string;
 			if (string.IsNullOrWhiteSpace(tileContent))
 			{
-				this.logger.Information("Retrieving tile content.");
+				_logger.Information("Retrieving tile content.");
 
-				var xDoc = await this.networkService.GetTileContent();
+				var xDoc = await _networkService.GetTileContent();
 
 				var items = xDoc.Descendants("item");
 				var itemsObj = items.Select(i => new
 				{
-					Title = i.Element("title").Value,
-					PublishDate = DateTime.Parse(i.Element("pubDate").Value.Replace("PDT", "").Replace("PST", "").Trim()),
-					Author = i.Element("author").Value
+					Title = i.Element("title")?.Value,
+					PublishDate = DateTime.Parse(i.Element("pubDate")?.Value.Replace("PDT", "").Replace("PST", "").Trim()),
+					Author = i.Element("author")?.Value
 				}).OrderByDescending(i => i.PublishDate).Take(3).ToList();
 
 				var item = itemsObj.FirstOrDefault();
@@ -62,11 +62,11 @@ namespace SNPN.WebService
 					new XElement("text", new XAttribute("id", "6"), itemsObj.ElementAt(2).Title)));
 				var doc = new XDocument(tileElement);
 				tileContent = doc.ToString(SaveOptions.DisableFormatting);
-				this.cache.Set("tileContent", tileContent, DateTimeOffset.UtcNow.AddMinutes(5));
+				_cache.Set("tileContent", tileContent, DateTimeOffset.UtcNow.AddMinutes(5));
 			}
 			else
 			{
-				this.logger.Information("Retrieved cached tile content.");
+				_logger.Information("Retrieved cached tile content.");
 			}
 			return tileContent;
 		}

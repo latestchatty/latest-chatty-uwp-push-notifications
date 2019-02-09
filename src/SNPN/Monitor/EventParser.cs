@@ -37,7 +37,7 @@ namespace SNPN.Monitor
 
 		public NewPostEvent GetNewPostEvent(JToken eventJson)
 		{
-			if (this.GetEventType(eventJson) != EventType.NewPost)
+			if (GetEventType(eventJson) != EventType.NewPost)
 			{
 				throw new ArgumentException("Wrong event type.", nameof(eventJson));
 			}
@@ -52,10 +52,10 @@ namespace SNPN.Monitor
 			{
 				foreach (var e in eventsJson["events"]) //PERF: Could probably Parallel.ForEach this.
 				{
-					var eventType = this.GetEventType(e);
+					var eventType = GetEventType(e);
 					if (eventType == EventType.NewPost)
 					{
-						var parsedNewPost = this.GetNewPostEvent(e);
+						var parsedNewPost = GetNewPostEvent(e);
 						events.Add(parsedNewPost);
 					}
 				}

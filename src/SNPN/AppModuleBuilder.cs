@@ -14,7 +14,8 @@ namespace SNPN
 {
 	public static class AppModuleBuilder
 	{
-		private static readonly Lazy<IContainer> container = new Lazy<IContainer>(BuildContainer);
+        // ReSharper disable once InconsistentNaming
+        private static readonly Lazy<IContainer> container = new Lazy<IContainer>(BuildContainer);
 		public static IContainer Container => container.Value;
 
 		private static IContainer BuildContainer()

@@ -9,19 +9,19 @@ namespace SNPN.WebService
 {
 	public class Bootstrapper : DefaultNancyBootstrapper
 	{
-		ILogger logger;
+		ILogger _logger;
 
 		protected override void ApplicationStartup(TinyIoCContainer container, IPipelines pipelines)
 		{
 			base.ApplicationStartup(container, pipelines);
-			this.logger = AppModuleBuilder.Container.Resolve<ILogger>();
+			_logger = AppModuleBuilder.Container.Resolve<ILogger>();
 		}
 		protected override void RequestStartup(TinyIoCContainer container, IPipelines pipelines, NancyContext context)
 		{
 			pipelines.OnError.AddItemToEndOfPipeline((c, ex) =>
 			{
 				var guid = Guid.NewGuid();
-				this.logger.Error(ex, "{guid} Exception in url {url} ", guid.ToString(), c.Request.Url);
+				_logger.Error(ex, "{guid} Exception in url {url} ", guid.ToString(), c.Request.Url);
 				return new { status = "error", exceptionid = guid.ToString() };
 			});
 			base.RequestStartup(container, pipelines, context);

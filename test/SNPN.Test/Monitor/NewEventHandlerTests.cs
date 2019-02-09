@@ -80,17 +80,17 @@ namespace SNPN.Test.Monitor
 				.Returns(Task.FromResult(new List<string> { "asdf" }));
 
 			repo.Setup(r => r.FindUser("asdf"))
-				.Returns(Task.FromResult(this.GetNotificationUser()));
+				.Returns(Task.FromResult(GetNotificationUser()));
 
 			repo.Setup(r => r.GetUserDeviceInfos(It.IsAny<NotificationUser>()))
-				.Returns(Task.FromResult(this.GetDeviceInfo()));
+				.Returns(Task.FromResult(GetDeviceInfo()));
 
 			notificationMoq.Setup(n => n.QueueNotificationData(NotificationType.Toast, It.IsAny<string>(), It.IsAny<XDocument>(), NotificationGroups.ReplyToUser, It.IsAny<string>(), It.IsAny<int>()))
 				.Callback(() => countNotificationsAdded++);
 
 			var handler = new NewEventHandler(notificationMoq.Object, repo.Object, logger.Object);
 
-			var newEvent = this.GetPostEvent();
+			var newEvent = GetPostEvent();
 			newEvent.ParentAuthor = "notasdf";
 
 			await handler.ProcessEvent(newEvent);
@@ -109,17 +109,17 @@ namespace SNPN.Test.Monitor
 				.Returns(Task.FromResult(new List<string>()));
 
 			repo.Setup(r => r.FindUser("asdf"))
-				.Returns(Task.FromResult(this.GetNotificationUser()));
+				.Returns(Task.FromResult(GetNotificationUser()));
 
 			repo.Setup(r => r.GetUserDeviceInfos(It.IsAny<NotificationUser>()))
-				.Returns(Task.FromResult(this.GetDeviceInfo()));
+				.Returns(Task.FromResult(GetDeviceInfo()));
 
 			notificationMoq.Setup(n => n.QueueNotificationData(NotificationType.Toast, It.IsAny<string>(), It.IsAny<XDocument>(), NotificationGroups.ReplyToUser, It.IsAny<string>(), It.IsAny<int>()))
 				.Callback(() => countNotificationsAdded++);
 
 			var handler = new NewEventHandler(notificationMoq.Object, repo.Object, logger.Object);
 
-			var newEvent = this.GetPostEvent();
+			var newEvent = GetPostEvent();
 
 			await handler.ProcessEvent(newEvent);
 			Assert.Equal(1, countNotificationsAdded);
@@ -137,7 +137,7 @@ namespace SNPN.Test.Monitor
 				.Returns(Task.FromResult(new List<string>()));
 
 			repo.Setup(r => r.FindUser("asdf"))
-				.Returns(Task.FromResult(this.GetNotificationUser()));
+				.Returns(Task.FromResult(GetNotificationUser()));
 
 			repo.Setup(r => r.GetUserDeviceInfos(It.IsAny<NotificationUser>()))
 				.Returns(Task.FromResult<List<DeviceInfo>>(null));
@@ -147,7 +147,7 @@ namespace SNPN.Test.Monitor
 
 			var handler = new NewEventHandler(notificationMoq.Object, repo.Object, logger.Object);
 
-			var newEvent = this.GetPostEvent();
+			var newEvent = GetPostEvent();
 
 			await handler.ProcessEvent(newEvent);
 			Assert.Equal(0, countNotificationsAdded);
@@ -165,17 +165,17 @@ namespace SNPN.Test.Monitor
 				.Returns(Task.FromResult(new List<string>()));
 
 			repo.Setup(r => r.FindUser("asdf"))
-				.Returns(Task.FromResult(this.GetNotificationUser()));
+				.Returns(Task.FromResult(GetNotificationUser()));
 
 			repo.Setup(r => r.GetUserDeviceInfos(It.IsAny<NotificationUser>()))
-				.Returns(Task.FromResult(this.GetDeviceInfos()));
+				.Returns(Task.FromResult(GetDeviceInfos()));
 
 			notificationMoq.Setup(n => n.QueueNotificationData(NotificationType.Toast, It.IsAny<string>(), It.IsAny<XDocument>(), NotificationGroups.ReplyToUser, It.IsAny<string>(), It.IsAny<int>()))
 				.Callback(() => countNotificationsAdded++);
 
 			var handler = new NewEventHandler(notificationMoq.Object, repo.Object, logger.Object);
 
-			var newEvent = this.GetPostEvent();
+			var newEvent = GetPostEvent();
 
 			await handler.ProcessEvent(newEvent);
 			Assert.Equal(2, countNotificationsAdded);
@@ -193,17 +193,17 @@ namespace SNPN.Test.Monitor
 				.Returns(Task.FromResult(new List<string>()));
 
 			repo.Setup(r => r.FindUser("asdf"))
-				.Returns(Task.FromResult(this.GetNotificationUser()));
+				.Returns(Task.FromResult(GetNotificationUser()));
 
 			repo.Setup(r => r.GetUserDeviceInfos(It.IsAny<NotificationUser>()))
-				.Returns(Task.FromResult(this.GetDeviceInfo()));
+				.Returns(Task.FromResult(GetDeviceInfo()));
 
 			notificationMoq.Setup(n => n.QueueNotificationData(NotificationType.Toast, It.IsAny<string>(), It.IsAny<XDocument>(), NotificationGroups.ReplyToUser, It.IsAny<string>(), It.IsAny<int>()))
 				.Callback(() => countNotificationsAdded++);
 
 			var handler = new NewEventHandler(notificationMoq.Object, repo.Object, logger.Object);
 
-			var newEvent = this.GetPostEvent();
+			var newEvent = GetPostEvent();
 			newEvent.Post.Author = "asdf";
 
 			await handler.ProcessEvent(newEvent);
@@ -222,17 +222,17 @@ namespace SNPN.Test.Monitor
 				.Returns(Task.FromResult(new List<string> { "asdf" }));
 
 			repo.Setup(r => r.FindUser("asdf"))
-				.Returns(Task.FromResult(this.GetNotificationUser()));
+				.Returns(Task.FromResult(GetNotificationUser()));
 
 			repo.Setup(r => r.GetUserDeviceInfos(It.IsAny<NotificationUser>()))
-				.Returns(Task.FromResult(this.GetDeviceInfo()));
+				.Returns(Task.FromResult(GetDeviceInfo()));
 
 			notificationMoq.Setup(n => n.QueueNotificationData(NotificationType.Toast, It.IsAny<string>(), It.IsAny<XDocument>(), NotificationGroups.ReplyToUser, It.IsAny<string>(), It.IsAny<int>()))
 				.Callback(() => countNotificationsAdded++);
 
 			var handler = new NewEventHandler(notificationMoq.Object, repo.Object, logger.Object);
 
-			var newEvent = this.GetPostEvent();
+			var newEvent = GetPostEvent();
 
 			await handler.ProcessEvent(newEvent);
 			Assert.Equal(2, countNotificationsAdded);

@@ -1,13 +1,8 @@
-﻿using Moq;
-using Moq.Protected;
-using SNPN.Common;
-using System;
-using System.Net.Http;
+﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 using System.Net;
-using System.Linq;
 
 namespace SNPN.Test.Common
 {
@@ -16,7 +11,7 @@ namespace SNPN.Test.Common
 		[Fact]
 		async Task WinChattyGetNewestEventId()
 		{
-			var service = this.GetMockedNetworkService("{ \"eventId\": \"12345\" }");
+			var service = GetMockedNetworkService("{ \"eventId\": \"12345\" }");
 			var result = await service.WinChattyGetNewestEventId(new CancellationToken());
 
 			Assert.Equal(12345, result);
@@ -25,7 +20,7 @@ namespace SNPN.Test.Common
 		[Fact]
 		async Task WinChattyWaitForEvent()
 		{
-			var service = this.GetMockedNetworkService("{ \"eventId\": \"12345\" }");
+			var service = GetMockedNetworkService("{ \"eventId\": \"12345\" }");
 			var result = await service.WinChattyWaitForEvent(1234, new CancellationToken());
 
 			Assert.NotNull(result);
@@ -35,18 +30,18 @@ namespace SNPN.Test.Common
 		[Fact]
 		async void GetTileContent()
 		{
-			var service = this.GetMockedNetworkService("<xml></xml>");
+			var service = GetMockedNetworkService("<xml></xml>");
 
 			var xDoc = await service.GetTileContent();
 
 			Assert.NotNull(xDoc);
-			Assert.Equal("xml", xDoc.Root.Name.LocalName);
+			Assert.Equal("xml", xDoc.Root?.Name.LocalName);
 		}
 
 		[Fact]
 		async void ReplyToNotificationParentIdException()
 		{
-			var service = this.GetMockedNetworkService("{ \"result\": \"success\" }");
+			var service = GetMockedNetworkService("{ \"result\": \"success\" }");
 
 			await Assert.ThrowsAsync<ArgumentNullException>(async () => await service.ReplyToNotification("", "", "hello", "world"));
 		}
@@ -54,7 +49,7 @@ namespace SNPN.Test.Common
 		[Fact]
 		async void ReplyToNotificationUserNameException()
 		{
-			var service = this.GetMockedNetworkService("{ \"result\": \"success\" }");
+			var service = GetMockedNetworkService("{ \"result\": \"success\" }");
 
 			await Assert.ThrowsAsync<ArgumentNullException>(async () => await service.ReplyToNotification("", "hello", "", "world"));
 		}
@@ -62,7 +57,7 @@ namespace SNPN.Test.Common
 		[Fact]
 		async void ReplyToNotificationPasswordException()
 		{
-			var service = this.GetMockedNetworkService("{ \"result\": \"success\" }");
+			var service = GetMockedNetworkService("{ \"result\": \"success\" }");
 
 			await Assert.ThrowsAsync<ArgumentNullException>(async () => await service.ReplyToNotification("", "hello", "world", ""));
 		}
@@ -70,7 +65,7 @@ namespace SNPN.Test.Common
 		[Fact]
 		async void ReplyToNotification()
 		{
-			var service = this.GetMockedNetworkService("{ \"result\": \"success\" }");
+			var service = GetMockedNetworkService("{ \"result\": \"success\" }");
 
 			var result = await service.ReplyToNotification("asldjfk", "1234", "asdf", "asdlfkj");
 
@@ -80,7 +75,7 @@ namespace SNPN.Test.Common
 		[Fact]
 		async void ReplyToNotificationFailed()
 		{
-			var service = this.GetMockedNetworkService("{ \"result\": \"error\" }");
+			var service = GetMockedNetworkService("{ \"result\": \"error\" }");
 
 			var result = await service.ReplyToNotification("asldjfk", "1234", "asdf", "asdlfkj");
 
@@ -91,7 +86,7 @@ namespace SNPN.Test.Common
 		async void GetNotificationToken()
 		{
 			var tokenValue = "EgAcAQMAAAAALYAAY/c+Huwi3Fv4Ck10UrKNmtxRO6Njk2MgA=";
-			var service = this.GetMockedNetworkService(@"{
+			var service = GetMockedNetworkService(@"{
 				""access_token"":""" + tokenValue + @""", 
 				""token_type"":""bearer""
 			}");
@@ -103,7 +98,7 @@ namespace SNPN.Test.Common
 		[Fact]
 		async void GetNotificationTokenBadRequest()
 		{
-			var service = this.GetMockedNetworkService(string.Empty, HttpStatusCode.BadRequest);
+			var service = GetMockedNetworkService(string.Empty, HttpStatusCode.BadRequest);
 			var result = await service.GetNotificationToken();
 
 			Assert.Null(result);

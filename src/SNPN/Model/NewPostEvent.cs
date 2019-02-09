@@ -8,9 +8,9 @@
 
 		public NewPostEvent(int postId, string parentAuthor, Post post)
 		{
-			this.Post = post;
-			this.PostId = postId;
-			this.ParentAuthor = parentAuthor;
+			Post = post;
+			PostId = postId;
+			ParentAuthor = parentAuthor;
 		}
 	}
 }

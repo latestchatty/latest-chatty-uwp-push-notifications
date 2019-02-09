@@ -13,20 +13,20 @@ namespace SNPN.WebService
 {
 	public sealed class Endpoint : NancyModule
 	{
-		private readonly IUserRepo userRepo;
-		private readonly ILogger logger;
-		private readonly INetworkService networkService;
-		private readonly TileContentRepo tileContentRepo;
+		private readonly IUserRepo _userRepo;
+		private readonly ILogger _logger;
+		private readonly INetworkService _networkService;
+		private readonly TileContentRepo _tileContentRepo;
 
 		public Endpoint()
 		{
-			Post("/register", this.RegisterDevice);
-			Post("/deregister", this.DeregisterDevice);
-			Post("/replyToNotification", this.ReplyToNotification);
+			Post("/register", RegisterDevice);
+			Post("/deregister", DeregisterDevice);
+			Post("/replyToNotification", ReplyToNotification);
 			Get("/test", x => new { status = "ok" });
-			Get("tileContent", this.GetTileContent);
-			Post("/user", this.PostUser);
-			Get("/user", this.GetUser);
+			Get("tileContent", GetTileContent);
+			Post("/user", PostUser);
+			Get("/user", GetUser);
 
 			#region Deprecated Routes 
 			//Remove these in a future update, once the app has been updated to not call them.
@@ -36,10 +36,10 @@ namespace SNPN.WebService
 			Get("/openReplyNotifications", x => new { data = new List<int>() });
 			#endregion
 			
-			this.userRepo = AppModuleBuilder.Container.Resolve<IUserRepo>();
-			this.logger = AppModuleBuilder.Container.Resolve<ILogger>();
-			this.networkService = AppModuleBuilder.Container.Resolve<INetworkService>();
-			this.tileContentRepo = AppModuleBuilder.Container.Resolve<TileContentRepo>();
+			_userRepo = AppModuleBuilder.Container.Resolve<IUserRepo>();
+			_logger = AppModuleBuilder.Container.Resolve<ILogger>();
+			_networkService = AppModuleBuilder.Container.Resolve<INetworkService>();
+			_tileContentRepo = AppModuleBuilder.Container.Resolve<TileContentRepo>();
 		}
 
 		#region Event Bind Classes
@@ -94,11 +94,11 @@ namespace SNPN.WebService
 		private async Task<dynamic> PostUser(dynamic arg)
 		{
 			var e = this.Bind<PostUserArgs>();
-			this.logger.Information("Updating user {userName}.", e.UserName);
-			var user = await this.userRepo.FindUser(e.UserName);
+			_logger.Information("Updating user {userName}.", e.UserName);
+			var user = await _userRepo.FindUser(e.UserName);
 			if (user == null)
 			{
-				await this.userRepo.AddUser(new NotificationUser
+				await _userRepo.AddUser(new NotificationUser
 				{
 					UserName = e.UserName,
 					DateAdded = DateTime.UtcNow,
@@ -108,7 +108,7 @@ namespace SNPN.WebService
 			else
 			{
 				user.NotifyOnUserName = e.NotifyOnUserName;
-				await this.userRepo.UpdateUser(user);
+				await _userRepo.UpdateUser(user);
 			}
 
 			return new { status = "success" };
@@ -117,8 +117,8 @@ namespace SNPN.WebService
 		private async Task<dynamic> GetUser(dynamic arg)
 		{
 			var e = this.Bind<GetUserArgs>();
-			this.logger.Information("Getting user {userName}.", e.UserName);
-			var user = await this.userRepo.FindUser(e.UserName);
+			_logger.Information("Getting user {userName}.", e.UserName);
+			var user = await _userRepo.FindUser(e.UserName);
 			if (user != null)
 			{
 				return new { user.UserName, NotifyOnUserName = user.NotifyOnUserName == 0 };
@@ -128,40 +128,40 @@ namespace SNPN.WebService
 
 		private async Task<dynamic> GetTileContent(dynamic arg)
 		{
-			return await this.tileContentRepo.GetTileContent();
+			return await _tileContentRepo.GetTileContent();
 		}
 
 		private async Task<dynamic> ReplyToNotification(dynamic arg)
 		{
-			this.logger.Information("Replying to notification.");
+			_logger.Information("Replying to notification.");
 			var e = this.Bind<ReplyToNotificationArgs>();
 
-			var success = await this.networkService.ReplyToNotification(e.Text, e.ParentId, e.UserName, e.Password);
+			var success = await _networkService.ReplyToNotification(e.Text, e.ParentId, e.UserName, e.Password);
 			return new { status = success ? "success" : "error" };
 		}
 
 		private async Task<dynamic> DeregisterDevice(dynamic arg)
 		{
-			this.logger.Information("Deregister device.");
+			_logger.Information("Deregister device.");
 			var e = this.Bind<DeregisterArgs>();
 
-			await this.userRepo.DeleteDevice(e.DeviceId);
+			await _userRepo.DeleteDevice(e.DeviceId);
 			return new { status = "success" };
 		}
 
 		private async Task<dynamic> RegisterDevice(dynamic arg)
 		{
-			this.logger.Information("Register device.");
+			_logger.Information("Register device.");
 			var e = this.Bind<RegisterArgs>();
 
-			var user = await this.userRepo.FindUser(e.UserName) ?? await this.userRepo.AddUser(new NotificationUser
+			var user = await _userRepo.FindUser(e.UserName) ?? await _userRepo.AddUser(new NotificationUser
 			{
 				UserName = e.UserName,
 				DateAdded = DateTime.UtcNow,
 				NotifyOnUserName = 1
 			});
 
-			await this.userRepo.AddOrUpdateDevice(user, new DeviceInfo { DeviceId = e.DeviceId, NotificationUri = e.ChannelUri });
+			await _userRepo.AddOrUpdateDevice(user, new DeviceInfo { DeviceId = e.DeviceId, NotificationUri = e.ChannelUri });
 			return new { status = "success" };
 		}
 	}
