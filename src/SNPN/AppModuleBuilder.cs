@@ -5,6 +5,7 @@ using Autofac;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Serilog;
+using Serilog.Formatting.Compact;
 using SNPN.Common;
 using SNPN.Data;
 using SNPN.Monitor;
@@ -42,9 +43,9 @@ namespace SNPN
 			}).SingleInstance();
 			builder.Register<ILogger>(x =>
 			{
-				var config = x.Resolve<IConfigurationRoot>();
 				return new LoggerConfiguration()
-					.ReadFrom.Configuration(config)
+					.MinimumLevel.Verbose()
+					.WriteTo.Console(new CompactJsonFormatter())
 					.CreateLogger();
 			});
 			builder.Register(x => new MemoryCache(new MemoryCacheOptions())).SingleInstance();
