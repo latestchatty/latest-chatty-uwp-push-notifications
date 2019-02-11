@@ -10,6 +10,6 @@ RUN curl -sSL https://aka.ms/getvsdbgsh | bash /dev/stdin -v latest -l ~/vsdbg
 
 COPY ./src .
 
-CD /dotnetapp/SNPN/
+WORKDIR /dotnetapp/SNPN/
 
 CMD /usr/bin/dotnet run watch

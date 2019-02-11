@@ -24,11 +24,11 @@ namespace SNPN.Common
 				{ NotificationType.Toast, "wns/toast" }
 		  };
 
-		public NetworkService(AppConfiguration configuration, ILogger logger, HttpMessageHandler httpHandler)
+		public NetworkService(AppConfiguration configuration, ILogger logger, HttpClient httpClient)
 		{
 			_config = configuration;
 			_logger = logger;
-			_httpClient = new HttpClient(httpHandler);
+			_httpClient = httpClient;
 
 			//Winchatty seems to crap itself if the Expect: 100-continue header is there.
 			// Should be safe to leave this for every request we make.

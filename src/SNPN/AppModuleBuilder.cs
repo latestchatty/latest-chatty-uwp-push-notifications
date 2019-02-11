@@ -56,7 +56,7 @@ namespace SNPN
 				var ctx = c.Resolve<IComponentContext>();
 				return () => ctx.Resolve<NewEventHandler>();
 			});
-			builder.RegisterType<HttpClientHandler>().As<HttpMessageHandler>().SingleInstance();
+			builder.Register(x => new HttpClient()).SingleInstance();
 			builder.RegisterType<NetworkService>().As<INetworkService>().SingleInstance();
 			builder.RegisterType<TileContentRepo>().InstancePerDependency();
 			return builder.Build();

@@ -46,7 +46,7 @@ namespace SNPN.Test.Common
 			var config = GetAppConfig();
 			var handler = GetMessageHandlerMock(callReturn, statusCode, onCalled);
 
-			var service = new NetworkService(config, logger.Object, handler.Object);
+			var service = new NetworkService(config, logger.Object, new HttpClient(handler.Object));
 			return service;
 		}
 		#endregion
