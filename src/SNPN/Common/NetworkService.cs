@@ -8,6 +8,8 @@ using System.Threading.Tasks;
 using System.Xml.Linq;
 using Newtonsoft.Json.Linq;
 using Serilog;
+using Polly;
+using System.Linq;
 
 namespace SNPN.Common
 {
@@ -16,6 +18,8 @@ namespace SNPN.Common
 		private readonly AppConfiguration _config;
 		private readonly HttpClient _httpClient;
 		private readonly ILogger _logger;
+
+		private readonly AsyncPolicy _retryPolicy;
 
 		private Dictionary<NotificationType, string> _notificationTypeMapping = new Dictionary<NotificationType, string>
 		  {
@@ -33,6 +37,21 @@ namespace SNPN.Common
 			//Winchatty seems to crap itself if the Expect: 100-continue header is there.
 			// Should be safe to leave this for every request we make.
 			_httpClient.DefaultRequestHeaders.ExpectContinue = false;
+			// Handle both exceptions and return values in one policy
+			HttpStatusCode[] httpStatusCodesWorthRetrying = {
+				HttpStatusCode.RequestTimeout, // 408
+				HttpStatusCode.InternalServerError, // 500
+				HttpStatusCode.BadGateway, // 502
+				HttpStatusCode.ServiceUnavailable, // 503
+				HttpStatusCode.GatewayTimeout // 504
+			};
+			_retryPolicy = Policy
+				.Handle<HttpRequestException>()
+				.Or<TaskCanceledException>()
+				.RetryAsync(3, (e, i) =>
+				{
+					_logger.Information("Exception sending notification {exception} - Retrying", e);
+				});
 		}
 
 		public async Task<int> WinChattyGetNewestEventId(CancellationToken ct)
@@ -91,70 +110,73 @@ namespace SNPN.Common
 
 		public async Task<ResponseResult> SendNotification(QueuedNotificationItem notification, string token)
 		{
-            using (var request = new HttpRequestMessage
-            {
-                RequestUri = new Uri(notification.Uri),
-                Method = HttpMethod.Post
-            })
-            {
+			return await _retryPolicy.ExecuteAsync(async () =>
+			{
+				using (var request = new HttpRequestMessage
+				{
+					RequestUri = new Uri(notification.Uri),
+					Method = HttpMethod.Post
+				})
+				{
 
-                request.Headers.Add("Authorization", $"Bearer {token}");
+					request.Headers.Add("Authorization", $"Bearer {token}");
 
-                request.Headers.Add("X-WNS-Type", _notificationTypeMapping[notification.Type]);
+					request.Headers.Add("X-WNS-Type", _notificationTypeMapping[notification.Type]);
 
-                if (notification.Group != NotificationGroups.None)
-                {
-                    request.Headers.Add("X-WNS-Group",
-                        Uri.EscapeUriString(Enum.GetName(typeof(NotificationGroups), notification.Group)));
-                }
+					if (notification.Group != NotificationGroups.None)
+					{
+						request.Headers.Add("X-WNS-Group",
+							 Uri.EscapeUriString(Enum.GetName(typeof(NotificationGroups), notification.Group)));
+					}
 
-                if (!string.IsNullOrWhiteSpace(notification.Tag))
-                {
-                    request.Headers.Add("X-WNS-Tag", Uri.EscapeUriString(notification.Tag));
-                }
+					if (!string.IsNullOrWhiteSpace(notification.Tag))
+					{
+						request.Headers.Add("X-WNS-Tag", Uri.EscapeUriString(notification.Tag));
+					}
 
-                if (notification.Ttl > 0)
-                {
-                    request.Headers.Add("X-WNS-TTL", notification.Ttl.ToString());
-                }
+					if (notification.Ttl > 0)
+					{
+						request.Headers.Add("X-WNS-TTL", notification.Ttl.ToString());
+					}
 
-                using (var stringContent =
-                    new StringContent(notification.Content.ToString(SaveOptions.DisableFormatting), Encoding.UTF8,
-                        "text/xml"))
-                {
-                    request.Content = stringContent;
-                    using (var response = await _httpClient.SendAsync(request))
-                    {
-                        return ProcessResponse(response);
-                    }
-                }
-            }
-        }
+					using (var stringContent =
+						 new StringContent(notification.Content.ToString(SaveOptions.DisableFormatting), Encoding.UTF8,
+							  "text/xml"))
+					{
+						request.Content = stringContent;
+						using (var response = await _httpClient.SendAsync(request))
+						{
+							return ProcessResponse(response);
+						}
+					}
+				}
+			});
+		}
 
 		public async Task<string> GetNotificationToken()
 		{
-            using (var data = new FormUrlEncodedContent(new Dictionary<string, string>
-            {
-                {"grant_type", "client_credentials"},
-                {"client_id", _config.NotificationSid},
-                {"client_secret", _config.ClientSecret},
-                {"scope", "notify.windows.com"}
-            }))
-            {
+			using (var data = new FormUrlEncodedContent(new Dictionary<string, string>
+				{
+					 {"grant_type", "client_credentials"},
+					 {"client_id", _config.NotificationSid},
+					 {"client_secret", _config.ClientSecret},
+					 {"scope", "notify.windows.com"}
+				}))
+			{
 
-                using (var response = await _httpClient.PostAsync("https://login.live.com/accesstoken.srf", data))
-                {
-                    if (response.StatusCode == HttpStatusCode.OK)
-                    {
-                        var responseJson = JToken.Parse(await response.Content.ReadAsStringAsync());
+				using (var response = await _httpClient.PostAsync("https://login.live.com/accesstoken.srf", data))
+				{
+					if (response.StatusCode == HttpStatusCode.OK)
+					{
+						var responseJson = JToken.Parse(await response.Content.ReadAsStringAsync());
 
-                        _logger.Information("Got access token.");
-                        return responseJson["access_token"].Value<string>();
-                    }
-                }
-            }
+						_logger.Information("Got access token.");
+						return responseJson["access_token"].Value<string>();
+					}
+				}
+			}
 
-            return null;
+			return null;
 		}
 
 		private ResponseResult ProcessResponse(HttpResponseMessage response)
@@ -170,7 +192,7 @@ namespace SNPN.Common
 				case HttpStatusCode.NotFound:
 				case HttpStatusCode.Gone:
 				case HttpStatusCode.Forbidden:
-					result |= ResponseResult.RemoveUser;					
+					result |= ResponseResult.RemoveUser;
 					break;
 				case HttpStatusCode.NotAcceptable:
 					result = ResponseResult.FailTryAgain;

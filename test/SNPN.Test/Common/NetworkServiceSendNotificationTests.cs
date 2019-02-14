@@ -1,7 +1,12 @@
-﻿using SNPN.Common;
+﻿using Moq;
+using Moq.Protected;
+using SNPN.Common;
 using System;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
+using System.Threading;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace SNPN.Test.Common
@@ -216,6 +221,33 @@ namespace SNPN.Test.Common
 			var result = await service.SendNotification(new QueuedNotificationItem(NotificationType.Toast, doc, "http://test.url", NotificationGroups.ReplyToUser), "token");
 
 			Assert.Equal(ResponseResult.FailDoNotTryAgain, result);
+		}
+
+		[Fact]
+		async void PollyRetry()
+		{
+			var doc = NotificationBuilder.BuildReplyDoc(1, "Hello", "World");
+			
+			var config = new AppConfiguration();
+			config.WinchattyApiBase = "http://testApi/";
+
+			var handler = new Mock<HttpMessageHandler>();
+			var setup = handler.Protected()
+				.SetupSequence<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
+				.ThrowsAsync(new TaskCanceledException())
+				.ReturnsAsync(new HttpResponseMessage() {
+					Content = new StringContent(string.Empty),
+					StatusCode = HttpStatusCode.OK
+				});
+
+			var logger = new Mock<Serilog.ILogger>();
+
+			var service = new NetworkService(config, logger.Object, new HttpClient(handler.Object));
+			var result = await service.SendNotification(new QueuedNotificationItem(NotificationType.Toast, doc, "http://test.url", NotificationGroups.ReplyToUser), "token");
+
+			logger.Verify(x => x.Information("Exception sending notification {exception} - Retrying", It.IsAny<Exception>()));
+			
+			Assert.Equal(ResponseResult.Success, result);
 		}
 	}
 }
