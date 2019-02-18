@@ -23,7 +23,7 @@ namespace SNPN.WebService
 			Post("/register", RegisterDevice);
 			Post("/deregister", DeregisterDevice);
 			Post("/replyToNotification", ReplyToNotification);
-			Get("/test", x => new { status = "ok" });
+			Get("/test", x => new { status = "ok", version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString() });
 			Get("tileContent", GetTileContent);
 			Post("/user", PostUser);
 			Get("/user", GetUser);
