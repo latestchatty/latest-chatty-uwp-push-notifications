@@ -68,8 +68,7 @@ namespace SNPN.Test.Common
 			var service = GetMockedNetworkService("{ \"result\": \"success\" }");
 
 			var result = await service.ReplyToNotification("asldjfk", "1234", "asdf", "asdlfkj");
-
-			Assert.Equal(true, result);
+			Assert.True(result);
 		}
 
 		[Fact]
@@ -79,7 +78,7 @@ namespace SNPN.Test.Common
 
 			var result = await service.ReplyToNotification("asldjfk", "1234", "asdf", "asdlfkj");
 
-			Assert.Equal(false, result);
+			Assert.False(result);
 		}
 
 		[Fact]
