@@ -7,6 +7,7 @@
     <OutputType>Exe</OutputType>
     <PackageId>SNPN</PackageId>
     <UserSecretsId>aspnet-Shacknews-Push-Notifications-20170122123959</UserSecretsId>
+    <Version>$(BuildVersion)</Version>
   </PropertyGroup>
 
   <ItemGroup>
