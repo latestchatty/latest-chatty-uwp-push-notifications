@@ -34,3 +34,7 @@ coverage-report/*
 *.pfx
 *.cer
 *.pvk
+.vs/SNPN/v15/Server/sqlite3/storage.ide-wal
+.vs/SNPN/v15/Server/sqlite3/db.lock
+.vs/SNPN/v15/Server/sqlite3/storage.ide
+.vs/SNPN/v15/Server/sqlite3/storage.ide-shm

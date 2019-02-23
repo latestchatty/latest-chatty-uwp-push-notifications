@@ -9,7 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\SNPN\SNPN.csproj" />
+    <ProjectReference Include="..\src\SNPN\SNPN.csproj" />
   </ItemGroup>
 
   <ItemGroup>
