@@ -5,7 +5,7 @@ ARG BUILD_VERSION
 
 COPY . .
 
-RUN dotnet publish -c Release src/SNPN/SNPN.csproj -r alpine-x64 /p:BuildVersion=$(BUILD_VERSION)
+RUN dotnet publish -c Release src/SNPN/SNPN.csproj -r alpine-x64 /p:BuildVersion=${BUILD_VERSION}
 
 FROM microsoft/dotnet:2.1-runtime-deps-alpine
 
