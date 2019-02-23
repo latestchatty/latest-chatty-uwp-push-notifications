@@ -126,7 +126,7 @@ namespace SNPN.Controllers
 		}
 
 		[HttpGet("tileContent")]
-		public async Task<IActionResult> GetTileContent(dynamic arg)
+		public async Task<IActionResult> GetTileContent()
 		{
 			return Json(await _tileContentRepo.GetTileContent());
 		}

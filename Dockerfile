@@ -1,7 +1,7 @@
 FROM microsoft/dotnet:sdk AS build
 WORKDIR /build
 
-ARG BUILD_VERSION
+ARG BUILD_VERSION="1.0.0.0"
 
 COPY . .
 
