@@ -1,9 +1,9 @@
 ﻿using Microsoft.Extensions.Caching.Memory;
 using Moq;
 using SNPN.Common;
-using SNPN.WebService;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using SNPN.Controllers;
 using Xunit;
 
 namespace SNPN.Test.WebService

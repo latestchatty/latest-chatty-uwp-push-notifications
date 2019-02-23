@@ -1,39 +1,37 @@
 using Dapper;
 using Microsoft.Data.Sqlite;
 using System.IO;
-using Autofac;
 using System.Data;
 using System.Runtime.CompilerServices;
+using Serilog;
 
 namespace SNPN.Data
 {
 	public class DbHelper
 	{
-		private static readonly long CurrentVersion = 1;
-		private static bool _initialized;
-		private static string _dbFile;
-		private static string DbFile
+		private readonly long CurrentVersion = 1;
+		private bool _initialized;
+		private readonly string DbFile;
+		private readonly ILogger _logger;
+
+		public DbHelper(ILogger logger, AppConfiguration config)
 		{
-			get
+			_logger = logger;
+
+			if (string.IsNullOrWhiteSpace(config.DbLocation))
 			{
-				if (_dbFile == null)
-				{
-					var config = AppModuleBuilder.Container.Resolve<AppConfiguration>();
-					if (string.IsNullOrWhiteSpace(config.DbLocation))
-					{
-						_dbFile = Path.Combine(Directory.GetCurrentDirectory(), "Notifications.db");
-					}
-					else
-					{
-						_dbFile = config.DbLocation;
-					}
-				}
-				return _dbFile;
+				DbFile = Path.Combine(Directory.GetCurrentDirectory(), "Notifications.db");
 			}
+			else
+			{
+				DbFile = config.DbLocation;
+			}
+
+			logger.Information("DB Location {dbfile}", DbFile);
 		}
 
-        [MethodImpl(MethodImplOptions.Synchronized)]
-		public static SqliteConnection GetConnection()
+		[MethodImpl(MethodImplOptions.Synchronized)]
+		public SqliteConnection GetConnection()
 		{
 			if (!File.Exists(DbFile))
 			{
@@ -47,7 +45,7 @@ namespace SNPN.Data
 			return GetConnectionInternal(DbFile);
 		}
 
-		private static SqliteConnection GetConnectionInternal(string fileLocation, bool ignoreMissingFile = false)
+		private SqliteConnection GetConnectionInternal(string fileLocation, bool ignoreMissingFile = false)
 		{
 			if (!ignoreMissingFile && !File.Exists(fileLocation))
 			{
@@ -56,8 +54,10 @@ namespace SNPN.Data
 			return new SqliteConnection("Data Source=" + fileLocation);
 		}
 
-		private static void CreateDatabase(string fileLocation)
+		private void CreateDatabase(string fileLocation)
 		{
+			_logger.Information("Creating database at {fileLocation}", fileLocation);
+			File.Create(fileLocation).Dispose();
 			using (var connection = GetConnectionInternal(fileLocation, true))
 			{
 				connection.Open();
@@ -90,7 +90,7 @@ namespace SNPN.Data
 			}
 		}
 
-		private static void UpgradeDatabase()
+		private void UpgradeDatabase()
 		{
 			using (var con = GetConnectionInternal(DbFile))
 			{
@@ -102,6 +102,7 @@ namespace SNPN.Data
 					{
 						for (long i = dbVersion; i <= CurrentVersion; i++)
 						{
+							_logger.Information("Upgrading databse to version {dbupgradeversion}", i);
 							UpgradeDatabase(i, con, tx);
 						}
 						con.Execute($"PRAGMA user_version={CurrentVersion};", transaction: tx);
@@ -111,7 +112,7 @@ namespace SNPN.Data
 			}
 		}
 
-		private static void UpgradeDatabase(long dbVersion, SqliteConnection con, IDbTransaction tx)
+		private void UpgradeDatabase(long dbVersion, SqliteConnection con, IDbTransaction tx)
 		{
 			switch (dbVersion)
 			{

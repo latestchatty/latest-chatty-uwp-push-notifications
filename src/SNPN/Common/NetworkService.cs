@@ -9,7 +9,6 @@ using System.Xml.Linq;
 using Newtonsoft.Json.Linq;
 using Serilog;
 using Polly;
-using System.Linq;
 
 namespace SNPN.Common
 {
@@ -21,7 +20,7 @@ namespace SNPN.Common
 
 		private readonly AsyncPolicy _retryPolicy;
 
-		private Dictionary<NotificationType, string> _notificationTypeMapping = new Dictionary<NotificationType, string>
+		private readonly Dictionary<NotificationType, string> _notificationTypeMapping = new Dictionary<NotificationType, string>
 		  {
 				{ NotificationType.Badge, "wns/badge" },
 				{ NotificationType.Tile, "wns/tile" },

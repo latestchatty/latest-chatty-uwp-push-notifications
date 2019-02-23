@@ -1,4 +1,5 @@
 using Dapper;
+using Serilog;
 using SNPN.Model;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,6 +9,8 @@ namespace SNPN.Data
 {
 	public class UserRepo : DbHelper, IUserRepo
 	{
+		public UserRepo(ILogger logger, AppConfiguration config) : base(logger, config) { }
+
 		public async Task<NotificationUser> FindUser(string userName)
 		{
 			using (var con = GetConnection())

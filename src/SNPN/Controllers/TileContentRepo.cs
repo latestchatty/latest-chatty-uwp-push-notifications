@@ -1,12 +1,12 @@
-﻿using Microsoft.Extensions.Caching.Memory;
-using Serilog;
-using SNPN.Common;
-using System;
+﻿using System;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using Microsoft.Extensions.Caching.Memory;
+using Serilog;
+using SNPN.Common;
 
-namespace SNPN.WebService
+namespace SNPN.Controllers
 {
 	public class TileContentRepo
 	{
