@@ -91,7 +91,7 @@ namespace SNPN.Controllers
 		public dynamic GetTest() => new { status = "ok", version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString() };
 			
 		[HttpPost("user")]
-		public async Task<IActionResult> PostUser([FromBody] PostUserArgs e)
+		public async Task<IActionResult> PostUser([FromForm] PostUserArgs e)
 		{
 			_logger.Information("Updating user {userName}.", e.UserName);
 			var user = await _userRepo.FindUser(e.UserName);
@@ -141,7 +141,7 @@ namespace SNPN.Controllers
 		}
 
 		[HttpPost("deregister")]
-		public async Task<IActionResult> DeregisterDevice([FromBody] DeregisterArgs e)
+		public async Task<IActionResult> DeregisterDevice([FromForm] DeregisterArgs e)
 		{
 			_logger.Information("Deregister device.");
 
@@ -150,7 +150,7 @@ namespace SNPN.Controllers
 		}
 
 		[HttpPost("register")]
-		public async Task<IActionResult> RegisterDevice([FromBody] RegisterArgs e)
+		public async Task<IActionResult> RegisterDevice([FromForm] RegisterArgs e)
 		{
 			_logger.Information("Register device.");
 

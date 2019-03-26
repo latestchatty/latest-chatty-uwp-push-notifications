@@ -38,7 +38,7 @@ namespace SNPN
 			services.AddSingleton(x =>
 			{
 				var configBuilder = new ConfigurationBuilder()
-					.AddJsonFile("appsettings.json", false)
+					.AddJsonFile("appsettings.json", true)
 					.AddEnvironmentVariables()
 					.SetBasePath(Directory.GetCurrentDirectory());
 
