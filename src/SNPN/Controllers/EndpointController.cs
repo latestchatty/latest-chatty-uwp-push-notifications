@@ -45,6 +45,7 @@ namespace SNPN.Controllers
 			public string UserName { get; set; }
 			// ReSharper disable once UnusedAutoPropertyAccessor.Local
 			public long NotifyOnUserName { get; set; }
+			public List<string> KeywordNotifications { get; set; }
 		}
 
 		// ReSharper disable once ClassNeverInstantiated.Local
@@ -89,11 +90,15 @@ namespace SNPN.Controllers
 
 		[HttpGet("test")]
 		public dynamic GetTest() => new { status = "ok", version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString() };
-			
+
 		[HttpPost("user")]
 		public async Task<IActionResult> PostUser([FromForm] PostUserArgs e)
 		{
 			_logger.Information("Updating user {userName}.", e.UserName);
+			foreach (var keyword in e.KeywordNotifications)
+			{
+				_logger.Information("Notify on {keyword}", keyword);
+			}
 			var user = await _userRepo.FindUser(e.UserName);
 			if (user == null)
 			{
@@ -101,12 +106,14 @@ namespace SNPN.Controllers
 				{
 					UserName = e.UserName,
 					DateAdded = DateTime.UtcNow,
-					NotifyOnUserName = e.NotifyOnUserName
+					NotifyOnUserName = e.NotifyOnUserName,
+					KeywordNotifications = e.KeywordNotifications
 				});
 			}
 			else
 			{
 				user.NotifyOnUserName = e.NotifyOnUserName;
+				user.KeywordNotifications = e.KeywordNotifications;
 				await _userRepo.UpdateUser(user);
 			}
 

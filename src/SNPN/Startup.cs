@@ -10,6 +10,7 @@ using SNPN.Data;
 using SNPN.Monitor;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Hosting;
 using SNPN.Controllers;
@@ -31,7 +32,7 @@ namespace SNPN
 		// This method gets called by the runtime. Use this method to add services to the container.
 		public void ConfigureServices(IServiceCollection services)
 		{
-			services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
+			services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_3_0);
 			services.AddSingleton<INotificationService, NotificationService>();
 			services.AddSingleton<AccessTokenManager>();
 			services.AddSingleton<Monitor.Monitor>();
@@ -75,7 +76,7 @@ namespace SNPN
 		}
 
 		// This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-		public void Configure(IApplicationBuilder app, IHostingEnvironment env)
+		public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
 		{
 			if (env.IsDevelopment())
 			{
@@ -85,8 +86,8 @@ namespace SNPN
 			{
 				app.UseExceptionHandler("/error/500");
 			}
-
-			app.UseMvc();
+			app.UseRouting();
+			app.UseEndpoints(eps => eps.MapControllers());
 		}
 	}
 }

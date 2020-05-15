@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace SNPN.Model
 {
@@ -8,5 +9,6 @@ namespace SNPN.Model
 		public string UserName { get; set; }
 		public DateTime DateAdded { get; set; }
 		public long NotifyOnUserName { get; set; }
+		public List<string> KeywordNotifications { get; set; }
 	}
 }

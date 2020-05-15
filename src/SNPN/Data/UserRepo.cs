@@ -36,11 +36,28 @@ namespace SNPN.Data
 		{
 			using (var con = GetConnection())
 			{
-				await con.ExecuteAsync(@"
+				await con.OpenAsync();
+				using (var tx = con.BeginTransaction())
+				{
+					await con.ExecuteAsync(@"
 					UPDATE User SET
 						NotifyOnUserName=@NotifyOnUserName
 					WHERE Id=@Id;
 					", new { user.Id, user.NotifyOnUserName });
+					await con.ExecuteAsync(@"DELETE FROM KeywordUser WHERE UserId=@Id");
+					foreach (var keyword in user.KeywordNotifications)
+					{
+						await con.ExecuteAsync(@"
+							INSERT INTO Keyword (Word)
+							SELECT @Word
+							WHERE NOT EXISTS(SELECT 1 FROM Keyword WHERE Word = @Word);
+							INSERT INTO KeywordUser (UserId, WordId)
+							SELECT @Id, Id FROM Keyword WHERE Word = @Word;
+						", new { Word = keyword, Id = user.Id });
+					}
+					await tx.CommitAsync();
+				}
+				await con.CloseAsync();
 			}
 		}
 
@@ -48,12 +65,29 @@ namespace SNPN.Data
 		{
 			using (var con = GetConnection())
 			{
-				user.Id = await con.QuerySingleAsync<long>(@"
+				await con.OpenAsync();
+				using (var tx = con.BeginTransaction())
+				{
+					user.Id = await con.QuerySingleAsync<long>(@"
 					INSERT INTO User
 					(UserName, DateAdded, NotifyOnUserName)
 					VALUES(@UserName, @DateAdded, @NotifyOnUserName);
 					select last_insert_rowid();
 					", new { user.UserName, user.DateAdded, user.NotifyOnUserName });
+
+					foreach (var keyword in user.KeywordNotifications)
+					{
+						await con.ExecuteAsync(@"
+							INSERT INTO Keyword (Word)
+							SELECT @Word
+							WHERE NOT EXISTS(SELECT 1 FROM Keyword WHERE Word = @Word);
+							INSERT INTO KeywordUser (UserId, WordId)
+							SELECT @Id, Id FROM Keyword WHERE Word = @Word;
+						", new { Word = keyword, Id = user.Id });
+					}
+					await tx.CommitAsync();
+				}
+				await con.CloseAsync();
 				return user;
 			}
 		}

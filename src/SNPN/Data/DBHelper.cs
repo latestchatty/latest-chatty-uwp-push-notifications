@@ -9,7 +9,7 @@ namespace SNPN.Data
 {
 	public class DbHelper
 	{
-		private readonly long CurrentVersion = 1;
+		private readonly long CurrentVersion = 2;
 		private bool _initialized;
 		private readonly string DbFile;
 		private readonly ILogger _logger;
@@ -84,6 +84,24 @@ namespace SNPN.Data
 						CREATE INDEX DeviceUserId ON Device(UserId);
 						CREATE INDEX DeviceId ON Device(Id);
 						CREATE INDEX DeviceNotificationUri ON Device(NotificationUri);
+
+						CREATE TABLE Keyword
+						(
+							Id INTEGER PRIMARY KEY AUTOINCREMENT,
+							Word VARCHAR(500) UNIQUE NOT NULL
+						);
+						CREATE INDEX KeywordWord ON Keyword(Word);
+						
+						CREATE TABLE KeywordUser
+						(
+							UserId INTEGER NOT NULL,
+							WordId INTEGER NOT NULL,
+							FOREIGN KEY(UserId) REFERENCES User(Id),
+							FOREIGN KEY(WordId) REFERENCES Keyword(Id)
+						);
+						CREATE INDEX KeywordUserUserId ON KeywordUser(UserId);
+						CREATE INDEX KeywordUserWordId ON KeywordUser(WordId);
+
 						PRAGMA user_version=" + CurrentVersion + ";", transaction: tx);
 					tx.Commit();
 				}
@@ -118,6 +136,26 @@ namespace SNPN.Data
 			{
 				case 1:
 					con.Execute(@"ALTER TABLE User ADD COLUMN NotifyOnUserName INTEGER DEFAULT(1)", transaction: tx);
+					break;
+				case 2:
+					con.Execute(@"
+						CREATE TABLE Keyword
+						(
+							Id INTEGER PRIMARY KEY AUTOINCREMENT,
+							Word VARCHAR(500) UNIQUE NOT NULL
+						);
+						CREATE INDEX KeywordWord ON Keyword(Word);
+						
+						CREATE TABLE KeywordUser
+						(
+							UserId INTEGER NOT NULL,
+							WordId INTEGER NOT NULL,
+							FOREIGN KEY(UserId) REFERENCES User(Id),
+							FOREIGN KEY(WordId) REFERENCES Keyword(Id)
+						);
+						CREATE INDEX KeywordUserUserId ON KeywordUser(UserId);
+						CREATE INDEX KeywordUserWordId ON KeywordUser(WordId);
+						");
 					break;
 			}
 		}

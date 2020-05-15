@@ -6,12 +6,11 @@
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
-            "program": "${workspaceRoot}\\src\\SNPN\\bin\\Debug\\netcoreapp2.1\\SNPN.dll",
+            "program": "${workspaceFolder}/bin/Debug/netcoreapp3.1/SNPN.dll",
             "args": [],
-            "cwd": "${workspaceRoot}\\src\\SNPN",
-            "console": "internalConsole",
+            "cwd": "${workspaceFolder}",
             "stopAtEntry": false,
-            "internalConsoleOptions": "openOnSessionStart"
+            "console": "internalConsole"
         },
         {
             "name": ".NET Core Attach",
