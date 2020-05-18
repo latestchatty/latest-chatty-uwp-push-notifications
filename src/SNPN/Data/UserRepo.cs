@@ -24,6 +24,25 @@ namespace SNPN.Data
 			}
 		}
 
+		public async Task<IEnumerable<NotificationUser>> FindUsersByWord(long wordId)
+		{
+			using (var con = GetConnection())
+			{
+				return await con.QueryAsync<NotificationUser>(
+						  @"SELECT * FROM User WHERE Id IN(SELECT UserId FROM KeywordUser WHERE WordId=@wordId)",
+						  new { wordId }
+						  );
+			}
+		}
+
+		public async Task<IEnumerable<NotificationWord>> GetAllWordsForNotifications()
+		{
+			using (var con = GetConnection())
+			{
+				return await con.QueryAsync<NotificationWord>("SELECT * FROM Keyword");
+			}
+		}
+
 		public async Task<List<string>> GetAllUserNamesForNotification()
 		{
 			using (var con = GetConnection())
@@ -44,7 +63,7 @@ namespace SNPN.Data
 						NotifyOnUserName=@NotifyOnUserName
 					WHERE Id=@Id;
 					", new { user.Id, user.NotifyOnUserName });
-					await con.ExecuteAsync(@"DELETE FROM KeywordUser WHERE UserId=@Id");
+					await con.ExecuteAsync(@"DELETE FROM KeywordUser WHERE UserId=@Id", new { user.Id });
 					foreach (var keyword in user.KeywordNotifications)
 					{
 						await con.ExecuteAsync(@"

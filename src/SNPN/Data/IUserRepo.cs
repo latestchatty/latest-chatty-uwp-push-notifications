@@ -14,5 +14,7 @@ namespace SNPN.Data
 		Task<List<string>> GetAllUserNamesForNotification();
 		Task<List<DeviceInfo>> GetUserDeviceInfos(NotificationUser user);
 		Task UpdateUser(NotificationUser user);
+		Task<IEnumerable<NotificationUser>> FindUsersByWord(long wordId);
+		Task<IEnumerable<NotificationWord>> GetAllWordsForNotifications();
 	}
 }

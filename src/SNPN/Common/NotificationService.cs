@@ -40,7 +40,7 @@ namespace SNPN.Common
 			_queuedItems.Enqueue(notificationItem);
 			StartQueueProcess();
 		}
-		
+
 		[MethodImpl(MethodImplOptions.Synchronized)]
 		private void StartQueueProcess()
 		{
@@ -53,13 +53,13 @@ namespace SNPN.Common
 		{
 			try
 			{
-                while (_queuedItems.TryDequeue(out var notification))
+				while (_queuedItems.TryDequeue(out var notification))
 				{
 					_logger.Verbose("Processing notification queue.");
 					try
 					{
 						var token = await _accessTokenManager.GetAccessToken();
-						
+
 						_logger.Information(
 							"Sending notification {notificationType} with content {contentType}",
 							notification.Type, notification.Content?.ToString(SaveOptions.None));
@@ -76,7 +76,7 @@ namespace SNPN.Common
 									result = await _networkService.SendNotification(notification, token);
 									break;
 							}
-							if(result.HasFlag(ResponseResult.RemoveUser))
+							if (result.HasFlag(ResponseResult.RemoveUser))
 							{
 								await _userRepo.DeleteDeviceByUri(notification.Uri);
 							}
@@ -105,8 +105,5 @@ namespace SNPN.Common
 				_processingNotificationQueue = false;
 			}
 		}
-
-
-
 	}
 }

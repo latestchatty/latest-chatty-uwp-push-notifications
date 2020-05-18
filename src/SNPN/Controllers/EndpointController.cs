@@ -95,10 +95,6 @@ namespace SNPN.Controllers
 		public async Task<IActionResult> PostUser([FromForm] PostUserArgs e)
 		{
 			_logger.Information("Updating user {userName}.", e.UserName);
-			foreach (var keyword in e.KeywordNotifications)
-			{
-				_logger.Information("Notify on {keyword}", keyword);
-			}
 			var user = await _userRepo.FindUser(e.UserName);
 			if (user == null)
 			{
