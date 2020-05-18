@@ -64,15 +64,18 @@ namespace SNPN.Data
 					WHERE Id=@Id;
 					", new { user.Id, user.NotifyOnUserName });
 					await con.ExecuteAsync(@"DELETE FROM KeywordUser WHERE UserId=@Id", new { user.Id });
-					foreach (var keyword in user.KeywordNotifications)
+					if (user.KeywordNotifications != null)
 					{
-						await con.ExecuteAsync(@"
+						foreach (var keyword in user.KeywordNotifications)
+						{
+							await con.ExecuteAsync(@"
 							INSERT INTO Keyword (Word)
 							SELECT @Word
 							WHERE NOT EXISTS(SELECT 1 FROM Keyword WHERE Word = @Word);
 							INSERT INTO KeywordUser (UserId, WordId)
 							SELECT @Id, Id FROM Keyword WHERE Word = @Word;
 						", new { Word = keyword, Id = user.Id });
+						}
 					}
 					await tx.CommitAsync();
 				}
@@ -94,15 +97,19 @@ namespace SNPN.Data
 					select last_insert_rowid();
 					", new { user.UserName, user.DateAdded, user.NotifyOnUserName });
 
-					foreach (var keyword in user.KeywordNotifications)
+					if (user.KeywordNotifications != null)
 					{
-						await con.ExecuteAsync(@"
+						foreach (var keyword in user.KeywordNotifications)
+						{
+							await con.ExecuteAsync(@"
 							INSERT INTO Keyword (Word)
 							SELECT @Word
 							WHERE NOT EXISTS(SELECT 1 FROM Keyword WHERE Word = @Word);
 							INSERT INTO KeywordUser (UserId, WordId)
 							SELECT @Id, Id FROM Keyword WHERE Word = @Word;
 						", new { Word = keyword, Id = user.Id });
+						}
+
 					}
 					await tx.CommitAsync();
 				}
