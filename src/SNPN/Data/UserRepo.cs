@@ -15,12 +15,23 @@ namespace SNPN.Data
 		{
 			using (var con = GetConnection())
 			{
-				return (
-					 await con.QueryAsync<NotificationUser>(
-						  @"SELECT * FROM User WHERE LOWER(UserName)=@userName",
-						  new { userName = userName.ToLower() }
-						  )
-					 ).FirstOrDefault();
+				using (var multipleResult =
+					await con.QueryMultipleAsync(
+						@"
+							SELECT * FROM User WHERE LOWER(UserName) = @userName;
+							SELECT k.Word FROM User u 
+							INNER JOIN KeywordUser ku ON ku.UserId = u.Id
+							INNER JOIN Keyword k ON k.Id = ku.WordId WHERE LOWER(u.UserName) = @userName;
+						",
+						new { userName = userName.ToLower() }
+					))
+				{
+					var user = (await multipleResult.ReadAsync<NotificationUser>()).FirstOrDefault();
+					if (user == null) return null;
+					var keywords = await multipleResult.ReadAsync<string>();
+					user.NotificationKeywords = keywords.ToList();
+					return user;
+				}
 			}
 		}
 
@@ -64,9 +75,9 @@ namespace SNPN.Data
 					WHERE Id=@Id;
 					", new { user.Id, user.NotifyOnUserName });
 					await con.ExecuteAsync(@"DELETE FROM KeywordUser WHERE UserId=@Id", new { user.Id });
-					if (user.KeywordNotifications != null)
+					if (user.NotificationKeywords != null)
 					{
-						foreach (var keyword in user.KeywordNotifications)
+						foreach (var keyword in user.NotificationKeywords)
 						{
 							await con.ExecuteAsync(@"
 							INSERT INTO Keyword (Word)
@@ -97,9 +108,9 @@ namespace SNPN.Data
 					select last_insert_rowid();
 					", new { user.UserName, user.DateAdded, user.NotifyOnUserName });
 
-					if (user.KeywordNotifications != null)
+					if (user.NotificationKeywords != null)
 					{
-						foreach (var keyword in user.KeywordNotifications)
+						foreach (var keyword in user.NotificationKeywords)
 						{
 							await con.ExecuteAsync(@"
 							INSERT INTO Keyword (Word)

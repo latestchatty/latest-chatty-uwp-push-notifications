@@ -9,6 +9,6 @@ namespace SNPN.Model
 		public string UserName { get; set; }
 		public DateTime DateAdded { get; set; }
 		public long NotifyOnUserName { get; set; }
-		public List<string> KeywordNotifications { get; set; }
+		public List<string> NotificationKeywords { get; set; }
 	}
 }

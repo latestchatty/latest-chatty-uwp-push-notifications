@@ -45,7 +45,7 @@ namespace SNPN.Controllers
 			public string UserName { get; set; }
 			// ReSharper disable once UnusedAutoPropertyAccessor.Local
 			public long NotifyOnUserName { get; set; }
-			public List<string> KeywordNotifications { get; set; }
+			public List<string> NotificationKeywords { get; set; }
 		}
 
 		// ReSharper disable once ClassNeverInstantiated.Local
@@ -103,13 +103,13 @@ namespace SNPN.Controllers
 					UserName = e.UserName,
 					DateAdded = DateTime.UtcNow,
 					NotifyOnUserName = e.NotifyOnUserName,
-					KeywordNotifications = e.KeywordNotifications
+					NotificationKeywords = e.NotificationKeywords
 				});
 			}
 			else
 			{
 				user.NotifyOnUserName = e.NotifyOnUserName;
-				user.KeywordNotifications = e.KeywordNotifications;
+				user.NotificationKeywords = e.NotificationKeywords;
 				await _userRepo.UpdateUser(user);
 			}
 
@@ -123,7 +123,7 @@ namespace SNPN.Controllers
 			var user = await _userRepo.FindUser(userName);
 			if (user != null)
 			{
-				return Json(new { user.UserName, NotifyOnUserName = user.NotifyOnUserName == 0 });
+				return Json(new { user.UserName, NotifyOnUserName = user.NotifyOnUserName == 1, user.NotificationKeywords });
 			}
 			throw new Exception("User not found.");
 		}
