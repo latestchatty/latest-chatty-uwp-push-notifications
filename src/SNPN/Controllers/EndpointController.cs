@@ -92,12 +92,23 @@ namespace SNPN.Controllers
 		public dynamic GetTest() => new { status = "ok", version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString() };
 
 		[HttpPost("user")]
-		public async Task<IActionResult> PostUser([FromForm] PostUserArgs e)
+		public async Task<IActionResult> PostUserV1([FromForm] PostUserArgs e)
+		{
+			return await PostUser(e, 1);
+		}
+
+		[HttpPost("v2/user")]
+		public async Task<IActionResult> PostUserV2([FromForm] PostUserArgs e)
+		{
+			return await PostUser(e, 2);
+		}
+		private async Task<IActionResult> PostUser(PostUserArgs e, int version)
 		{
 			_logger.Information("Updating user {userName}.", e.UserName);
 			var user = await _userRepo.FindUser(e.UserName);
 			if (user == null)
 			{
+				//Don't care about version because 1 will have null notification keywords.
 				await _userRepo.AddUser(new NotificationUser
 				{
 					UserName = e.UserName,
@@ -110,7 +121,7 @@ namespace SNPN.Controllers
 			{
 				user.NotifyOnUserName = e.NotifyOnUserName;
 				user.NotificationKeywords = e.NotificationKeywords;
-				await _userRepo.UpdateUser(user);
+				await _userRepo.UpdateUser(user, version >= 2);
 			}
 
 			return Json(new { status = "success" });

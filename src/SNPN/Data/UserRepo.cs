@@ -62,7 +62,7 @@ namespace SNPN.Data
 			}
 		}
 
-		public async Task UpdateUser(NotificationUser user)
+		public async Task UpdateUser(NotificationUser user, bool updateKeywords)
 		{
 			using (var con = GetConnection())
 			{
@@ -74,18 +74,21 @@ namespace SNPN.Data
 						NotifyOnUserName=@NotifyOnUserName
 					WHERE Id=@Id;
 					", new { user.Id, user.NotifyOnUserName });
-					await con.ExecuteAsync(@"DELETE FROM KeywordUser WHERE UserId=@Id", new { user.Id });
-					if (user.NotificationKeywords != null)
+					if (updateKeywords)
 					{
-						foreach (var keyword in user.NotificationKeywords)
+						await con.ExecuteAsync(@"DELETE FROM KeywordUser WHERE UserId=@Id", new { user.Id });
+						if (user.NotificationKeywords != null)
 						{
-							await con.ExecuteAsync(@"
+							foreach (var keyword in user.NotificationKeywords)
+							{
+								await con.ExecuteAsync(@"
 							INSERT INTO Keyword (Word)
 							SELECT @Word
 							WHERE NOT EXISTS(SELECT 1 FROM Keyword WHERE Word = @Word);
 							INSERT INTO KeywordUser (UserId, WordId)
 							SELECT @Id, Id FROM Keyword WHERE Word = @Word;
 						", new { Word = keyword, Id = user.Id });
+							}
 						}
 					}
 					await tx.CommitAsync();
