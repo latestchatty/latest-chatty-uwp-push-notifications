@@ -118,7 +118,7 @@ namespace SNPN.Data
 				{
 					using (var tx = con.BeginTransaction())
 					{
-						for (long i = dbVersion; i <= CurrentVersion; i++)
+						for (long i = dbVersion + 1; i <= CurrentVersion; i++)
 						{
 							_logger.Information("Upgrading databse to version {dbupgradeversion}", i);
 							UpgradeDatabase(i, con, tx);
