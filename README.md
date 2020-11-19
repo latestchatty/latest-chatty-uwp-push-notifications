@@ -5,13 +5,13 @@ Push notification service for [Latest Chatty UWP](https://github.com/latestchatt
 
 Also provides live tile support for the app.
 
-Makes use of the [WinChatty v2 API](https://github.com/electroly/winchatty-server).
+Makes use of the [Simple Chatty API](https://github.com/latestchatty/simple-chatty-server).
 
-Documentatation for the WinChatty v2 API is available [here](http://winchatty.com/v2/readme).
+Documentatation for the API is available [here](http://winchatty.com/swagger/index.html).
 
 How to build
 ------
  - Clone the repo
- - Ensure [.NET Core](https://www.microsoft.com/net/core) 2.1 or later is installed and in your path.
+ - Ensure [.NET Core](https://www.microsoft.com/net/core) 5.0 or later is installed and in your path.
  - `dotnet restore`
  - `dotnet build`
