@@ -89,7 +89,7 @@ namespace SNPN.Monitor
 							sentNotifications.Add(e.Post.Id, new List<string> { userToNotify.UserName });
 						}
 						_logger.Information("Notifying {user} of {keyword} on {postBody}", userToNotify.UserName, word.Word, postBody);
-						NotifyUser(userToNotify, e.Post.Id, $"Keyword - {word.Word} used by {e.Post.Author}", postBody);
+						NotifyUser(userToNotify, e.Post.Id, $"Keyword '{word.Word}' used by {e.Post.Author}", postBody);
 					}
 				}
 			}
