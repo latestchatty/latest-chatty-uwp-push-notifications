@@ -61,8 +61,11 @@ namespace SNPN.Common
 						var token = await _accessTokenManager.GetAccessToken();
 
 						_logger.Information(
-							"Sending notification {notificationType} with content {contentType}",
-							notification.Type, notification.Content?.ToString(SaveOptions.None));
+							"Sending notification {notificationType}",
+							notification.Type);
+						_logger.Debug(
+							"With content {contentType}",
+							notification.Content?.ToString(SaveOptions.None));
 						var waitTime = 0;
 						ResponseResult result = ResponseResult.FailDoNotTryAgain;
 						do
