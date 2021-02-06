@@ -1,17 +1,1 @@
 FROM mcr.microsoft.com/dotnet/sdk:5.0
-
-WORKDIR /dotnetapp
-
-RUN apt-get update
-
-RUN apt-get install -y curl unzip
-
-RUN curl -sSL https://aka.ms/getvsdbgsh | bash /dev/stdin -v latest -l ~/vsdbg
-
-COPY ./src .
-
-WORKDIR /dotnetapp/SNPN/
-COPY ./appsettings.json .
-
-CMD /usr/bin/dotnet run watch
-#CMD bash
