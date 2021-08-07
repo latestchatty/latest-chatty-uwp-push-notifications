@@ -266,7 +266,7 @@ namespace SNPN.Test.Monitor
 			notificationMoq.Setup(n => n.QueueNotificationData(NotificationType.Toast, It.IsAny<string>(), It.IsAny<XDocument>(), NotificationGroups.ReplyToUser, It.IsAny<string>(), It.IsAny<int>()))
 				.Callback(() => countNotificationsAdded++);
 
-			var handler = new NewEventHandler(notificationMoq.Object, repo.Object, logger.Object, GetIgnoreUsersNetworkServiceMock(new List<string>() { "testAuth" }));
+			var handler = new NewEventHandler(notificationMoq.Object, repo.Object, logger.Object, GetIgnoreUsersNetworkServiceMock(new List<string>() { "TESTAuth" }));
 
 			var newEvent = GetPostEvent();
 

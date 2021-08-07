@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 using System.Net;
+using System.Collections.Generic;
 
 namespace SNPN.Test.Common
 {
@@ -101,6 +102,20 @@ namespace SNPN.Test.Common
 			var result = await service.GetNotificationToken();
 
 			Assert.Null(result);
+		}
+
+		[Fact]
+		async void GetIgnoreUsersUnsetData()
+		{
+			var service = GetMockedNetworkService("{\"data\": \"\"}");
+			Assert.Equal(await service.GetIgnoreUsers("thing"), new List<string>());
+		}
+		
+		[Fact]
+		async void GetIgnoreUsers()
+		{
+			var service = GetMockedNetworkService("{\"data\": \"H4sIAAAAAAAACxSKQQqAMAwE/9KzePYvIhLsqpXElDQK+nrjaWeHGZNY3xioT+pS1rfYHLBRZTo9qPhCgtVUfEdGg/12M5wZHHQXu1osK1MUVSWO6KHE+dfL4Giepg8AAP//\"}");
+			Assert.Equal(await service.GetIgnoreUsers("thing"), new List<string>() {"mr.sleepy","dozir_","gaplant","itcamefromthedesert","grendel","virus","lolathepom","mojoald","lc8test"});
 		}
 	}
 }

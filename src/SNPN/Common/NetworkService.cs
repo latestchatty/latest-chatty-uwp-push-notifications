@@ -190,7 +190,7 @@ namespace SNPN.Common
 		{
 			var data = new Dictionary<string, string> {
 				 		{ "username", settingUser },
-						{"client", $"werd${settingName}"}
+						{"client", $"werd{settingName}"}
 				 	};
 
 			JToken parsedResponse = new JObject() as JToken;
