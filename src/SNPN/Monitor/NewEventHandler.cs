@@ -3,6 +3,7 @@ using SNPN.Common;
 using SNPN.Data;
 using SNPN.Model;
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -13,13 +14,15 @@ namespace SNPN.Monitor
 		private readonly ILogger _logger;
 		private readonly INotificationService _notificationService;
 		private readonly IUserRepo _userRepo;
+		private readonly INetworkService _networkService;
 		private const int Ttl = 172800; // 48 hours
 
-		public NewEventHandler(INotificationService notificationService, IUserRepo userRepo, ILogger logger)
+		public NewEventHandler(INotificationService notificationService, IUserRepo userRepo, ILogger logger, INetworkService networkService)
 		{
 			_notificationService = notificationService;
 			_userRepo = userRepo;
 			_logger = logger;
+			_networkService = networkService;
 		}
 
 		public async Task ProcessEvent(NewPostEvent e)
@@ -31,7 +34,7 @@ namespace SNPN.Monitor
 				var usr = await _userRepo.FindUser(e.ParentAuthor);
 				if (usr != null)
 				{
-					NotifyUser(usr, e.Post.Id, $"Reply from {e.Post.Author}", postBody);
+					NotifyUser(usr, e.Post, $"Reply from {e.Post.Author}", postBody);
 				}
 				else
 				{
@@ -57,7 +60,7 @@ namespace SNPN.Monitor
 					{
 						_logger.Information("Notifying {user} of mention by {latestReplyAuthor}",
 							user, e.Post.Author);
-						NotifyUser(u1, e.Post.Id, $"Mentioned by {e.Post.Author}", postBody);
+						NotifyUser(u1, e.Post, $"Mentioned by {e.Post.Author}", postBody);
 					}
 				}
 			}
@@ -89,25 +92,32 @@ namespace SNPN.Monitor
 							sentNotifications.Add(e.Post.Id, new List<string> { userToNotify.UserName });
 						}
 						_logger.Information("Notifying {user} of {keyword} on {postBody}", userToNotify.UserName, word.Word, postBody);
-						NotifyUser(userToNotify, e.Post.Id, $"Keyword '{word.Word}' used by {e.Post.Author}", postBody);
+						NotifyUser(userToNotify, e.Post, $"Keyword '{word.Word}' used by {e.Post.Author}", postBody);
 					}
 				}
 			}
 		}
 
-		private async void NotifyUser(NotificationUser user, int latestPostId, string title, string message)
+		private async void NotifyUser(NotificationUser user, Post post, string title, string message)
 		{
+			var ignoreUsers = await _networkService.GetIgnoreUsers(user.UserName);
+			if (ignoreUsers.Any(ignored => ignored.Equals(post.Author, StringComparison.OrdinalIgnoreCase)))
+			{
+				_logger.Information("Suppressed notification because {user} ignored {ignoredUser}", user.UserName, post.Author);
+				return;
+			}
+			
 			var deviceInfos = await _userRepo.GetUserDeviceInfos(user);
 
 			foreach (var info in deviceInfos)
 			{
-				var toastDoc = NotificationBuilder.BuildReplyDoc(latestPostId, title, message);
+				var toastDoc = NotificationBuilder.BuildReplyDoc(post.Id, title, message);
 				_notificationService.QueueNotificationData(
 					NotificationType.Toast,
 					info.NotificationUri,
 					toastDoc,
 					NotificationGroups.ReplyToUser,
-					latestPostId.ToString(),
+					post.Id.ToString(),
 					Ttl);
 			}
 		}

@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json.Linq;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
@@ -17,5 +18,6 @@ namespace SNPN.Common
 
 		Task<ResponseResult> SendNotification(QueuedNotificationItem notificationItem, string token);
 		Task<string> GetNotificationToken();
+		Task<IList<string>> GetIgnoreUsers(string settingUser);
 	}
 }

@@ -68,6 +68,14 @@ namespace SNPN.Test.Monitor
 			});
 		}
 
+		private INetworkService GetIgnoreUsersNetworkServiceMock(List<string> usersToReturn = null)
+		{
+			var mock = new Mock<INetworkService>();
+			mock.Setup(ns => ns.GetIgnoreUsers(It.IsAny<string>()))
+				.Returns(Task.FromResult((IList<string>)(usersToReturn ?? new List<string>())));
+			return mock.Object;
+		}
+
 		[Fact]
 		public async Task MentionTest()
 		{
@@ -88,7 +96,7 @@ namespace SNPN.Test.Monitor
 			notificationMoq.Setup(n => n.QueueNotificationData(NotificationType.Toast, It.IsAny<string>(), It.IsAny<XDocument>(), NotificationGroups.ReplyToUser, It.IsAny<string>(), It.IsAny<int>()))
 				.Callback(() => countNotificationsAdded++);
 
-			var handler = new NewEventHandler(notificationMoq.Object, repo.Object, logger.Object);
+			var handler = new NewEventHandler(notificationMoq.Object, repo.Object, logger.Object, GetIgnoreUsersNetworkServiceMock());
 
 			var newEvent = GetPostEvent();
 			newEvent.ParentAuthor = "notasdf";
@@ -117,7 +125,7 @@ namespace SNPN.Test.Monitor
 			notificationMoq.Setup(n => n.QueueNotificationData(NotificationType.Toast, It.IsAny<string>(), It.IsAny<XDocument>(), NotificationGroups.ReplyToUser, It.IsAny<string>(), It.IsAny<int>()))
 				.Callback(() => countNotificationsAdded++);
 
-			var handler = new NewEventHandler(notificationMoq.Object, repo.Object, logger.Object);
+			var handler = new NewEventHandler(notificationMoq.Object, repo.Object, logger.Object, GetIgnoreUsersNetworkServiceMock());
 
 			var newEvent = GetPostEvent();
 
@@ -145,7 +153,7 @@ namespace SNPN.Test.Monitor
 			notificationMoq.Setup(n => n.QueueNotificationData(NotificationType.Toast, It.IsAny<string>(), It.IsAny<XDocument>(), NotificationGroups.ReplyToUser, It.IsAny<string>(), It.IsAny<int>()))
 				.Callback(() => countNotificationsAdded++);
 
-			var handler = new NewEventHandler(notificationMoq.Object, repo.Object, logger.Object);
+			var handler = new NewEventHandler(notificationMoq.Object, repo.Object, logger.Object, GetIgnoreUsersNetworkServiceMock());
 
 			var newEvent = GetPostEvent();
 
@@ -173,7 +181,7 @@ namespace SNPN.Test.Monitor
 			notificationMoq.Setup(n => n.QueueNotificationData(NotificationType.Toast, It.IsAny<string>(), It.IsAny<XDocument>(), NotificationGroups.ReplyToUser, It.IsAny<string>(), It.IsAny<int>()))
 				.Callback(() => countNotificationsAdded++);
 
-			var handler = new NewEventHandler(notificationMoq.Object, repo.Object, logger.Object);
+			var handler = new NewEventHandler(notificationMoq.Object, repo.Object, logger.Object, GetIgnoreUsersNetworkServiceMock());
 
 			var newEvent = GetPostEvent();
 
@@ -201,7 +209,7 @@ namespace SNPN.Test.Monitor
 			notificationMoq.Setup(n => n.QueueNotificationData(NotificationType.Toast, It.IsAny<string>(), It.IsAny<XDocument>(), NotificationGroups.ReplyToUser, It.IsAny<string>(), It.IsAny<int>()))
 				.Callback(() => countNotificationsAdded++);
 
-			var handler = new NewEventHandler(notificationMoq.Object, repo.Object, logger.Object);
+			var handler = new NewEventHandler(notificationMoq.Object, repo.Object, logger.Object, GetIgnoreUsersNetworkServiceMock());
 
 			var newEvent = GetPostEvent();
 			newEvent.Post.Author = "asdf";
@@ -230,12 +238,40 @@ namespace SNPN.Test.Monitor
 			notificationMoq.Setup(n => n.QueueNotificationData(NotificationType.Toast, It.IsAny<string>(), It.IsAny<XDocument>(), NotificationGroups.ReplyToUser, It.IsAny<string>(), It.IsAny<int>()))
 				.Callback(() => countNotificationsAdded++);
 
-			var handler = new NewEventHandler(notificationMoq.Object, repo.Object, logger.Object);
+			var handler = new NewEventHandler(notificationMoq.Object, repo.Object, logger.Object, GetIgnoreUsersNetworkServiceMock());
 
 			var newEvent = GetPostEvent();
 
 			await handler.ProcessEvent(newEvent);
 			Assert.Equal(2, countNotificationsAdded);
+		}
+
+		[Fact]
+		public async Task DontNotifyIfIgnoredUser()
+		{
+			var notificationMoq = new Mock<INotificationService>();
+			var repo = new Mock<IUserRepo>();
+			var logger = new Mock<ILogger>();
+			var countNotificationsAdded = 0;
+
+			repo.Setup(r => r.GetAllUserNamesForNotification())
+				.Returns(Task.FromResult(new List<string>()));
+
+			repo.Setup(r => r.FindUser("asdf"))
+				.Returns(Task.FromResult(GetNotificationUser()));
+
+			repo.Setup(r => r.GetUserDeviceInfos(It.IsAny<NotificationUser>()))
+				.Returns(Task.FromResult(GetDeviceInfo()));
+
+			notificationMoq.Setup(n => n.QueueNotificationData(NotificationType.Toast, It.IsAny<string>(), It.IsAny<XDocument>(), NotificationGroups.ReplyToUser, It.IsAny<string>(), It.IsAny<int>()))
+				.Callback(() => countNotificationsAdded++);
+
+			var handler = new NewEventHandler(notificationMoq.Object, repo.Object, logger.Object, GetIgnoreUsersNetworkServiceMock(new List<string>() { "testAuth" }));
+
+			var newEvent = GetPostEvent();
+
+			await handler.ProcessEvent(newEvent);
+			Assert.Equal(0, countNotificationsAdded);
 		}
 	}
 }

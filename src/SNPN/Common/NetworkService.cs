@@ -6,9 +6,11 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using System.Linq;
 using Newtonsoft.Json.Linq;
 using Serilog;
 using Polly;
+using Microsoft.AspNetCore.WebUtilities;
 
 namespace SNPN.Common
 {
@@ -176,6 +178,34 @@ namespace SNPN.Common
 			}
 
 			return null;
+		}
+
+		public async Task<IList<string>> GetIgnoreUsers(string settingUser)
+		{
+			if (string.IsNullOrWhiteSpace(settingUser)) { throw new ArgumentNullException(nameof(settingUser)); }
+			return (await GetSetting(settingUser, "ignoredUsers") as JArray)?.Select(x => x.ToString()).ToList() ?? new List<string>();
+		}
+
+		private async Task<JToken> GetSetting(string settingUser, string settingName)
+		{
+			var data = new Dictionary<string, string> {
+				 		{ "username", settingUser },
+						{"client", $"werd${settingName}"}
+				 	};
+
+			JToken parsedResponse = new JObject() as JToken;
+
+			using (var response = await _httpClient.GetAsync(QueryHelpers.AddQueryString($"{_config.WinchattyApiBase}clientData/getClientData", data)))
+			{
+				var apiResult = JToken.Parse(await response.Content.ReadAsStringAsync());
+				var settingData = apiResult["data"].ToString();
+				if(!string.IsNullOrWhiteSpace(settingData))
+				{
+					parsedResponse = JToken.Parse(CompressionHelper.DecompressStringFromBase64(settingData));
+				}
+			}
+
+			return parsedResponse;
 		}
 
 		private ResponseResult ProcessResponse(HttpResponseMessage response)
