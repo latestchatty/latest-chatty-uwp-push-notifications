@@ -7,7 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using System.Linq;
-using Newtonsoft.Json.Linq;
+using System.Text.Json;
 using Serilog;
 using Polly;
 using Microsoft.AspNetCore.WebUtilities;
@@ -59,16 +59,16 @@ namespace SNPN.Common
 		{
 			using (var res = await _httpClient.GetAsync($"{_config.WinchattyApiBase}getNewestEventId", ct))
 			{
-				var json = JToken.Parse(await res.Content.ReadAsStringAsync());
-				return json["eventId"].ToObject<int>();
+				var json = JsonDocument.Parse(await res.Content.ReadAsStringAsync());
+				return json.RootElement.GetProperty("eventId").GetInt32();
 			}
 		}
 
-		public async Task<JToken> WinChattyWaitForEvent(long latestEventId, CancellationToken ct)
+		public async Task<JsonElement> WinChattyWaitForEvent(long latestEventId, CancellationToken ct)
 		{
 			using (var resEvent = await _httpClient.GetAsync($"{_config.WinchattyApiBase}waitForEvent?lastEventId={latestEventId}&includeParentAuthor=1", ct))
 			{
-				return JToken.Parse(await resEvent.Content.ReadAsStringAsync());
+				return JsonDocument.Parse(await resEvent.Content.ReadAsStringAsync()).RootElement;
 			}
 		}
 
@@ -93,20 +93,20 @@ namespace SNPN.Common
 				 		{ "password", password }
 				 	};
 
-			JToken parsedResponse;
+			JsonDocument parsedResponse;
 
 			using (var formContent = new FormUrlEncodedContent(data))
 			{
 				using (var response = await _httpClient.PostAsync($"{_config.WinchattyApiBase}postComment", formContent))
 				{
-					parsedResponse = JToken.Parse(await response.Content.ReadAsStringAsync());
+					parsedResponse = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
 				}
 			}
 
 
-			var success = parsedResponse["result"]?.ToString().Equals("success");
+			var success = parsedResponse.RootElement.GetProperty("result").GetString().Equals("success");
 
-			return success.HasValue && success.Value;
+			return success;
 		}
 
 		public async Task<ResponseResult> SendNotification(QueuedNotificationItem notification, string token)
@@ -127,12 +127,12 @@ namespace SNPN.Common
 					if (notification.Group != NotificationGroups.None)
 					{
 						request.Headers.Add("X-WNS-Group",
-							 Uri.EscapeUriString(Enum.GetName(typeof(NotificationGroups), notification.Group)));
+							 Uri.EscapeDataString(Enum.GetName(typeof(NotificationGroups), notification.Group)));
 					}
 
 					if (!string.IsNullOrWhiteSpace(notification.Tag))
 					{
-						request.Headers.Add("X-WNS-Tag", Uri.EscapeUriString(notification.Tag));
+						request.Headers.Add("X-WNS-Tag", Uri.EscapeDataString(notification.Tag));
 					}
 
 					if (notification.Ttl > 0)
@@ -169,10 +169,10 @@ namespace SNPN.Common
 				{
 					if (response.StatusCode == HttpStatusCode.OK)
 					{
-						var responseJson = JToken.Parse(await response.Content.ReadAsStringAsync());
+						var responseJson = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
 
 						_logger.Information("Got access token.");
-						return responseJson["access_token"].Value<string>();
+						return responseJson.RootElement.GetProperty("access_token").GetString();
 					}
 				}
 			}
@@ -183,25 +183,25 @@ namespace SNPN.Common
 		public async Task<IList<string>> GetIgnoreUsers(string settingUser)
 		{
 			if (string.IsNullOrWhiteSpace(settingUser)) { throw new ArgumentNullException(nameof(settingUser)); }
-			return (await GetSetting(settingUser, "ignoredUsers") as JArray)?.Select(x => x.ToString()).ToList() ?? new List<string>();
+			return (await GetSetting(settingUser, "ignoredUsers"))?.RootElement.EnumerateArray().Select(x => x.GetString()).ToList() ?? new List<string>();
 		}
 
-		private async Task<JToken> GetSetting(string settingUser, string settingName)
+		private async Task<JsonDocument> GetSetting(string settingUser, string settingName)
 		{
 			var data = new Dictionary<string, string> {
 				 		{ "username", settingUser },
 						{"client", $"werd{settingName}"}
 				 	};
 
-			JToken parsedResponse = new JObject() as JToken;
+			JsonDocument parsedResponse = null;
 
 			using (var response = await _httpClient.GetAsync(QueryHelpers.AddQueryString($"{_config.WinchattyApiBase}clientData/getClientData", data)))
 			{
-				var apiResult = JToken.Parse(await response.Content.ReadAsStringAsync());
-				var settingData = apiResult["data"].ToString();
+				var apiResult = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+				var settingData = apiResult.RootElement.GetProperty("data").GetString();
 				if(!string.IsNullOrWhiteSpace(settingData))
 				{
-					parsedResponse = JToken.Parse(CompressionHelper.DecompressStringFromBase64(settingData));
+					parsedResponse = JsonDocument.Parse(CompressionHelper.DecompressStringFromBase64(settingData));
 				}
 			}
 

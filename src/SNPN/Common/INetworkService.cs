@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json.Linq;
+﻿using System.Text.Json;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -10,7 +10,7 @@ namespace SNPN.Common
 	{
 		Task<int> WinChattyGetNewestEventId(CancellationToken ct);
 
-		Task<JToken> WinChattyWaitForEvent(long latestEventId, CancellationToken ct);
+		Task<JsonElement> WinChattyWaitForEvent(long latestEventId, CancellationToken ct);
 
 		Task<XDocument> GetTileContent();
 

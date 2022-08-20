@@ -6,7 +6,7 @@
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
-            "program": "${workspaceFolder}/src/SNPN/bin/Debug/netcoreapp5.0/SNPN.dll",
+            "program": "${workspaceFolder}/src/SNPN/bin/Debug/net6.0/SNPN.dll",
             "args": [],
             "cwd": "${workspaceFolder}",
             "stopAtEntry": false,

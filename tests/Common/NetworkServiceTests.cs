@@ -12,7 +12,7 @@ namespace SNPN.Test.Common
 		[Fact]
 		async Task WinChattyGetNewestEventId()
 		{
-			var service = GetMockedNetworkService("{ \"eventId\": \"12345\" }");
+			var service = GetMockedNetworkService("{ \"eventId\": 12345 }");
 			var result = await service.WinChattyGetNewestEventId(new CancellationToken());
 
 			Assert.Equal(12345, result);
@@ -21,11 +21,11 @@ namespace SNPN.Test.Common
 		[Fact]
 		async Task WinChattyWaitForEvent()
 		{
-			var service = GetMockedNetworkService("{ \"eventId\": \"12345\" }");
+			var service = GetMockedNetworkService("{ \"eventId\": 12345 }");
 			var result = await service.WinChattyWaitForEvent(1234, new CancellationToken());
 
 			Assert.NotNull(result);
-			Assert.Equal("12345", result["eventId"].ToString());
+			Assert.Equal("12345", result.GetProperty("eventId").ToString());
 		}
 
 		[Fact]
