@@ -32,8 +32,7 @@ namespace SNPN.Monitor
 			//Don't notify if self-reply.
 			if (!e.ParentAuthor.Equals(e.Post.Author, StringComparison.OrdinalIgnoreCase))
 			{
-				// var usr = await _userRepo.FindUser(e.ParentAuthor);
-				var usr = await _userRepo.FindUser("StimpyBoy-KNoB-");
+				var usr = await _userRepo.FindUser(e.ParentAuthor);
 				if (usr != null)
 				{
 					NotifyUser(usr, e.Post, $"Reply from {e.Post.Author}", postBody);
