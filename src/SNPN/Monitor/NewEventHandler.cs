@@ -28,10 +28,12 @@ namespace SNPN.Monitor
 		public async Task ProcessEvent(NewPostEvent e)
 		{
 			var postBody = HtmlRemoval.StripTagsRegexCompiled(System.Net.WebUtility.HtmlDecode(e.Post.Body).Replace("<br />", " ").Replace(char.ConvertFromUtf32(8232), " "));
+			_logger.Verbose("ProcessEvent for {postId} {parentAuthor}", e.PostId, e.ParentAuthor);
 			//Don't notify if self-reply.
 			if (!e.ParentAuthor.Equals(e.Post.Author, StringComparison.OrdinalIgnoreCase))
 			{
-				var usr = await _userRepo.FindUser(e.ParentAuthor);
+				// var usr = await _userRepo.FindUser(e.ParentAuthor);
+				var usr = await _userRepo.FindUser("StimpyBoy-KNoB-");
 				if (usr != null)
 				{
 					NotifyUser(usr, e.Post, $"Reply from {e.Post.Author}", postBody);
@@ -111,13 +113,13 @@ namespace SNPN.Monitor
 
 			foreach (var info in deviceInfos)
 			{
-				var toastDoc = NotificationBuilder.BuildReplyDoc(post.Id, title, message);
 				_notificationService.QueueNotificationData(
 					NotificationType.Toast,
-					info.NotificationUri,
-					toastDoc,
+					info,
+					post,
+					title,
+					message,
 					NotificationGroups.ReplyToUser,
-					post.Id.ToString(),
 					Ttl);
 			}
 		}

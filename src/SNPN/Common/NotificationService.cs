@@ -1,5 +1,6 @@
 ﻿using Serilog;
 using SNPN.Data;
+using SNPN.Model;
 using System;
 using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
@@ -14,6 +15,7 @@ namespace SNPN.Common
 		private readonly IUserRepo _userRepo;
 		private readonly ILogger _logger;
 		private readonly INetworkService _networkService;
+
 		private readonly ConcurrentQueue<QueuedNotificationItem> _queuedItems = new ConcurrentQueue<QueuedNotificationItem>();
 		private int _nextProcessDelay = 3000;
 
@@ -27,16 +29,21 @@ namespace SNPN.Common
 			_networkService = networkService;
 		}
 
-		public void QueueNotificationData(NotificationType type, string notificationUri, XDocument content = null, NotificationGroups group = NotificationGroups.None, string tag = null, int ttl = 0)
+		public void QueueNotificationData(NotificationType type, DeviceInfo deviceInfo, Post post, string title, string message, NotificationGroups group = NotificationGroups.None, int ttl = 0)
 		{
+			var notificationUri = deviceInfo.NotificationUri;
+			var postId = post.Id;
 			if (string.IsNullOrWhiteSpace(notificationUri)) throw new ArgumentNullException(nameof(notificationUri));
+			var content = NotificationBuilder.BuildReplyDoc(postId, title, message);
 
 			if (type != NotificationType.RemoveToasts)
 			{
 				if (content == null) throw new ArgumentNullException(nameof(content));
 			}
 
-			var notificationItem = new QueuedNotificationItem(type, content, notificationUri, group, tag, ttl);
+			_logger.Information("Device Info is {deviceInfo.DeviceId} {deviceInfo.NotificationUri}", deviceInfo.DeviceId, deviceInfo.NotificationUri);
+
+			var notificationItem = new QueuedNotificationItem(type, content, post, notificationUri, group, postId.ToString(), ttl, title, message);
 			_queuedItems.Enqueue(notificationItem);
 			StartQueueProcess();
 		}
@@ -76,7 +83,12 @@ namespace SNPN.Common
 								case NotificationType.Badge:
 								case NotificationType.Tile:
 								case NotificationType.Toast:
-									result = await _networkService.SendNotification(notification, token);
+									if(notification.Uri.StartsWith("fcm://")) {
+										result = await _networkService.SendNotificationFCM(notification);
+									}
+									else {
+										result = await _networkService.SendNotification(notification, token);
+									}
 									break;
 							}
 							if (result.HasFlag(ResponseResult.RemoveUser))
