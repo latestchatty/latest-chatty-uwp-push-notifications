@@ -114,7 +114,7 @@ namespace SNPN.Monitor
 			{
 				_notificationService.QueueNotificationData(
 					NotificationType.Toast,
-					info,
+					info.NotificationUri,
 					post,
 					title,
 					message,

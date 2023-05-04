@@ -29,9 +29,8 @@ namespace SNPN.Common
 			_networkService = networkService;
 		}
 
-		public void QueueNotificationData(NotificationType type, DeviceInfo deviceInfo, Post post, string title, string message, NotificationGroups group = NotificationGroups.None, int ttl = 0)
+		public void QueueNotificationData(NotificationType type, string notificationUri, Post post, string title, string message, NotificationGroups group = NotificationGroups.None, int ttl = 0)
 		{
-			var notificationUri = deviceInfo.NotificationUri;
 			var postId = post.Id;
 			if (string.IsNullOrWhiteSpace(notificationUri)) throw new ArgumentNullException(nameof(notificationUri));
 			var content = NotificationBuilder.BuildReplyDoc(postId, title, message);
@@ -40,8 +39,6 @@ namespace SNPN.Common
 			{
 				if (content == null) throw new ArgumentNullException(nameof(content));
 			}
-
-			_logger.Information("Device Info is {deviceInfo.DeviceId} {deviceInfo.NotificationUri}", deviceInfo.DeviceId, deviceInfo.NotificationUri);
 
 			var notificationItem = new QueuedNotificationItem(type, content, post, notificationUri, group, postId.ToString(), ttl, title, message);
 			_queuedItems.Enqueue(notificationItem);

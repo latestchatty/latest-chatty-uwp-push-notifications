@@ -25,12 +25,8 @@ namespace SNPN.Common
 		private readonly ILogger _logger;
 
 		private readonly AsyncPolicy _retryPolicy;
-		
-		// Setup Firebase Cloud Messaging credentials once.
-		private static FirebaseApp defaultFirebaseApp = FirebaseApp.Create(new AppOptions()
-			{
-				Credential = GoogleCredential.FromFile(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "fcm_key.json")),
-			});
+
+		private static Object firebaseAppLock = new Object();
 
 		private readonly Dictionary<NotificationType, string> _notificationTypeMapping = new Dictionary<NotificationType, string>
 		  {
@@ -44,6 +40,16 @@ namespace SNPN.Common
 			_config = configuration;
 			_logger = logger;
 			_httpClient = httpClient;
+
+			// Setup Firebase Default App with credentials only once.
+			lock(firebaseAppLock) {
+				if (FirebaseApp.DefaultInstance == null) {
+					FirebaseApp.Create(new AppOptions()
+						{
+							Credential = GoogleCredential.FromFile(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "fcm_key.json")),
+						});
+				}
+			}
 
 			//Winchatty seems to crap itself if the Expect: 100-continue header is there.
 			// Should be safe to leave this for every request we make.

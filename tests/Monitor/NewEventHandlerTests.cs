@@ -93,7 +93,7 @@ namespace SNPN.Test.Monitor
 			repo.Setup(r => r.GetUserDeviceInfos(It.IsAny<NotificationUser>()))
 				.Returns(Task.FromResult(GetDeviceInfo()));
 
-			notificationMoq.Setup(n => n.QueueNotificationData(NotificationType.Toast, It.IsAny<DeviceInfo>(), It.IsAny<Post>(), It.IsAny<string>(), It.IsAny<string>(), NotificationGroups.ReplyToUser, It.IsAny<int>()))
+			notificationMoq.Setup(n => n.QueueNotificationData(NotificationType.Toast, It.IsAny<string>(), It.IsAny<Post>(), It.IsAny<string>(), It.IsAny<string>(), NotificationGroups.ReplyToUser, It.IsAny<int>()))
 				.Callback(() => countNotificationsAdded++);
 
 			var handler = new NewEventHandler(notificationMoq.Object, repo.Object, logger.Object, GetIgnoreUsersNetworkServiceMock());
@@ -122,7 +122,7 @@ namespace SNPN.Test.Monitor
 			repo.Setup(r => r.GetUserDeviceInfos(It.IsAny<NotificationUser>()))
 				.Returns(Task.FromResult(GetDeviceInfo()));
 
-			notificationMoq.Setup(n => n.QueueNotificationData(NotificationType.Toast, It.IsAny<DeviceInfo>(), It.IsAny<Post>(), It.IsAny<string>(), It.IsAny<string>(), NotificationGroups.ReplyToUser, It.IsAny<int>()))
+			notificationMoq.Setup(n => n.QueueNotificationData(NotificationType.Toast, It.IsAny<string>(), It.IsAny<Post>(), It.IsAny<string>(), It.IsAny<string>(), NotificationGroups.ReplyToUser, It.IsAny<int>()))
 				.Callback(() => countNotificationsAdded++);
 
 			var handler = new NewEventHandler(notificationMoq.Object, repo.Object, logger.Object, GetIgnoreUsersNetworkServiceMock());
@@ -150,7 +150,7 @@ namespace SNPN.Test.Monitor
 			repo.Setup(r => r.GetUserDeviceInfos(It.IsAny<NotificationUser>()))
 				.Returns(Task.FromResult<List<DeviceInfo>>(null));
 
-			notificationMoq.Setup(n => n.QueueNotificationData(NotificationType.Toast, It.IsAny<DeviceInfo>(), It.IsAny<Post>(), It.IsAny<string>(), It.IsAny<string>(), NotificationGroups.ReplyToUser, It.IsAny<int>()))
+			notificationMoq.Setup(n => n.QueueNotificationData(NotificationType.Toast, It.IsAny<string>(), It.IsAny<Post>(), It.IsAny<string>(), It.IsAny<string>(), NotificationGroups.ReplyToUser, It.IsAny<int>()))
 				.Callback(() => countNotificationsAdded++);
 
 			var handler = new NewEventHandler(notificationMoq.Object, repo.Object, logger.Object, GetIgnoreUsersNetworkServiceMock());
@@ -178,7 +178,7 @@ namespace SNPN.Test.Monitor
 			repo.Setup(r => r.GetUserDeviceInfos(It.IsAny<NotificationUser>()))
 				.Returns(Task.FromResult(GetDeviceInfos()));
 
-			notificationMoq.Setup(n => n.QueueNotificationData(NotificationType.Toast, It.IsAny<DeviceInfo>(), It.IsAny<Post>(), It.IsAny<string>(), It.IsAny<string>(), NotificationGroups.ReplyToUser, It.IsAny<int>()))
+			notificationMoq.Setup(n => n.QueueNotificationData(NotificationType.Toast, It.IsAny<string>(), It.IsAny<Post>(), It.IsAny<string>(), It.IsAny<string>(), NotificationGroups.ReplyToUser, It.IsAny<int>()))
 				.Callback(() => countNotificationsAdded++);
 
 			var handler = new NewEventHandler(notificationMoq.Object, repo.Object, logger.Object, GetIgnoreUsersNetworkServiceMock());
@@ -206,7 +206,7 @@ namespace SNPN.Test.Monitor
 			repo.Setup(r => r.GetUserDeviceInfos(It.IsAny<NotificationUser>()))
 				.Returns(Task.FromResult(GetDeviceInfo()));
 
-			notificationMoq.Setup(n => n.QueueNotificationData(NotificationType.Toast, It.IsAny<DeviceInfo>(), It.IsAny<Post>(), It.IsAny<string>(), It.IsAny<string>(), NotificationGroups.ReplyToUser, It.IsAny<int>()))
+			notificationMoq.Setup(n => n.QueueNotificationData(NotificationType.Toast, It.IsAny<string>(), It.IsAny<Post>(), It.IsAny<string>(), It.IsAny<string>(), NotificationGroups.ReplyToUser, It.IsAny<int>()))
 				.Callback(() => countNotificationsAdded++);
 
 			var handler = new NewEventHandler(notificationMoq.Object, repo.Object, logger.Object, GetIgnoreUsersNetworkServiceMock());
@@ -235,7 +235,7 @@ namespace SNPN.Test.Monitor
 			repo.Setup(r => r.GetUserDeviceInfos(It.IsAny<NotificationUser>()))
 				.Returns(Task.FromResult(GetDeviceInfo()));
 
-			notificationMoq.Setup(n => n.QueueNotificationData(NotificationType.Toast, It.IsAny<DeviceInfo>(), It.IsAny<Post>(), It.IsAny<string>(), It.IsAny<string>(), NotificationGroups.ReplyToUser, It.IsAny<int>()))
+			notificationMoq.Setup(n => n.QueueNotificationData(NotificationType.Toast, It.IsAny<string>(), It.IsAny<Post>(), It.IsAny<string>(), It.IsAny<string>(), NotificationGroups.ReplyToUser, It.IsAny<int>()))
 				.Callback(() => countNotificationsAdded++);
 
 			var handler = new NewEventHandler(notificationMoq.Object, repo.Object, logger.Object, GetIgnoreUsersNetworkServiceMock());
@@ -263,7 +263,7 @@ namespace SNPN.Test.Monitor
 			repo.Setup(r => r.GetUserDeviceInfos(It.IsAny<NotificationUser>()))
 				.Returns(Task.FromResult(GetDeviceInfo()));
 
-			notificationMoq.Setup(n => n.QueueNotificationData(NotificationType.Toast, It.IsAny<DeviceInfo>(), It.IsAny<Post>(), It.IsAny<string>(), It.IsAny<string>(), NotificationGroups.ReplyToUser, It.IsAny<int>()))
+			notificationMoq.Setup(n => n.QueueNotificationData(NotificationType.Toast, It.IsAny<string>(), It.IsAny<Post>(), It.IsAny<string>(), It.IsAny<string>(), NotificationGroups.ReplyToUser, It.IsAny<int>()))
 				.Callback(() => countNotificationsAdded++);
 
 			var handler = new NewEventHandler(notificationMoq.Object, repo.Object, logger.Object, GetIgnoreUsersNetworkServiceMock(new List<string>() { "TESTAuth" }));
