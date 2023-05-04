@@ -84,7 +84,7 @@ namespace SNPN.Common
 										result = await _networkService.SendNotificationFCM(notification);
 									}
 									else {
-										result = await _networkService.SendNotification(notification, token);
+										result = await _networkService.SendNotificationWNS(notification, token);
 									}
 									break;
 							}

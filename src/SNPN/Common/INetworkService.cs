@@ -16,7 +16,7 @@ namespace SNPN.Common
 
 		Task<bool> ReplyToNotification(string replyText, string parentId, string userName, string password);
 
-		Task<ResponseResult> SendNotification(QueuedNotificationItem notificationItem, string token);
+		Task<ResponseResult> SendNotificationWNS(QueuedNotificationItem notificationItem, string token);
 		Task<ResponseResult> SendNotificationFCM(QueuedNotificationItem notificationItem);
 		Task<string> GetNotificationToken();
 		Task<IList<string>> GetIgnoreUsers(string settingUser);

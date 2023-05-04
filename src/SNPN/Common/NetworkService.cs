@@ -1,5 +1,4 @@
 ﻿using System;
-using System.IO;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
@@ -15,6 +14,7 @@ using Microsoft.AspNetCore.WebUtilities;
 using FirebaseAdmin;
 using FirebaseAdmin.Messaging;
 using Google.Apis.Auth.OAuth2;
+using SNPN.Data;
 
 namespace SNPN.Common
 {
@@ -23,6 +23,7 @@ namespace SNPN.Common
 		private readonly AppConfiguration _config;
 		private readonly HttpClient _httpClient;
 		private readonly ILogger _logger;
+		private readonly IUserRepo _userRepo;
 
 		private readonly AsyncPolicy _retryPolicy;
 
@@ -35,19 +36,27 @@ namespace SNPN.Common
 				{ NotificationType.Toast, "wns/toast" }
 		  };
 
-		public NetworkService(AppConfiguration configuration, ILogger logger, HttpClient httpClient)
+		public NetworkService(AppConfiguration configuration, ILogger logger, HttpClient httpClient, IUserRepo userRepo)
 		{
 			_config = configuration;
 			_logger = logger;
 			_httpClient = httpClient;
+			_userRepo = userRepo;
 
 			// Setup Firebase Default App with credentials only once.
 			lock(firebaseAppLock) {
-				if (FirebaseApp.DefaultInstance == null) {
-					FirebaseApp.Create(new AppOptions()
-						{
-							Credential = GoogleCredential.FromFile(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "fcm_key.json")),
-						});
+				var fcmJSON = Environment.GetEnvironmentVariable("FCM_KEY_JSON");
+				if(fcmJSON != null) {
+					if (FirebaseApp.DefaultInstance == null) {
+						FirebaseApp.Create(new AppOptions()
+							{
+								Credential = GoogleCredential.FromJson(fcmJSON)
+							});
+						_logger.Information("FirebaseApp initialization complete.");
+					}
+				}
+				else {
+					_logger.Warning("The environment variable FCM_KEY_JSON could not be found, FCM messaging will not work!");
 				}
 			}
 
@@ -125,7 +134,7 @@ namespace SNPN.Common
 			return success;
 		}
 
-		public async Task<ResponseResult> SendNotification(QueuedNotificationItem notification, string token)
+		public async Task<ResponseResult> SendNotificationWNS(QueuedNotificationItem notification, string token)
 		{
 			return await _retryPolicy.ExecuteAsync(async () =>
 			{
@@ -189,9 +198,20 @@ namespace SNPN.Common
 					Token = notification.Uri.Replace("fcm://", ""),
 				};
 				var messaging = FirebaseMessaging.DefaultInstance;
-				var result = await messaging.SendAsync(message);
-				_logger.Information("SendNotificationFCM result: {result}", result);
-				
+				try {
+					var result = await messaging.SendAsync(message);					
+					_logger.Information("SendNotificationFCM result: {result}", result);
+				}
+				catch (FirebaseMessagingException e) {
+					_logger.Error("SendNotificationFCM FirebaseMessagingException when trying to send to {notificationUri} {ErrorCode}", notification.Uri, e.ErrorCode);
+					if (e.ErrorCode == ErrorCode.NotFound) {
+						_logger.Warning("Removing FCM device with Uri {notificationUri} from DB", notification.Uri);
+						await _userRepo.DeleteDeviceByUri(notification.Uri);
+					}
+					else {
+						throw;
+					}
+				}
 				return ResponseResult.Success;
 			});
 		}
