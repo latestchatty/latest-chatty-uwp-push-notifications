@@ -47,14 +47,13 @@ namespace SNPN.Monitor
 				_logger.Verbose("No alert on self-reply to {parentAuthor}", e.ParentAuthor);
 			}
 
-			var paddedBody = (" " + postBody.ToLower() + " ");
+			var lowerBody = postBody.ToLower();
 			var users = await _userRepo.GetAllUserNamesForNotification();
 			foreach (var user in users)
 			{
 				//Don't notify a user of their own posts.
 				if (user.ToLower().Equals(e.Post.Author.ToLower())) continue;
-				//Pad with spaces so we don't match a partial username.
-				if (paddedBody.Contains(" " + user.ToLower() + " "))
+				if (RegexMatchHelper.MatchWholeWord(lowerBody, user))
 				{
 					var u1 = await _userRepo.FindUser(user);
 					if (u1 != null)
@@ -70,7 +69,7 @@ namespace SNPN.Monitor
 			var sentNotifications = new Dictionary<int, List<string>>();
 			foreach (var word in words)
 			{
-				if (paddedBody.Contains(" " + word.Word + " "))
+				if (RegexMatchHelper.MatchWholeWord(lowerBody, word.Word))
 				{
 					var usersToNotify = await _userRepo.FindUsersByWord(word.Id);
 					foreach (var userToNotify in usersToNotify)
