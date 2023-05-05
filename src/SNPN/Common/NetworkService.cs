@@ -183,12 +183,12 @@ namespace SNPN.Common
 		{
 			return await _retryPolicy.ExecuteAsync(async () =>
 			{
-				_logger.Information("SendNotificationFCM {notificationUri}", LogHelper.GetAbbreviatedString(notification.Uri));
+				_logger.Information("SendNotificationFCM {notificationUri}", notification.Uri);
 				var message = new Message()
 				{
 					Data = new Dictionary<string, string>()
 					{
-					["type"] = "general",
+					["type"] = notification.MatchType.ToString(),
 					["username"] = notification.Post.Author,
 					["title"] = notification.Title,
 					["text"] = notification.Message,

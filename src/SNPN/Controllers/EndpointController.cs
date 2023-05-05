@@ -157,7 +157,7 @@ namespace SNPN.Controllers
 		[HttpPost("deregister")]
 		public async Task<IActionResult> DeregisterDevice([FromForm] DeregisterArgs e)
 		{
-			_logger.Information("Deregister device {DeviceId}", LogHelper.GetAbbreviatedString(e.DeviceId));
+			_logger.Information("Deregister device {DeviceId}", e.DeviceId);
 
 			await _userRepo.DeleteDevice(e.DeviceId);
 			return Json(new { status = "success" });
@@ -167,7 +167,7 @@ namespace SNPN.Controllers
 		public async Task<IActionResult> RegisterDevice([FromForm] RegisterArgs e)
 		{
 			_logger.Information("Register device for user {UserName} DeviceId {DeviceId} ChannelUri {ChannelUri}.",
-								e.UserName, LogHelper.GetAbbreviatedString(e.DeviceId), LogHelper.GetAbbreviatedString(e.ChannelUri));
+								e.UserName, e.DeviceId, e.ChannelUri);
 
 			var user = await _userRepo.FindUser(e.UserName) ?? await _userRepo.AddUser(new NotificationUser
 			{

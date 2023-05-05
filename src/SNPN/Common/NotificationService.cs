@@ -29,7 +29,7 @@ namespace SNPN.Common
 			_networkService = networkService;
 		}
 
-		public void QueueNotificationData(NotificationType type, string notificationUri, Post post, string title, string message, NotificationGroups group = NotificationGroups.None, int ttl = 0)
+		public void QueueNotificationData(NotificationType type, string notificationUri, Post post, NotificationMatchType matchType, string title, string message, NotificationGroups group = NotificationGroups.None, int ttl = 0)
 		{
 			var postId = post.Id;
 			if (string.IsNullOrWhiteSpace(notificationUri)) throw new ArgumentNullException(nameof(notificationUri));
@@ -40,7 +40,7 @@ namespace SNPN.Common
 				if (content == null) throw new ArgumentNullException(nameof(content));
 			}
 
-			var notificationItem = new QueuedNotificationItem(type, content, post, notificationUri, group, postId.ToString(), ttl, title, message);
+			var notificationItem = new QueuedNotificationItem(type, content, post, matchType, notificationUri, group, postId.ToString(), ttl, title, message);
 			_queuedItems.Enqueue(notificationItem);
 			StartQueueProcess();
 		}

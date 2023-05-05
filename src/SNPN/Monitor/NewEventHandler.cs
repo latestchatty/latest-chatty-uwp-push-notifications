@@ -35,7 +35,7 @@ namespace SNPN.Monitor
 				var usr = await _userRepo.FindUser(e.ParentAuthor);
 				if (usr != null)
 				{
-					NotifyUser(usr, e.Post, $"Reply from {e.Post.Author}", postBody);
+					NotifyUser(usr, e.Post, $"Reply from {e.Post.Author}", postBody, NotificationMatchType.Reply);
 				}
 				else
 				{
@@ -61,7 +61,7 @@ namespace SNPN.Monitor
 					{
 						_logger.Information("Notifying {user} of mention by {latestReplyAuthor}",
 							user, e.Post.Author);
-						NotifyUser(u1, e.Post, $"Mentioned by {e.Post.Author}", postBody);
+						NotifyUser(u1, e.Post, $"Mentioned by {e.Post.Author}", postBody, NotificationMatchType.Mention);
 					}
 				}
 			}
@@ -93,13 +93,13 @@ namespace SNPN.Monitor
 							sentNotifications.Add(e.Post.Id, new List<string> { userToNotify.UserName });
 						}
 						_logger.Information("Notifying {user} of {keyword} on {postBody}", userToNotify.UserName, word.Word, postBody);
-						NotifyUser(userToNotify, e.Post, $"Keyword '{word.Word}' used by {e.Post.Author}", postBody);
+						NotifyUser(userToNotify, e.Post, $"Keyword '{word.Word}' used by {e.Post.Author}", postBody, NotificationMatchType.Keyword);
 					}
 				}
 			}
 		}
 
-		private async void NotifyUser(NotificationUser user, Post post, string title, string message)
+		private async void NotifyUser(NotificationUser user, Post post, string title, string message, NotificationMatchType matchType)
 		{
 			var ignoreUsers = await _networkService.GetIgnoreUsers(user.UserName);
 			if (ignoreUsers.Any(ignored => ignored.Equals(post.Author, StringComparison.OrdinalIgnoreCase)))
@@ -116,6 +116,7 @@ namespace SNPN.Monitor
 					NotificationType.Toast,
 					info.NotificationUri,
 					post,
+					matchType,
 					title,
 					message,
 					NotificationGroups.ReplyToUser,

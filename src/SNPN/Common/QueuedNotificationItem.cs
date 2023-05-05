@@ -5,7 +5,7 @@ namespace SNPN.Common
 {
 	public class QueuedNotificationItem
 	{
-		public QueuedNotificationItem(NotificationType type, XDocument content, Post post, string uri = null, NotificationGroups group = NotificationGroups.None, string tag = null, int ttl = 0, string title = null, string message = null)
+		public QueuedNotificationItem(NotificationType type, XDocument content, Post post, NotificationMatchType matchType, string uri = null, NotificationGroups group = NotificationGroups.None, string tag = null, int ttl = 0, string title = null, string message = null)
 		{
 			Type = type;
 			Content = content;
@@ -16,6 +16,7 @@ namespace SNPN.Common
 			Message = message;
 			Ttl = ttl;
 			Post = post;
+			MatchType = matchType;
 		}
 
 		public XDocument Content { get; private set; }
@@ -27,5 +28,6 @@ namespace SNPN.Common
 		public string Message { get; private set; }
 		public int Ttl { get; private set; }
 		public Post Post { get; private set; }
+		public NotificationMatchType MatchType { get; private set; }
 	}
 }
