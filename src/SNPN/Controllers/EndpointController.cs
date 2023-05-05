@@ -104,7 +104,7 @@ namespace SNPN.Controllers
 		}
 		private async Task<IActionResult> PostUser(PostUserArgs e, int version)
 		{
-			_logger.Information("Updating user {userName}.", e.UserName);
+			_logger.Information("Updating user {userName} {keywords}.", e.UserName, e.NotificationKeywords);
 			var user = await _userRepo.FindUser(e.UserName);
 			if (user == null)
 			{
@@ -157,7 +157,7 @@ namespace SNPN.Controllers
 		[HttpPost("deregister")]
 		public async Task<IActionResult> DeregisterDevice([FromForm] DeregisterArgs e)
 		{
-			_logger.Information("Deregister device.");
+			_logger.Information("Deregister device {DeviceId}", e.DeviceId);
 
 			await _userRepo.DeleteDevice(e.DeviceId);
 			return Json(new { status = "success" });
@@ -166,7 +166,8 @@ namespace SNPN.Controllers
 		[HttpPost("register")]
 		public async Task<IActionResult> RegisterDevice([FromForm] RegisterArgs e)
 		{
-			_logger.Information("Register device.");
+			_logger.Information("Register device for user {UserName} DeviceId {DeviceId} ChannelUri {ChannelUri}.",
+								e.UserName, e.DeviceId, e.ChannelUri);
 
 			var user = await _userRepo.FindUser(e.UserName) ?? await _userRepo.AddUser(new NotificationUser
 			{

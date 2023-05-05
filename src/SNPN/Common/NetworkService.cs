@@ -11,6 +11,10 @@ using System.Text.Json;
 using Serilog;
 using Polly;
 using Microsoft.AspNetCore.WebUtilities;
+using FirebaseAdmin;
+using FirebaseAdmin.Messaging;
+using Google.Apis.Auth.OAuth2;
+using SNPN.Data;
 
 namespace SNPN.Common
 {
@@ -19,8 +23,11 @@ namespace SNPN.Common
 		private readonly AppConfiguration _config;
 		private readonly HttpClient _httpClient;
 		private readonly ILogger _logger;
+		private readonly IUserRepo _userRepo;
 
 		private readonly AsyncPolicy _retryPolicy;
+
+		private static Object firebaseAppLock = new Object();
 
 		private readonly Dictionary<NotificationType, string> _notificationTypeMapping = new Dictionary<NotificationType, string>
 		  {
@@ -29,11 +36,29 @@ namespace SNPN.Common
 				{ NotificationType.Toast, "wns/toast" }
 		  };
 
-		public NetworkService(AppConfiguration configuration, ILogger logger, HttpClient httpClient)
+		public NetworkService(AppConfiguration configuration, ILogger logger, HttpClient httpClient, IUserRepo userRepo)
 		{
 			_config = configuration;
 			_logger = logger;
 			_httpClient = httpClient;
+			_userRepo = userRepo;
+
+			// Setup Firebase Default App with credentials only once.
+			lock(firebaseAppLock) {
+				var fcmJSON = Environment.GetEnvironmentVariable("FCM_KEY_JSON");
+				if(fcmJSON != null) {
+					if (FirebaseApp.DefaultInstance == null) {
+						FirebaseApp.Create(new AppOptions()
+							{
+								Credential = GoogleCredential.FromJson(fcmJSON)
+							});
+						_logger.Information("FirebaseApp initialization complete.");
+					}
+				}
+				else {
+					_logger.Warning("The environment variable FCM_KEY_JSON could not be found, FCM messaging will not work!");
+				}
+			}
 
 			//Winchatty seems to crap itself if the Expect: 100-continue header is there.
 			// Should be safe to leave this for every request we make.
@@ -109,7 +134,7 @@ namespace SNPN.Common
 			return success;
 		}
 
-		public async Task<ResponseResult> SendNotification(QueuedNotificationItem notification, string token)
+		public async Task<ResponseResult> SendNotificationWNS(QueuedNotificationItem notification, string token)
 		{
 			return await _retryPolicy.ExecuteAsync(async () =>
 			{
@@ -153,6 +178,44 @@ namespace SNPN.Common
 				}
 			});
 		}
+
+		public async Task<ResponseResult> SendNotificationFCM(QueuedNotificationItem notification)
+		{
+			return await _retryPolicy.ExecuteAsync(async () =>
+			{
+				_logger.Information("SendNotificationFCM {notificationUri}", notification.Uri);
+				var message = new Message()
+				{
+					Data = new Dictionary<string, string>()
+					{
+					["type"] = notification.MatchType.ToString(),
+					["username"] = notification.Post.Author,
+					["title"] = notification.Title,
+					["text"] = notification.Message,
+					["nlsid"] = notification.Post.Id.ToString(),
+					["parentid"] = notification.Post.ParentId.ToString(),
+					},
+					Token = notification.Uri.Replace("fcm://", ""),
+				};
+				var messaging = FirebaseMessaging.DefaultInstance;
+				try {
+					var result = await messaging.SendAsync(message);					
+					_logger.Information("SendNotificationFCM result: {result}", result);
+				}
+				catch (FirebaseMessagingException e) {
+					_logger.Error("SendNotificationFCM FirebaseMessagingException when trying to send to {notificationUri} {ErrorCode}", notification.Uri, e.ErrorCode);
+					if (e.ErrorCode == ErrorCode.NotFound) {
+						_logger.Warning("Removing FCM device with Uri {notificationUri} from DB", notification.Uri);
+						await _userRepo.DeleteDeviceByUri(notification.Uri);
+					}
+					else {
+						throw;
+					}
+				}
+				return ResponseResult.Success;
+			});
+		}
+
 
 		public async Task<string> GetNotificationToken()
 		{

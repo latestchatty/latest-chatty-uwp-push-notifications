@@ -1,6 +1,7 @@
 ﻿using Moq;
 using Moq.Protected;
 using SNPN.Common;
+using SNPN.Data;
 using System;
 using System.Net;
 using System.Net.Http;
@@ -45,8 +46,9 @@ namespace SNPN.Test.Common
 			var logger = new Mock<Serilog.ILogger>();
 			var config = GetAppConfig();
 			var handler = GetMessageHandlerMock(callReturn, statusCode, onCalled);
+			var repo = new UserRepo(logger.Object, config);
 
-			var service = new NetworkService(config, logger.Object, new HttpClient(handler.Object));
+			var service = new NetworkService(config, logger.Object, new HttpClient(handler.Object), repo);
 			return service;
 		}
 		#endregion
