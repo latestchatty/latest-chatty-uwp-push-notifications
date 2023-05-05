@@ -15,7 +15,6 @@ namespace SNPN.Common
 		private readonly IUserRepo _userRepo;
 		private readonly ILogger _logger;
 		private readonly INetworkService _networkService;
-
 		private readonly ConcurrentQueue<QueuedNotificationItem> _queuedItems = new ConcurrentQueue<QueuedNotificationItem>();
 		private int _nextProcessDelay = 3000;
 
