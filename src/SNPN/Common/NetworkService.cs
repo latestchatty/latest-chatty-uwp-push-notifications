@@ -13,7 +13,6 @@ using Polly;
 using Microsoft.AspNetCore.WebUtilities;
 using FirebaseAdmin;
 using FirebaseAdmin.Messaging;
-using Google.Apis.Auth.OAuth2;
 using SNPN.Data;
 
 namespace SNPN.Common
@@ -24,10 +23,8 @@ namespace SNPN.Common
 		private readonly HttpClient _httpClient;
 		private readonly ILogger _logger;
 		private readonly IUserRepo _userRepo;
-
 		private readonly AsyncPolicy _retryPolicy;
-
-		private static Object firebaseAppLock = new Object();
+		private readonly FirebaseApp _firebaseApp;
 
 		private readonly Dictionary<NotificationType, string> _notificationTypeMapping = new Dictionary<NotificationType, string>
 		  {
@@ -36,28 +33,19 @@ namespace SNPN.Common
 				{ NotificationType.Toast, "wns/toast" }
 		  };
 
-		public NetworkService(AppConfiguration configuration, ILogger logger, HttpClient httpClient, IUserRepo userRepo)
+		public NetworkService(AppConfiguration configuration, ILogger logger, HttpClient httpClient, IUserRepo userRepo, FirebaseApp firebaseApp)
 		{
 			_config = configuration;
 			_logger = logger;
 			_httpClient = httpClient;
 			_userRepo = userRepo;
+			_firebaseApp = firebaseApp;
 
-			// Setup Firebase Default App with credentials only once.
-			lock(firebaseAppLock) {
-				var fcmJSON = Environment.GetEnvironmentVariable("FCM_KEY_JSON");
-				if(fcmJSON != null) {
-					if (FirebaseApp.DefaultInstance == null) {
-						FirebaseApp.Create(new AppOptions()
-							{
-								Credential = GoogleCredential.FromJson(fcmJSON)
-							});
-						_logger.Information("FirebaseApp initialization complete.");
-					}
-				}
-				else {
-					_logger.Warning("The environment variable FCM_KEY_JSON could not be found, FCM messaging will not work!");
-				}
+			if(_firebaseApp != null)
+				_logger.Information("FirebaseApp initializated OK.");
+			else {
+				_logger.Warning("The FirebaseApp is null, possibly the environment variable FCM_KEY_JSON could not be found. " +
+								"FCM messaging will not work.");
 			}
 
 			//Winchatty seems to crap itself if the Expect: 100-continue header is there.
@@ -197,7 +185,7 @@ namespace SNPN.Common
 					},
 					Token = notification.Uri.Replace("fcm://", ""),
 				};
-				var messaging = FirebaseMessaging.DefaultInstance;
+				var messaging = FirebaseMessaging.GetMessaging(_firebaseApp);
 				try {
 					var result = await messaging.SendAsync(message);					
 					_logger.Information("SendNotificationFCM result: {result}", result);

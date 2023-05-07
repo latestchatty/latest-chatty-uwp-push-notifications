@@ -48,7 +48,7 @@ namespace SNPN.Test.Common
 			var handler = GetMessageHandlerMock(callReturn, statusCode, onCalled);
 			var repo = new UserRepo(logger.Object, config);
 
-			var service = new NetworkService(config, logger.Object, new HttpClient(handler.Object), repo);
+			var service = new NetworkService(config, logger.Object, new HttpClient(handler.Object), repo, null);
 			return service;
 		}
 		#endregion

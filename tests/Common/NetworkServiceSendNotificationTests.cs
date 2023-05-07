@@ -245,7 +245,7 @@ namespace SNPN.Test.Common
 			var logger = new Mock<Serilog.ILogger>();
 			var repo = new Mock<IUserRepo>();
 
-			var service = new NetworkService(config, logger.Object, new HttpClient(handler.Object), repo.Object);
+			var service = new NetworkService(config, logger.Object, new HttpClient(handler.Object), repo.Object, null);
 			var result = await service.SendNotificationWNS(new QueuedNotificationItem(NotificationType.Toast, doc, It.IsAny<Post>(), It.IsAny<NotificationMatchType>(), "http://test.url", NotificationGroups.ReplyToUser), "token");
 
 			logger.Verify(x => x.Information("Exception sending notification {exception} - Retrying", It.IsAny<Exception>()));
