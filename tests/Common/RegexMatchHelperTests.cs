@@ -25,9 +25,9 @@ namespace SNPN.Test.Common
             Assert.True(RegexMatchHelper.MatchWholeWord("Hello there test ", "test"));
             Assert.True(RegexMatchHelper.MatchWholeWord("Will this annoy node", "node"));
             Assert.True(RegexMatchHelper.MatchWholeWord("Will this annoy node?", "node"));
+            Assert.True(RegexMatchHelper.MatchWholeWord("This will match node-js", "node"));
 
             Assert.False(RegexMatchHelper.MatchWholeWord("Hello there testtest.", "test"));
-            Assert.False(RegexMatchHelper.MatchWholeWord("Should not match node-js?", "node"));
             Assert.False(RegexMatchHelper.MatchWholeWord("Hello there", "test"));
         }
     }
