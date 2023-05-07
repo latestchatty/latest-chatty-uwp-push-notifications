@@ -28,13 +28,14 @@ namespace SNPN.Monitor
 		public async Task ProcessEvent(NewPostEvent e)
 		{
 			var postBody = HtmlRemoval.StripTagsRegexCompiled(System.Net.WebUtility.HtmlDecode(e.Post.Body).Replace("<br />", " ").Replace(char.ConvertFromUtf32(8232), " "));
+			_logger.Verbose("ProcessEvent for {postId} {parentAuthor}", e.PostId, e.ParentAuthor);
 			//Don't notify if self-reply.
 			if (!e.ParentAuthor.Equals(e.Post.Author, StringComparison.OrdinalIgnoreCase))
 			{
 				var usr = await _userRepo.FindUser(e.ParentAuthor);
 				if (usr != null)
 				{
-					NotifyUser(usr, e.Post, $"Reply from {e.Post.Author}", postBody);
+					NotifyUser(usr, e.Post, $"Reply from {e.Post.Author}", postBody, NotificationMatchType.Reply);
 				}
 				else
 				{
@@ -46,21 +47,19 @@ namespace SNPN.Monitor
 				_logger.Verbose("No alert on self-reply to {parentAuthor}", e.ParentAuthor);
 			}
 
-			var paddedBody = (" " + postBody.ToLower() + " ");
 			var users = await _userRepo.GetAllUserNamesForNotification();
 			foreach (var user in users)
 			{
 				//Don't notify a user of their own posts.
 				if (user.ToLower().Equals(e.Post.Author.ToLower())) continue;
-				//Pad with spaces so we don't match a partial username.
-				if (paddedBody.Contains(" " + user.ToLower() + " "))
+				if (RegexMatchHelper.MatchWholeWord(postBody, user))
 				{
 					var u1 = await _userRepo.FindUser(user);
 					if (u1 != null)
 					{
 						_logger.Information("Notifying {user} of mention by {latestReplyAuthor}",
 							user, e.Post.Author);
-						NotifyUser(u1, e.Post, $"Mentioned by {e.Post.Author}", postBody);
+						NotifyUser(u1, e.Post, $"Mentioned by {e.Post.Author}", postBody, NotificationMatchType.Mention);
 					}
 				}
 			}
@@ -69,7 +68,7 @@ namespace SNPN.Monitor
 			var sentNotifications = new Dictionary<int, List<string>>();
 			foreach (var word in words)
 			{
-				if (paddedBody.Contains(" " + word.Word + " "))
+				if (RegexMatchHelper.MatchWholeWord(postBody, word.Word))
 				{
 					var usersToNotify = await _userRepo.FindUsersByWord(word.Id);
 					foreach (var userToNotify in usersToNotify)
@@ -92,13 +91,13 @@ namespace SNPN.Monitor
 							sentNotifications.Add(e.Post.Id, new List<string> { userToNotify.UserName });
 						}
 						_logger.Information("Notifying {user} of {keyword} on {postBody}", userToNotify.UserName, word.Word, postBody);
-						NotifyUser(userToNotify, e.Post, $"Keyword '{word.Word}' used by {e.Post.Author}", postBody);
+						NotifyUser(userToNotify, e.Post, $"Keyword '{word.Word}' used by {e.Post.Author}", postBody, NotificationMatchType.Keyword);
 					}
 				}
 			}
 		}
 
-		private async void NotifyUser(NotificationUser user, Post post, string title, string message)
+		private async void NotifyUser(NotificationUser user, Post post, string title, string message, NotificationMatchType matchType)
 		{
 			var ignoreUsers = await _networkService.GetIgnoreUsers(user.UserName);
 			if (ignoreUsers.Any(ignored => ignored.Equals(post.Author, StringComparison.OrdinalIgnoreCase)))
@@ -111,13 +110,14 @@ namespace SNPN.Monitor
 
 			foreach (var info in deviceInfos)
 			{
-				var toastDoc = NotificationBuilder.BuildReplyDoc(post.Id, title, message);
 				_notificationService.QueueNotificationData(
 					NotificationType.Toast,
 					info.NotificationUri,
-					toastDoc,
+					post,
+					matchType,
+					title,
+					message,
 					NotificationGroups.ReplyToUser,
-					post.Id.ToString(),
 					Ttl);
 			}
 		}

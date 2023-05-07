@@ -14,6 +14,8 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Hosting;
 using SNPN.Controllers;
+using FirebaseAdmin;
+using Google.Apis.Auth.OAuth2;
 
 //using Microsoft.AspNetCore.Hosting;
 
@@ -58,6 +60,17 @@ namespace SNPN
 					.MinimumLevel.Verbose()
 					.WriteTo.Console(new CompactJsonFormatter())
 					.CreateLogger();
+			});
+			services.AddSingleton<FirebaseApp>(x =>
+			{
+				var fcmJSON = Environment.GetEnvironmentVariable("FCM_KEY_JSON");
+				if(fcmJSON != null && FirebaseApp.DefaultInstance == null) {
+					return FirebaseApp.Create(new AppOptions()
+						{
+							Credential = GoogleCredential.FromJson(fcmJSON)
+						});
+				}
+				return null;
 			});
 			services.AddSingleton(x => new MemoryCache(new MemoryCacheOptions()));
 			services.AddSingleton<DbHelper>();
