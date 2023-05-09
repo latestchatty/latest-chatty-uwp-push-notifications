@@ -64,8 +64,8 @@ namespace SNPN.Common
 						var token = await _accessTokenManager.GetAccessToken();
 
 						_logger.Information(
-							"Sending notification {notificationType}",
-							notification.Type);
+							"Sending notification {notificationType} to {deviceURI}",
+							notification.Type, notification.Uri);
 						_logger.Debug(
 							"With content {contentType}",
 							notification.Content?.ToString(SaveOptions.None));
