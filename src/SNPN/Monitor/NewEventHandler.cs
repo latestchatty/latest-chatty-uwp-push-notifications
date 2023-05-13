@@ -15,14 +15,16 @@ namespace SNPN.Monitor
 		private readonly INotificationService _notificationService;
 		private readonly IUserRepo _userRepo;
 		private readonly INetworkService _networkService;
+		private readonly AppConfiguration _configuration;
 		private const int Ttl = 172800; // 48 hours
 
-		public NewEventHandler(INotificationService notificationService, IUserRepo userRepo, ILogger logger, INetworkService networkService)
+		public NewEventHandler(INotificationService notificationService, IUserRepo userRepo, ILogger logger, INetworkService networkService, AppConfiguration configuration)
 		{
 			_notificationService = notificationService;
 			_userRepo = userRepo;
 			_logger = logger;
 			_networkService = networkService;
+			_configuration = configuration;
 		}
 
 		public async Task ProcessEvent(NewPostEvent e)
@@ -116,7 +118,7 @@ namespace SNPN.Monitor
 					post,
 					matchType,
 					title,
-					message,
+					message.TruncateWithEllipsis(_configuration.MaxNotificationBodyLength), // FCM has limits on message size and really, more than a hundred or so characters in a notificaion isn't readable anyway.
 					NotificationGroups.ReplyToUser,
 					Ttl);
 			}
