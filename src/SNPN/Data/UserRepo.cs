@@ -9,7 +9,12 @@ namespace SNPN.Data
 {
 	public class UserRepo : DbHelper, IUserRepo
 	{
-		public UserRepo(ILogger logger, AppConfiguration config) : base(logger, config) { }
+		private readonly ILogger _logger;
+
+		public UserRepo(ILogger logger, AppConfiguration config) : base(logger, config) 
+		{
+			_logger = logger;
+		}
 
 		public async Task<NotificationUser> FindUser(string userName)
 		{
@@ -141,14 +146,18 @@ namespace SNPN.Data
 					new { notificationInfo.DeviceId, UserId = user.Id });
 				if (info == null)
 				{
+					_logger.Debug("{DeviceId} doesn't exist for {UserId} - attempting to add with {NotificationUri}", notificationInfo.DeviceId, user.Id, notificationInfo.NotificationUri);
+					// Delete other device ids prior to insserting. If someone logs in to a different account on the same device they should get notifications for their current user.
 					await con.ExecuteAsync(
-						@"INSERT INTO Device
+						@"DELETE FROM Device WHERE Id=@DeviceId;
+						INSERT INTO Device
 						(Id, UserId, NotificationUri)
-						VALUES(@DeviceId, @UserId, @NotificationUri)",
+						VALUES(@DeviceId, @UserId, @NotificationUri);",
 					new { notificationInfo.DeviceId, UserId = user.Id, notificationInfo.NotificationUri });
 				}
 				else
 				{
+					_logger.Debug("{DeviceId} exists for {UserId} - attempting to update with {NotificationUri}", notificationInfo.DeviceId, user.Id, notificationInfo.NotificationUri);
 					await con.ExecuteAsync(
 						@"UPDATE Device SET NotificationUri=@NotificationUri WHERE Id=@DeviceId",
 						new { notificationInfo.NotificationUri, notificationInfo.DeviceId });

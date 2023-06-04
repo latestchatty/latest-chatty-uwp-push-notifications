@@ -81,7 +81,20 @@ namespace SNPN.Common
 		{
 			using (var resEvent = await _httpClient.GetAsync($"{_config.WinchattyApiBase}waitForEvent?lastEventId={latestEventId}&includeParentAuthor=1", ct))
 			{
-				return JsonDocument.Parse(await resEvent.Content.ReadAsStringAsync()).RootElement;
+				if(resEvent.IsSuccessStatusCode)
+				{
+					var responseString = await resEvent.Content.ReadAsStringAsync();
+					try
+					{
+						return JsonDocument.Parse(responseString).RootElement;
+					}
+					catch(Exception ex)
+					{
+						_logger.Error(ex, "Error parsing event {EventString}", responseString);
+						throw;
+					}
+				}
+				throw new Exception($"{resEvent.StatusCode} is not a success code");
 			}
 		}
 
