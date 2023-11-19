@@ -2,7 +2,7 @@
 // https://github.com/microsoft/vscode-dev-containers/tree/v0.158.0/containers/docker-existing-dockerfile
 {
 	"name": "C#",
-	"image": "mcr.microsoft.com/devcontainers/dotnet:0-7.0",
+	"image": "mcr.microsoft.com/devcontainers/dotnet:0-8.0",
 	// Add the IDs of extensions you want installed when the container is created.
 	"customizations": {
 		"vscode": {

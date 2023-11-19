@@ -12,6 +12,6 @@ Documentatation for the API is available [here](http://winchatty.com/swagger/ind
 How to build
 ------
  - Clone the repo
- - Ensure [.NET Core](https://www.microsoft.com/net/core) 7.0 or later is installed and in your path.
+ - Ensure [.NET](https://dotnet.microsoft.com/en-us/download) 8.0 or later is installed and in your path.
  - `dotnet restore`
  - `dotnet build`
