@@ -5,6 +5,7 @@ ARG BUILD_VERSION="1.0.0.0"
 
 COPY . .
 
+RUN dotnet test --configuration Release
 RUN dotnet publish -c Release src/SNPN/SNPN.csproj -r linux-x64 /p:BuildVersion=${BUILD_VERSION}
 
 FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine
