@@ -1,10 +1,9 @@
-﻿namespace SNPN.Common
+﻿namespace SNPN.Common;
+
+public enum NotificationType
 {
-	public enum NotificationType
-	{
-		Badge,
-		Tile,
-		Toast,
-		RemoveToasts
-	}
+	Badge,
+	Tile,
+	Toast,
+	RemoveToasts
 }

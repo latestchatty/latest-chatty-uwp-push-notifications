@@ -1,10 +1,7 @@
-using System;
+namespace SNPN.Model;
 
-namespace SNPN.Model
+public class NotificationWord
 {
-	public class NotificationWord
-	{
-		public long Id { get; set; }
-		public string Word { get; set; }
-	}
+	public long Id { get; set; }
+	public string Word { get; set; }
 }

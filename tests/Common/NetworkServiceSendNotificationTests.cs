@@ -1,4 +1,5 @@
-﻿using Moq;
+﻿using Microsoft.Extensions.Logging;
+using Moq;
 using Moq.Protected;
 using SNPN.Common;
 using SNPN.Data;
@@ -13,7 +14,7 @@ using Xunit;
 
 namespace SNPN.Test.Common
 {
-	public class NetworkServiceSendNotificationTests : NetworkServiceTestsBase
+    public class NetworkServiceSendNotificationTests : NetworkServiceTestsBase
 	{
 		[Fact]
 		async void SendNotification()
@@ -242,13 +243,18 @@ namespace SNPN.Test.Common
 					StatusCode = HttpStatusCode.OK
 				});
 
-			var logger = new Mock<Serilog.ILogger>();
+			var logger = new Mock<ILogger<NetworkService>>();
 			var repo = new Mock<IUserRepo>();
 
 			var service = new NetworkService(config, logger.Object, new HttpClient(handler.Object), repo.Object, null);
 			var result = await service.SendNotificationWNS(new QueuedNotificationItem(NotificationType.Toast, doc, It.IsAny<Post>(), It.IsAny<NotificationMatchType>(), "http://test.url", NotificationGroups.ReplyToUser), "token");
 
-			logger.Verify(x => x.Information("Exception sending notification {exception} - Retrying", It.IsAny<Exception>()));
+			logger.Verify(l => l.Log(
+				It.Is<LogLevel>(ll => ll == LogLevel.Information),
+				It.IsAny<EventId>(),
+				It.Is<It.IsAnyType>((o, t) => o.ToString().StartsWith("Exception sending notification")),
+				It.IsAny<Exception>(),
+				It.Is<Func<It.IsAnyType, Exception, string>>((o, t) => true)), Times.Once);
 			
 			Assert.Equal(ResponseResult.Success, result);
 		}

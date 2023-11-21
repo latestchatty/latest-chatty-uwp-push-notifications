@@ -1,8 +1,7 @@
-﻿namespace SNPN.Common
+﻿namespace SNPN.Common;
+
+public enum NotificationGroups
 {
-	public enum NotificationGroups
-	{
-		ReplyToUser,
-		None
-	}
+	ReplyToUser,
+	None
 }

@@ -1,8 +1,7 @@
-﻿namespace SNPN.Model
+﻿namespace SNPN.Model;
+
+public class DeviceInfo
 {
-	public class DeviceInfo
-	{
-		public string NotificationUri { get; set; }
-		public string DeviceId { get; set; }
-	}
+	public string NotificationUri { get; set; }
+	public string DeviceId { get; set; }
 }

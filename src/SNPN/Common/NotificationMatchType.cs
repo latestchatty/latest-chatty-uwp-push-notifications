@@ -1,9 +1,8 @@
-namespace SNPN.Model
+namespace SNPN.Model;
+
+public enum NotificationMatchType
 {
-	public enum NotificationMatchType
-	{
-		Reply,
-		Mention,
-		Keyword,
-	}
+	Reply,
+	Mention,
+	Keyword,
 }

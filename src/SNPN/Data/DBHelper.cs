@@ -1,70 +1,68 @@
 using Dapper;
 using Microsoft.Data.Sqlite;
-using System.IO;
 using System.Data;
 using System.Runtime.CompilerServices;
-using Serilog;
 
-namespace SNPN.Data
+namespace SNPN.Data;
+
+public class DbHelper
 {
-	public class DbHelper
+	private readonly long CurrentVersion = 2;
+	private bool _initialized;
+	private readonly string DbFile;
+	private readonly ILogger<DbHelper> _logger;
+
+	public DbHelper(ILogger<DbHelper> logger, AppConfiguration config)
 	{
-		private readonly long CurrentVersion = 2;
-		private bool _initialized;
-		private readonly string DbFile;
-		private readonly ILogger _logger;
+		_logger = logger;
 
-		public DbHelper(ILogger logger, AppConfiguration config)
+		if (string.IsNullOrWhiteSpace(config.DbLocation))
 		{
-			_logger = logger;
-
-			if (string.IsNullOrWhiteSpace(config.DbLocation))
-			{
-				DbFile = Path.Combine(Directory.GetCurrentDirectory(), "Notifications.db");
-			}
-			else
-			{
-				DbFile = config.DbLocation;
-			}
-
-			logger.Information("DB Location {dbfile}", DbFile);
+			DbFile = Path.Combine(Directory.GetCurrentDirectory(), "Notifications.db");
+		}
+		else
+		{
+			DbFile = config.DbLocation;
 		}
 
-		[MethodImpl(MethodImplOptions.Synchronized)]
-		public SqliteConnection GetConnection()
-		{
-			if (!File.Exists(DbFile))
-			{
-				CreateDatabase(DbFile);
-			}
-			if (!_initialized)
-			{
-				UpgradeDatabase();
-				_initialized = true;
-			}
-			return GetConnectionInternal(DbFile);
-		}
+		logger.LogInformation("DB Location {dbfile}", DbFile);
+	}
 
-		private SqliteConnection GetConnectionInternal(string fileLocation, bool ignoreMissingFile = false)
+	[MethodImpl(MethodImplOptions.Synchronized)]
+	public SqliteConnection GetConnection()
+	{
+		if (!File.Exists(DbFile))
 		{
-			if (!ignoreMissingFile && !File.Exists(fileLocation))
-			{
-				throw new FileNotFoundException("Database file doesn't exist", fileLocation);
-			}
-			return new SqliteConnection("Data Source=" + fileLocation);
+			CreateDatabase(DbFile);
 		}
-
-		private void CreateDatabase(string fileLocation)
+		if (!_initialized)
 		{
-			_logger.Information("Creating database at {fileLocation}", fileLocation);
-			File.Create(fileLocation).Dispose();
-			using (var connection = GetConnectionInternal(fileLocation, true))
+			UpgradeDatabase();
+			_initialized = true;
+		}
+		return GetConnectionInternal(DbFile);
+	}
+
+	private SqliteConnection GetConnectionInternal(string fileLocation, bool ignoreMissingFile = false)
+	{
+		if (!ignoreMissingFile && !File.Exists(fileLocation))
+		{
+			throw new FileNotFoundException("Database file doesn't exist", fileLocation);
+		}
+		return new SqliteConnection("Data Source=" + fileLocation);
+	}
+
+	private void CreateDatabase(string fileLocation)
+	{
+		_logger.LogInformation("Creating database at {fileLocation}", fileLocation);
+		File.Create(fileLocation).Dispose();
+		using (var connection = GetConnectionInternal(fileLocation, true))
+		{
+			connection.Open();
+			using (var tx = connection.BeginTransaction())
 			{
-				connection.Open();
-				using (var tx = connection.BeginTransaction())
-				{
-					connection.Execute(
-						@"
+				connection.Execute(
+					@"
 						CREATE TABLE User
 						(
 							Id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -103,42 +101,42 @@ namespace SNPN.Data
 						CREATE INDEX KeywordUserWordId ON KeywordUser(WordId);
 
 						PRAGMA user_version=" + CurrentVersion + ";", transaction: tx);
+				tx.Commit();
+			}
+		}
+	}
+
+	private void UpgradeDatabase()
+	{
+		using (var con = GetConnectionInternal(DbFile))
+		{
+			con.Open();
+			var dbVersion = con.QuerySingle<long>(@"PRAGMA user_version");
+			if (dbVersion < CurrentVersion)
+			{
+				using (var tx = con.BeginTransaction())
+				{
+					for (long i = dbVersion + 1; i <= CurrentVersion; i++)
+					{
+						_logger.LogInformation("Upgrading databse to version {dbupgradeversion}", i);
+						UpgradeDatabase(i, con, tx);
+					}
+					con.Execute($"PRAGMA user_version={CurrentVersion};", transaction: tx);
 					tx.Commit();
 				}
 			}
 		}
+	}
 
-		private void UpgradeDatabase()
+	private void UpgradeDatabase(long dbVersion, SqliteConnection con, IDbTransaction tx)
+	{
+		switch (dbVersion)
 		{
-			using (var con = GetConnectionInternal(DbFile))
-			{
-				con.Open();
-				var dbVersion = con.QuerySingle<long>(@"PRAGMA user_version");
-				if (dbVersion < CurrentVersion)
-				{
-					using (var tx = con.BeginTransaction())
-					{
-						for (long i = dbVersion + 1; i <= CurrentVersion; i++)
-						{
-							_logger.Information("Upgrading databse to version {dbupgradeversion}", i);
-							UpgradeDatabase(i, con, tx);
-						}
-						con.Execute($"PRAGMA user_version={CurrentVersion};", transaction: tx);
-						tx.Commit();
-					}
-				}
-			}
-		}
-
-		private void UpgradeDatabase(long dbVersion, SqliteConnection con, IDbTransaction tx)
-		{
-			switch (dbVersion)
-			{
-				case 1:
-					con.Execute(@"ALTER TABLE User ADD COLUMN NotifyOnUserName INTEGER DEFAULT(1)", transaction: tx);
-					break;
-				case 2:
-					con.Execute(@"
+			case 1:
+				con.Execute(@"ALTER TABLE User ADD COLUMN NotifyOnUserName INTEGER DEFAULT(1)", transaction: tx);
+				break;
+			case 2:
+				con.Execute(@"
 						CREATE TABLE Keyword
 						(
 							Id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -156,8 +154,7 @@ namespace SNPN.Data
 						CREATE INDEX KeywordUserUserId ON KeywordUser(UserId);
 						CREATE INDEX KeywordUserWordId ON KeywordUser(WordId);
 						");
-					break;
-			}
+				break;
 		}
 	}
 }

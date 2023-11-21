@@ -1,14 +1,11 @@
-﻿using System;
+﻿namespace SNPN.Common;
 
-namespace SNPN.Common
+[Flags]
+public enum ResponseResult
 {
-	[Flags]
-	public enum ResponseResult
-	{
-		Success,
-		FailDoNotTryAgain,
-		FailTryAgain,
-		RemoveUser,
-		InvalidateToken
-	}
+	Success,
+	FailDoNotTryAgain,
+	FailTryAgain,
+	RemoveUser,
+	InvalidateToken
 }

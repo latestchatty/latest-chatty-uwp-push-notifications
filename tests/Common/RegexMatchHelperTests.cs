@@ -1,14 +1,9 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
 using Xunit;
-using System.Net;
-using System.Collections.Generic;
 using SNPN.Common;
 
 namespace SNPN.Test.Common
 {
-	public class RegexMatchHelperTests
+    public class RegexMatchHelperTests
 	{
 		[Fact]
 		void RegexMatchOnWordBoundaries()

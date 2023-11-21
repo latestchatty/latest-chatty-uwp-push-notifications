@@ -5,10 +5,11 @@ using System.Threading.Tasks;
 using System.Xml.Linq;
 using SNPN.Controllers;
 using Xunit;
+using Microsoft.Extensions.Logging;
 
 namespace SNPN.Test.WebService
 {
-	public class TileContentRepoTests
+    public class TileContentRepoTests
 	{
 		private readonly string RssContent = @"<?xml version=""1.0"" encoding=""utf-8"" ?>
 <rss version=""2.0"" xmlns:atom=""http://www.w3.org/2005/Atom"" xmlns:steam=""http://www.shacknews.com/steamfeed.xml"">
@@ -85,7 +86,7 @@ namespace SNPN.Test.WebService
 		[Fact]
 		async void TileContent()
 		{
-			var logger = new Mock<Serilog.ILogger>();
+			var logger = new Mock<ILogger<TileContentRepo>>();
 			var networkService = new Mock<INetworkService>();
 			networkService.Setup(ns => ns.GetTileContent())
 				.Returns(Task.FromResult(XDocument.Parse(RssContent)));
@@ -99,7 +100,7 @@ namespace SNPN.Test.WebService
 		[Fact]
 		async void CacheHit()
 		{
-			var logger = new Mock<Serilog.ILogger>();
+			var logger = new Mock<ILogger<TileContentRepo>>();
 			var networkServiceCallCount = 0;
 			var networkService = new Mock<INetworkService>();
 			networkService.Setup(ns => ns.GetTileContent())

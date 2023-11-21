@@ -1,4 +1,5 @@
-﻿using Moq;
+﻿using Microsoft.Extensions.Logging;
+using Moq;
 using Moq.Protected;
 using SNPN.Common;
 using SNPN.Data;
@@ -10,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace SNPN.Test.Common
 {
-	public abstract class NetworkServiceTestsBase
+    public abstract class NetworkServiceTestsBase
 	{
 		#region Setup Helpers
 		protected AppConfiguration GetAppConfig()
@@ -43,12 +44,11 @@ namespace SNPN.Test.Common
 
 		protected NetworkService GetMockedNetworkService(string callReturn, HttpStatusCode statusCode = HttpStatusCode.OK, Action<HttpRequestMessage, CancellationToken> onCalled = null)
 		{
-			var logger = new Mock<Serilog.ILogger>();
 			var config = GetAppConfig();
 			var handler = GetMessageHandlerMock(callReturn, statusCode, onCalled);
-			var repo = new UserRepo(logger.Object, config);
+			var repo = new UserRepo(new Mock<ILogger<UserRepo>>().Object, config);
 
-			var service = new NetworkService(config, logger.Object, new HttpClient(handler.Object), repo, null);
+			var service = new NetworkService(config, new Mock<ILogger<NetworkService>>().Object, new HttpClient(handler.Object), repo, null);
 			return service;
 		}
 		#endregion

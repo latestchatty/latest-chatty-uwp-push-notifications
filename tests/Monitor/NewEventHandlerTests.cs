@@ -6,13 +6,13 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Xunit;
-using Serilog;
+
 using SNPN.Model;
-using System.Xml.Linq;
+using Microsoft.Extensions.Logging;
 
 namespace SNPN.Test.Monitor
 {
-	public class NewEventHandlerTests
+    public class NewEventHandlerTests
 	{
 		private NotificationUser GetNotificationUser()
 		{
@@ -81,7 +81,7 @@ namespace SNPN.Test.Monitor
 		{
 			var notificationMoq = new Mock<INotificationService>();
 			var repo = new Mock<IUserRepo>();
-			var logger = new Mock<ILogger>();
+			var logger = new Mock<ILogger<NewEventHandler>>();
 			var countNotificationsAdded = 0;
 
 			repo.Setup(r => r.GetAllUserNamesForNotification())
@@ -110,7 +110,7 @@ namespace SNPN.Test.Monitor
 		{
 			var notificationMoq = new Mock<INotificationService>();
 			var repo = new Mock<IUserRepo>();
-			var logger = new Mock<ILogger>();
+			var logger = new Mock<ILogger<NewEventHandler>>();
 			var countNotificationsAdded = 0;
 
 			repo.Setup(r => r.GetAllUserNamesForNotification())
@@ -138,7 +138,7 @@ namespace SNPN.Test.Monitor
 		{
 			var notificationMoq = new Mock<INotificationService>();
 			var repo = new Mock<IUserRepo>();
-			var logger = new Mock<ILogger>();
+			var logger = new Mock<ILogger<NewEventHandler>>();
 			var countNotificationsAdded = 0;
 
 			repo.Setup(r => r.GetAllUserNamesForNotification())
@@ -166,7 +166,7 @@ namespace SNPN.Test.Monitor
 		{
 			var notificationMoq = new Mock<INotificationService>();
 			var repo = new Mock<IUserRepo>();
-			var logger = new Mock<ILogger>();
+			var logger = new Mock<ILogger<NewEventHandler>>();
 			var countNotificationsAdded = 0;
 
 			repo.Setup(r => r.GetAllUserNamesForNotification())
@@ -194,7 +194,7 @@ namespace SNPN.Test.Monitor
 		{
 			var notificationMoq = new Mock<INotificationService>();
 			var repo = new Mock<IUserRepo>();
-			var logger = new Mock<ILogger>();
+			var logger = new Mock<ILogger<NewEventHandler>>();
 			var countNotificationsAdded = 0;
 
 			repo.Setup(r => r.GetAllUserNamesForNotification())
@@ -223,7 +223,7 @@ namespace SNPN.Test.Monitor
 		{
 			var notificationMoq = new Mock<INotificationService>();
 			var repo = new Mock<IUserRepo>();
-			var logger = new Mock<ILogger>();
+			var logger = new Mock<ILogger<NewEventHandler>>();
 			var countNotificationsAdded = 0;
 
 			repo.Setup(r => r.GetAllUserNamesForNotification())
@@ -251,7 +251,7 @@ namespace SNPN.Test.Monitor
 		{
 			var notificationMoq = new Mock<INotificationService>();
 			var repo = new Mock<IUserRepo>();
-			var logger = new Mock<ILogger>();
+			var logger = new Mock<ILogger<NewEventHandler>>();
 			var countNotificationsAdded = 0;
 
 			repo.Setup(r => r.GetAllUserNamesForNotification())

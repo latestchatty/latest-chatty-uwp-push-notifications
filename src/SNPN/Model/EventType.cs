@@ -1,11 +1,10 @@
-﻿namespace SNPN.Model
+﻿namespace SNPN.Model;
+
+public enum EventType
 {
-	public enum EventType
-	{
-		Uknown,
-		NewPost,
-		CategoryChange,
-		ServerMessage,
-		LolCountsUpdate,
-	}
+	Uknown,
+	NewPost,
+	CategoryChange,
+	ServerMessage,
+	LolCountsUpdate,
 }
