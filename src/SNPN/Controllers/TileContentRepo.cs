@@ -56,7 +56,7 @@ public class TileContentRepo
 				new XElement("text", new XAttribute("id", "6"), itemsObj.ElementAt(2).Title)));
 			var doc = new XDocument(tileElement);
 			tileContent = doc.ToString(SaveOptions.DisableFormatting);
-			_cache.Set("tileContent", tileContent, DateTimeOffset.UtcNow.AddMinutes(5));
+			_cache.Set("tileContent", tileContent, DateTimeOffset.UtcNow.AddMinutes(60));
 		}
 		else
 		{

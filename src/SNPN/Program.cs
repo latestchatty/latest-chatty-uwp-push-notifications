@@ -3,7 +3,6 @@ using Google.Apis.Auth.OAuth2;
 using Serilog.Events;
 using Serilog.Formatting.Compact;
 
-
 Log.Logger = new LoggerConfiguration()
 			  .Enrich.FromLogContext()
 			  .MinimumLevel.Verbose()
@@ -60,6 +59,7 @@ try
 	builder.Services.AddSingleton(x => new HttpClient());
 	builder.Services.AddSingleton<INetworkService, NetworkService>();
 	builder.Services.AddScoped<TileContentRepo>();
+	builder.Services.AddSingleton<VersionHelper>();
 
 	builder.Host.UseSerilog();
 

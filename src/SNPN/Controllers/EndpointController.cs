@@ -10,13 +10,15 @@ public sealed class EndpointController : Controller
 	private readonly ILogger<EndpointController> _logger;
 	private readonly INetworkService _networkService;
 	private readonly TileContentRepo _tileContentRepo;
+	private readonly VersionHelper _versionHelper;
 
-	public EndpointController(IUserRepo userRepo, ILogger<EndpointController> logger, INetworkService networkService, TileContentRepo tileContentRepo)
+	public EndpointController(IUserRepo userRepo, ILogger<EndpointController> logger, INetworkService networkService, TileContentRepo tileContentRepo, VersionHelper versionHelper)
 	{
 		_userRepo = userRepo;
 		_logger = logger;
 		_networkService = networkService;
 		_tileContentRepo = tileContentRepo;
+		_versionHelper = versionHelper;
 	}
 
 	#region Event Bind Classes
@@ -82,7 +84,7 @@ public sealed class EndpointController : Controller
 	#endregion
 
 	[HttpGet("test")]
-	public dynamic GetTest() => new { status = "ok", version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString() };
+	public dynamic GetTest() => new { status = "ok", version = _versionHelper.Version};
 
 	[HttpPost("user")]
 	public async Task<IActionResult> PostUserV1([FromForm] PostUserArgs e)
