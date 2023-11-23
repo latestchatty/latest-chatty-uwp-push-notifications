@@ -2,6 +2,7 @@
 using Google.Apis.Auth.OAuth2;
 using Serilog.Events;
 using Serilog.Formatting.Compact;
+using SNPN.Health;
 
 Log.Logger = new LoggerConfiguration()
 			  .Enrich.FromLogContext()
@@ -15,6 +16,7 @@ try
 {
 	var builder = WebApplication.CreateSlimBuilder(args);
 
+	builder.WebHost.ConfigureKestrel(opts => opts.ListenAnyIP(4000));
 	builder.Services.AddSingleton<INotificationService, NotificationService>();
 	builder.Services.AddSingleton<AccessTokenManager>();
 	builder.Services.AddSingleton<SNPN.Monitor.Monitor>();
@@ -61,6 +63,11 @@ try
 	builder.Services.AddScoped<TileContentRepo>();
 	builder.Services.AddSingleton<VersionHelper>();
 
+	builder.Services.AddSingleton<IDBHealth, DBHealth>();
+	builder.Services.AddHealthChecks()
+		.AddCheck<Health>("DB Health")
+		.AddCheck<WinchattyHealth>("Winchatty health");
+	
 	builder.Host.UseSerilog();
 
 	builder.Services.AddControllers();
@@ -71,6 +78,7 @@ try
 
 	app.UseSerilogRequestLogging();
 	app.MapControllers();
+	app.MapHealthChecks("/health");
 
 	if (!app.Environment.IsDevelopment())
 	{
