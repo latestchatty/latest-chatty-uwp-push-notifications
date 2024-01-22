@@ -56,13 +56,11 @@ public class DbHelper
 	{
 		_logger.LogInformation("Creating database at {fileLocation}", fileLocation);
 		File.Create(fileLocation).Dispose();
-		using (var connection = GetConnectionInternal(fileLocation, true))
-		{
-			connection.Open();
-			using (var tx = connection.BeginTransaction())
-			{
-				connection.Execute(
-					@"
+		using var connection = GetConnectionInternal(fileLocation, true);
+		connection.Open();
+		using var tx = connection.BeginTransaction();
+		connection.Execute(
+			 @"
 						CREATE TABLE User
 						(
 							Id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -101,30 +99,24 @@ public class DbHelper
 						CREATE INDEX KeywordUserWordId ON KeywordUser(WordId);
 
 						PRAGMA user_version=" + CurrentVersion + ";", transaction: tx);
-				tx.Commit();
-			}
-		}
+		tx.Commit();
 	}
 
 	private void UpgradeDatabase()
 	{
-		using (var con = GetConnectionInternal(DbFile))
+		using var con = GetConnectionInternal(DbFile);
+		con.Open();
+		var dbVersion = con.QuerySingle<long>(@"PRAGMA user_version");
+		if (dbVersion < CurrentVersion)
 		{
-			con.Open();
-			var dbVersion = con.QuerySingle<long>(@"PRAGMA user_version");
-			if (dbVersion < CurrentVersion)
+			using var tx = con.BeginTransaction();
+			for (long i = dbVersion + 1; i <= CurrentVersion; i++)
 			{
-				using (var tx = con.BeginTransaction())
-				{
-					for (long i = dbVersion + 1; i <= CurrentVersion; i++)
-					{
-						_logger.LogInformation("Upgrading databse to version {dbupgradeversion}", i);
-						UpgradeDatabase(i, con, tx);
-					}
-					con.Execute($"PRAGMA user_version={CurrentVersion};", transaction: tx);
-					tx.Commit();
-				}
+				_logger.LogInformation("Upgrading databse to version {dbupgradeversion}", i);
+				UpgradeDatabase(i, con, tx);
 			}
+			con.Execute($"PRAGMA user_version={CurrentVersion};", transaction: tx);
+			tx.Commit();
 		}
 	}
 

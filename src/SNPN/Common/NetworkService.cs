@@ -64,40 +64,28 @@ public class NetworkService : INetworkService, IDisposable
 
 	public async Task<int> WinChattyGetNewestEventId(CancellationToken ct)
 	{
-		using (var res = await _httpClient.GetAsync($"{_config.WinchattyApiBase}getNewestEventId", ct))
-		{
-			var json = JsonDocument.Parse(await res.Content.ReadAsStringAsync());
-			return json.RootElement.GetProperty("eventId").GetInt32();
-		}
+		using var res = await _httpClient.GetAsync($"{_config.WinchattyApiBase}getNewestEventId", ct);
+		var json = JsonDocument.Parse(await res.Content.ReadAsStringAsync());
+		return json.RootElement.GetProperty("eventId").GetInt32();
 	}
 
 	public async Task<JsonElement> WinChattyWaitForEvent(long latestEventId, CancellationToken ct)
 	{
-		using (var resEvent = await _httpClient.GetAsync($"{_config.WinchattyApiBase}waitForEvent?lastEventId={latestEventId}&includeParentAuthor=1", ct))
+		using var resEvent = await _httpClient.GetAsync($"{_config.WinchattyApiBase}waitForEvent?lastEventId={latestEventId}&includeParentAuthor=1", ct);
+		if (resEvent.IsSuccessStatusCode)
 		{
-			if (resEvent.IsSuccessStatusCode)
+			var responseString = await resEvent.Content.ReadAsStringAsync();
+			try
 			{
-				var responseString = await resEvent.Content.ReadAsStringAsync();
-				try
-				{
-					return JsonDocument.Parse(responseString).RootElement;
-				}
-				catch (Exception ex)
-				{
-					_logger.LogError(ex, "Error parsing event {EventString}", responseString);
-					throw;
-				}
+				return JsonDocument.Parse(responseString).RootElement;
 			}
-			throw new Exception($"{resEvent.StatusCode} is not a success code");
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Error parsing event {EventString}", responseString);
+				throw;
+			}
 		}
-	}
-
-	public async Task<XDocument> GetTileContent()
-	{
-		using (var fileStream = await _httpClient.GetStreamAsync("http://www.shacknews.com/rss?recent_articles=1"))
-		{
-			return XDocument.Load(fileStream);
-		}
+		throw new Exception($"{resEvent.StatusCode} is not a success code");
 	}
 
 	public async Task<bool> ReplyToNotification(string replyText, string parentId, string userName, string password)
@@ -117,10 +105,8 @@ public class NetworkService : INetworkService, IDisposable
 
 		using (var formContent = new FormUrlEncodedContent(data))
 		{
-			using (var response = await _httpClient.PostAsync($"{_config.WinchattyApiBase}postComment", formContent))
-			{
-				parsedResponse = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-			}
+			using var response = await _httpClient.PostAsync($"{_config.WinchattyApiBase}postComment", formContent);
+			parsedResponse = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
 		}
 
 
@@ -133,44 +119,38 @@ public class NetworkService : INetworkService, IDisposable
 	{
 		return await _retryPolicy.ExecuteAsync(async () =>
 		{
-			using (var request = new HttpRequestMessage
+			using var request = new HttpRequestMessage
 			{
 				RequestUri = new Uri(notification.Uri),
 				Method = HttpMethod.Post
-			})
+			};
+
+			request.Headers.Add("Authorization", $"Bearer {token}");
+
+			request.Headers.Add("X-WNS-Type", _notificationTypeMapping[notification.Type]);
+
+			if (notification.Group != NotificationGroups.None)
 			{
-
-				request.Headers.Add("Authorization", $"Bearer {token}");
-
-				request.Headers.Add("X-WNS-Type", _notificationTypeMapping[notification.Type]);
-
-				if (notification.Group != NotificationGroups.None)
-				{
-					request.Headers.Add("X-WNS-Group",
-						 Uri.EscapeDataString(Enum.GetName(typeof(NotificationGroups), notification.Group)));
-				}
-
-				if (!string.IsNullOrWhiteSpace(notification.Tag))
-				{
-					request.Headers.Add("X-WNS-Tag", Uri.EscapeDataString(notification.Tag));
-				}
-
-				if (notification.Ttl > 0)
-				{
-					request.Headers.Add("X-WNS-TTL", notification.Ttl.ToString());
-				}
-
-				using (var stringContent =
-					 new StringContent(notification.Content.ToString(SaveOptions.DisableFormatting), Encoding.UTF8,
-						  "text/xml"))
-				{
-					request.Content = stringContent;
-					using (var response = await _httpClient.SendAsync(request))
-					{
-						return ProcessResponse(response);
-					}
-				}
+				request.Headers.Add("X-WNS-Group",
+					  Uri.EscapeDataString(Enum.GetName(typeof(NotificationGroups), notification.Group)));
 			}
+
+			if (!string.IsNullOrWhiteSpace(notification.Tag))
+			{
+				request.Headers.Add("X-WNS-Tag", Uri.EscapeDataString(notification.Tag));
+			}
+
+			if (notification.Ttl > 0)
+			{
+				request.Headers.Add("X-WNS-TTL", notification.Ttl.ToString());
+			}
+
+			using var stringContent =
+				  new StringContent(notification.Content.ToString(SaveOptions.DisableFormatting), Encoding.UTF8,
+						 "text/xml");
+			request.Content = stringContent;
+			using var response = await _httpClient.SendAsync(request);
+			return ProcessResponse(response);
 		});
 	}
 
@@ -218,25 +198,21 @@ public class NetworkService : INetworkService, IDisposable
 
 	public async Task<string> GetNotificationToken()
 	{
-		using (var data = new FormUrlEncodedContent(new Dictionary<string, string>
-				{
-					 {"grant_type", "client_credentials"},
-					 {"client_id", _config.NotificationSid},
-					 {"client_secret", _config.ClientSecret},
-					 {"scope", "notify.windows.com"}
-				}))
+		using var data = new FormUrlEncodedContent(new Dictionary<string, string>
+					 {
+							{"grant_type", "client_credentials"},
+							{"client_id", _config.NotificationSid},
+							{"client_secret", _config.ClientSecret},
+							{"scope", "notify.windows.com"}
+					 });
+
+		using var response = await _httpClient.PostAsync("https://login.live.com/accesstoken.srf", data);
+		if (response.StatusCode == HttpStatusCode.OK)
 		{
+			var responseJson = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
 
-			using (var response = await _httpClient.PostAsync("https://login.live.com/accesstoken.srf", data))
-			{
-				if (response.StatusCode == HttpStatusCode.OK)
-				{
-					var responseJson = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-
-					_logger.LogInformation("Got access token.");
-					return responseJson.RootElement.GetProperty("access_token").GetString();
-				}
-			}
+			_logger.LogInformation("Got access token.");
+			return responseJson.RootElement.GetProperty("access_token").GetString();
 		}
 
 		return null;

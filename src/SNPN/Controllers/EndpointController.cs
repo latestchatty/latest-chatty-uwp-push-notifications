@@ -4,22 +4,12 @@ namespace SNPN.Controllers;
 
 [Route("/")]
 [ApiController]
-public sealed class EndpointController : Controller
+public sealed class EndpointController(IUserRepo userRepo, ILogger<EndpointController> logger, INetworkService networkService, VersionHelper versionHelper) : Controller
 {
-	private readonly IUserRepo _userRepo;
-	private readonly ILogger<EndpointController> _logger;
-	private readonly INetworkService _networkService;
-	private readonly TileContentRepo _tileContentRepo;
-	private readonly VersionHelper _versionHelper;
-
-	public EndpointController(IUserRepo userRepo, ILogger<EndpointController> logger, INetworkService networkService, TileContentRepo tileContentRepo, VersionHelper versionHelper)
-	{
-		_userRepo = userRepo;
-		_logger = logger;
-		_networkService = networkService;
-		_tileContentRepo = tileContentRepo;
-		_versionHelper = versionHelper;
-	}
+	private readonly IUserRepo _userRepo = userRepo;
+	private readonly ILogger<EndpointController> _logger = logger;
+	private readonly INetworkService _networkService = networkService;
+	private readonly VersionHelper _versionHelper = versionHelper;
 
 	#region Event Bind Classes
 	// ReSharper disable once ClassNeverInstantiated.Local
@@ -84,7 +74,7 @@ public sealed class EndpointController : Controller
 	#endregion
 
 	[HttpGet("test")]
-	public dynamic GetTest() => new { status = "ok", version = _versionHelper.Version};
+	public dynamic GetTest() => new { status = "ok", version = _versionHelper.Version };
 
 	[HttpPost("user")]
 	public async Task<IActionResult> PostUserV1([FromForm] PostUserArgs e)
@@ -132,12 +122,6 @@ public sealed class EndpointController : Controller
 			return Json(new { user.UserName, NotifyOnUserName = user.NotifyOnUserName == 1, user.NotificationKeywords });
 		}
 		throw new Exception("User not found.");
-	}
-
-	[HttpGet("tileContent")]
-	public async Task<IActionResult> GetTileContent()
-	{
-		return Json(await _tileContentRepo.GetTileContent());
 	}
 
 	[HttpPost("replyToNotification")]

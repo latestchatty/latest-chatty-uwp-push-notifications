@@ -60,7 +60,6 @@ try
 	});
 	builder.Services.AddSingleton(x => new HttpClient());
 	builder.Services.AddSingleton<INetworkService, NetworkService>();
-	builder.Services.AddScoped<TileContentRepo>();
 	builder.Services.AddSingleton<VersionHelper>();
 
 	builder.Services.AddSingleton<IDBHealth, DBHealth>();

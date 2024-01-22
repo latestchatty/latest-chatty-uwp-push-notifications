@@ -9,8 +9,6 @@ public interface INetworkService
 
 	Task<JsonElement> WinChattyWaitForEvent(long latestEventId, CancellationToken ct);
 
-	Task<XDocument> GetTileContent();
-
 	Task<bool> ReplyToNotification(string replyText, string parentId, string userName, string password);
 
 	Task<ResponseResult> SendNotificationWNS(QueuedNotificationItem notificationItem, string token);

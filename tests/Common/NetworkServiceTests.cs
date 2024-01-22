@@ -23,20 +23,7 @@ namespace SNPN.Test.Common
 		{
 			var service = GetMockedNetworkService("{ \"eventId\": 12345 }");
 			var result = await service.WinChattyWaitForEvent(1234, new CancellationToken());
-
-			Assert.NotNull(result);
 			Assert.Equal("12345", result.GetProperty("eventId").ToString());
-		}
-
-		[Fact]
-		async void GetTileContent()
-		{
-			var service = GetMockedNetworkService("<xml></xml>");
-
-			var xDoc = await service.GetTileContent();
-
-			Assert.NotNull(xDoc);
-			Assert.Equal("xml", xDoc.Root?.Name.LocalName);
 		}
 
 		[Fact]
