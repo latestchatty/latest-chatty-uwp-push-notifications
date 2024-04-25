@@ -1,6 +1,5 @@
 ﻿using FirebaseAdmin;
 using Google.Apis.Auth.OAuth2;
-using OpenTelemetry.Metrics;
 using Serilog.Events;
 using Serilog.Formatting.Compact;
 using SNPN.Health;
@@ -17,11 +16,6 @@ try
 {
 	var builder = WebApplication.CreateSlimBuilder(args);
 
-	builder.Services.AddOpenTelemetry()
-			  .WithMetrics(b => b
-					.AddAspNetCoreInstrumentation()
-					.AddHttpClientInstrumentation()
-					.AddPrometheusExporter());
 	builder.WebHost.ConfigureKestrel(opts => opts.ListenAnyIP(4000));
 	builder.Services.AddSingleton<INotificationService, NotificationService>();
 	builder.Services.AddSingleton<AccessTokenManager>();
@@ -72,7 +66,7 @@ try
 	builder.Services.AddHealthChecks()
 		.AddCheck<Health>("DB Health")
 		.AddCheck<WinchattyHealth>("Winchatty health");
-
+	
 	builder.Host.UseSerilog();
 
 	builder.Services.AddControllers();
@@ -84,7 +78,6 @@ try
 	app.UseSerilogRequestLogging();
 	app.MapControllers();
 	app.MapHealthChecks("/health");
-	app.MapPrometheusScrapingEndpoint();
 
 	if (!app.Environment.IsDevelopment())
 	{
